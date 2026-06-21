@@ -16,15 +16,15 @@ export const reportRouter = router({
 		)
 		.query(async ({ ctx, input }) => {
 			const conditions = [
-				gte(cleaningTaskTable.scheduledDate, input.startDate.getTime()),
-				lte(cleaningTaskTable.scheduledDate, input.endDate.getTime())
+				gte(cleaningTaskTable.scheduledDate, input.startDate),
+				lte(cleaningTaskTable.scheduledDate, input.endDate)
 			];
 			if (input.cleanerId) conditions.push(eq(cleaningTaskTable.assignedCleanerId, input.cleanerId));
 			if (input.propertyId) conditions.push(eq(cleaningTaskTable.propertyId, input.propertyId));
 
 			const where = and(...conditions);
 
-			const tasks = await ctx.db.select().from(cleaningTaskTable).where(where).all();
+			const tasks = await ctx.db.select().from(cleaningTaskTable).where(where);
 
 			const totalTasks = tasks.length;
 			const completedTasks = tasks.filter((t) => ['completed', 'verified'].includes(t.status)).length;
@@ -36,7 +36,7 @@ export const reportRouter = router({
 
 			const onTimeCompleted = tasks.filter((t) => {
 				if (!t.actualEndTime || !t.deadlineTime) return ['completed', 'verified'].includes(t.status);
-				return t.actualEndTime <= t.deadlineTime;
+				return new Date(t.actualEndTime).getTime() <= new Date(t.deadlineTime).getTime();
 			}).length;
 
 			const onTimeRate = completedTasks > 0 ? Math.round((onTimeCompleted / completedTasks) * 100) : 100;
@@ -78,7 +78,7 @@ export const reportRouter = router({
 				.from(userTable)
 				.where(eq(userTable.role, 'cleaner'))
 				.orderBy(asc(userTable.realName))
-				.all();
+				;
 
 			const results = [];
 			for (const cleaner of cleaners) {
@@ -88,17 +88,17 @@ export const reportRouter = router({
 					.where(
 						and(
 							eq(cleaningTaskTable.assignedCleanerId, cleaner.id),
-							gte(cleaningTaskTable.scheduledDate, input.startDate.getTime()),
-							lte(cleaningTaskTable.scheduledDate, input.endDate.getTime())
+							gte(cleaningTaskTable.scheduledDate, input.startDate),
+							lte(cleaningTaskTable.scheduledDate, input.endDate)
 						)
 					)
-					.all();
+					;
 
 				const total = tasks.length;
 				const completed = tasks.filter((t) => ['completed', 'verified'].includes(t.status)).length;
 				const onTime = tasks.filter((t) => {
 					if (!t.actualEndTime || !t.deadlineTime) return ['completed', 'verified'].includes(t.status);
-					return t.actualEndTime <= t.deadlineTime;
+					return new Date(t.actualEndTime).getTime() <= new Date(t.deadlineTime).getTime();
 				}).length;
 				const missed = tasks.filter((t) => t.status === 'missed').length;
 				const avgScore = tasks
@@ -129,7 +129,7 @@ export const reportRouter = router({
 			})
 		)
 		.query(async ({ ctx, input }) => {
-			const properties = await ctx.db.select().from(propertyTable).orderBy(asc(propertyTable.name)).all();
+			const properties = await ctx.db.select().from(propertyTable).orderBy(asc(propertyTable.name));
 
 			const results = [];
 			for (const prop of properties) {
@@ -140,50 +140,50 @@ export const reportRouter = router({
 						.where(
 							and(
 								eq(cleaningTaskTable.propertyId, prop.id),
-								gte(cleaningTaskTable.scheduledDate, input.startDate.getTime()),
-								lte(cleaningTaskTable.scheduledDate, input.endDate.getTime())
+								gte(cleaningTaskTable.scheduledDate, input.startDate),
+								lte(cleaningTaskTable.scheduledDate, input.endDate)
 							)
 						)
-						.all(),
+						,
 					ctx.db
 						.select()
 						.from(bookingTable)
 						.where(
 							and(
 								eq(bookingTable.propertyId, prop.id),
-								gte(bookingTable.checkInDate, input.startDate.getTime()),
-								lte(bookingTable.checkInDate, input.endDate.getTime())
+								gte(bookingTable.checkInDate, input.startDate),
+								lte(bookingTable.checkInDate, input.endDate)
 							)
 						)
-						.all(),
+						,
 					ctx.db
 						.select()
 						.from(complaintTable)
 						.where(
 							and(
 								eq(complaintTable.propertyId, prop.id),
-								gte(complaintTable.filedAt, input.startDate.getTime()),
-								lte(complaintTable.filedAt, input.endDate.getTime())
+								gte(complaintTable.filedAt, input.startDate),
+								lte(complaintTable.filedAt, input.endDate)
 							)
 						)
-						.all(),
+						,
 					ctx.db
 						.select()
 						.from(anomalyTable)
 						.where(
 							and(
 								eq(anomalyTable.propertyId, prop.id),
-								gte(anomalyTable.discoveredAt, input.startDate.getTime()),
-								lte(anomalyTable.discoveredAt, input.endDate.getTime())
+								gte(anomalyTable.discoveredAt, input.startDate),
+								lte(anomalyTable.discoveredAt, input.endDate)
 							)
 						)
-						.all()
+						
 				]);
 
 				const completedTasks = taskCount.filter((t) => ['completed', 'verified'].includes(t.status)).length;
 				const onTimeTasks = taskCount.filter((t) => {
 					if (!t.actualEndTime || !t.deadlineTime) return ['completed', 'verified'].includes(t.status);
-					return t.actualEndTime <= t.deadlineTime;
+					return new Date(t.actualEndTime).getTime() <= new Date(t.deadlineTime).getTime();
 				}).length;
 
 				results.push({
@@ -213,11 +213,11 @@ export const reportRouter = router({
 				.from(anomalyTable)
 				.where(
 					and(
-						gte(anomalyTable.discoveredAt, input.startDate.getTime()),
-						lte(anomalyTable.discoveredAt, input.endDate.getTime())
+						gte(anomalyTable.discoveredAt, input.startDate),
+						lte(anomalyTable.discoveredAt, input.endDate)
 					)
 				)
-				.all();
+				;
 
 			const typeStats = {} as Record<string, number>;
 			const statusStats = {} as Record<string, number>;
@@ -270,24 +270,24 @@ export const reportRouter = router({
 						.leftJoin(userTable, eq(cleaningTaskTable.assignedCleanerId, userTable.id))
 						.where(
 							and(
-								gte(cleaningTaskTable.scheduledDate, input.startDate.getTime()),
-								lte(cleaningTaskTable.scheduledDate, input.endDate.getTime())
+								gte(cleaningTaskTable.scheduledDate, input.startDate),
+								lte(cleaningTaskTable.scheduledDate, input.endDate)
 							)
 						)
 						.orderBy(desc(cleaningTaskTable.scheduledDate))
-						.all();
+						;
 
 					data = tasks.map((r) => ({
 						'任务ID': r.task.id,
 						'房源': r.property?.name || '-',
 						'保洁员': r.cleaner?.realName || '未分配',
-						'计划日期': formatDate(new Date(r.task.scheduledDate)),
+						'计划日期': formatDate(r.task.scheduledDate),
 						'任务类型': getTaskTypeLabel(r.task.type),
 						'优先级': getPriorityLabel(r.task.priority),
 						'状态': getTaskStatusLabel(r.task.status),
-						'开始时间': r.task.actualStartTime ? formatDateTime(new Date(r.task.actualStartTime)) : '-',
-						'完成时间': r.task.actualEndTime ? formatDateTime(new Date(r.task.actualEndTime)) : '-',
-						'截止时间': r.task.deadlineTime ? formatDateTime(new Date(r.task.deadlineTime)) : '-',
+						'开始时间': r.task.actualStartTime ? formatDateTime(r.task.actualStartTime) : '-',
+						'完成时间': r.task.actualEndTime ? formatDateTime(r.task.actualEndTime) : '-',
+						'截止时间': r.task.deadlineTime ? formatDateTime(r.task.deadlineTime) : '-',
 						'是否准时': getOnTimeLabel(r.task.actualEndTime, r.task.deadlineTime, r.task.status),
 						'质量评分': r.task.qualityScore ?? '-',
 						'备注': r.task.cleanerNotes || '-'
@@ -300,25 +300,25 @@ export const reportRouter = router({
 						.select()
 						.from(userTable)
 						.where(eq(userTable.role, 'cleaner'))
-						.all();
+						;
 					const rows = [];
 					for (const cleaner of perf) {
 						const tasks = await ctx.db
 							.select()
 							.from(cleaningTaskTable)
 							.where(
-								and(
-									eq(cleaningTaskTable.assignedCleanerId, cleaner.id),
-									gte(cleaningTaskTable.scheduledDate, input.startDate.getTime()),
-									lte(cleaningTaskTable.scheduledDate, input.endDate.getTime())
+									and(
+										eq(cleaningTaskTable.assignedCleanerId, cleaner.id),
+										gte(cleaningTaskTable.scheduledDate, input.startDate),
+										lte(cleaningTaskTable.scheduledDate, input.endDate)
+									)
 								)
-							)
-							.all();
+							;
 						const total = tasks.length;
 						const completed = tasks.filter((t) => ['completed', 'verified'].includes(t.status)).length;
 						const onTime = tasks.filter((t) => {
 							if (!t.actualEndTime || !t.deadlineTime) return ['completed', 'verified'].includes(t.status);
-							return t.actualEndTime <= t.deadlineTime;
+							return new Date(t.actualEndTime).getTime() <= new Date(t.deadlineTime).getTime();
 						}).length;
 						const missed = tasks.filter((t) => t.status === 'missed').length;
 						const avgScore = tasks.filter((t) => t.qualityScore !== null).reduce((a, t) => a + (t.qualityScore || 0), 0) /
@@ -342,35 +342,35 @@ export const reportRouter = router({
 					break;
 				}
 				case 'property_stats': {
-					const props = await ctx.db.select().from(propertyTable).all();
+					const props = await ctx.db.select().from(propertyTable);
 					const rows = [];
 					for (const prop of props) {
 						const [tasks, bookings, complaints, anomalies] = await Promise.all([
 							ctx.db.select().from(cleaningTaskTable).where(and(
 								eq(cleaningTaskTable.propertyId, prop.id),
-								gte(cleaningTaskTable.scheduledDate, input.startDate.getTime()),
-								lte(cleaningTaskTable.scheduledDate, input.endDate.getTime())
-							)).all(),
+								gte(cleaningTaskTable.scheduledDate, input.startDate),
+								lte(cleaningTaskTable.scheduledDate, input.endDate)
+							)),
 							ctx.db.select().from(bookingTable).where(and(
 								eq(bookingTable.propertyId, prop.id),
-								gte(bookingTable.checkInDate, input.startDate.getTime()),
-								lte(bookingTable.checkInDate, input.endDate.getTime())
-							)).all(),
+								gte(bookingTable.checkInDate, input.startDate),
+								lte(bookingTable.checkInDate, input.endDate)
+							)),
 							ctx.db.select().from(complaintTable).where(and(
 								eq(complaintTable.propertyId, prop.id),
-								gte(complaintTable.filedAt, input.startDate.getTime()),
-								lte(complaintTable.filedAt, input.endDate.getTime())
-							)).all(),
+								gte(complaintTable.filedAt, input.startDate),
+								lte(complaintTable.filedAt, input.endDate)
+							)),
 							ctx.db.select().from(anomalyTable).where(and(
 								eq(anomalyTable.propertyId, prop.id),
-								gte(anomalyTable.discoveredAt, input.startDate.getTime()),
-								lte(anomalyTable.discoveredAt, input.endDate.getTime())
-							)).all()
+								gte(anomalyTable.discoveredAt, input.startDate),
+								lte(anomalyTable.discoveredAt, input.endDate)
+							))
 						]);
 						const completed = tasks.filter((t) => ['completed', 'verified'].includes(t.status)).length;
 						const onTime = tasks.filter((t) => {
 							if (!t.actualEndTime || !t.deadlineTime) return ['completed', 'verified'].includes(t.status);
-							return t.actualEndTime <= t.deadlineTime;
+							return new Date(t.actualEndTime).getTime() <= new Date(t.deadlineTime).getTime();
 						}).length;
 						rows.push({
 							'房源名称': prop.name,
@@ -401,11 +401,11 @@ export const reportRouter = router({
 						.leftJoin(cleaningTaskTable, eq(anomalyTable.taskId, cleaningTaskTable.id))
 						.leftJoin(userTable, eq(anomalyTable.responsiblePersonId, userTable.id))
 						.where(and(
-							gte(anomalyTable.discoveredAt, input.startDate.getTime()),
-							lte(anomalyTable.discoveredAt, input.endDate.getTime())
+							gte(anomalyTable.discoveredAt, input.startDate),
+							lte(anomalyTable.discoveredAt, input.endDate)
 						))
 						.orderBy(desc(anomalyTable.discoveredAt))
-						.all();
+						;
 					data = items.map((r) => ({
 						'异常单号': r.anomaly.id,
 						'类型': getAnomalyTypeLabel(r.anomaly.type),
@@ -415,7 +415,7 @@ export const reportRouter = router({
 						'责任人': r.responsible?.realName || r.anomaly.responsibleRole || '-',
 						'影响程度': getImpactLevelLabel(r.anomaly.impactLevel),
 						'影响范围': r.anomaly.impactScope,
-						'发现时间': formatDateTime(new Date(r.anomaly.discoveredAt)),
+						'发现时间': formatDateTime(r.anomaly.discoveredAt),
 						'状态': getAnomalyStatusLabel(r.anomaly.status),
 						'处理措施': r.anomaly.handlingMeasures || '-',
 						'处理结论': r.anomaly.handlingConclusion || '-',
@@ -436,11 +436,11 @@ export const reportRouter = router({
 						.leftJoin(propertyTable, eq(complaintTable.propertyId, propertyTable.id))
 						.leftJoin(userTable, eq(complaintTable.responsibleCleanerId, userTable.id))
 						.where(and(
-							gte(complaintTable.filedAt, input.startDate.getTime()),
-							lte(complaintTable.filedAt, input.endDate.getTime())
+							gte(complaintTable.filedAt, input.startDate),
+							lte(complaintTable.filedAt, input.endDate)
 						))
 						.orderBy(desc(complaintTable.filedAt))
-						.all();
+						;
 					data = items.map((r) => ({
 						'客诉编号': r.complaint.id,
 						'标题': r.complaint.title,
@@ -454,7 +454,7 @@ export const reportRouter = router({
 						'状态': getComplaintStatusLabel(r.complaint.status),
 						'处理结果': r.complaint.resolution || '-',
 						'赔偿金额': r.complaint.compensation || 0,
-						'提交时间': formatDateTime(new Date(r.complaint.filedAt))
+						'提交时间': formatDateTime(r.complaint.filedAt)
 					}));
 					filename = `客诉记录_${period}.xlsx`;
 					break;
@@ -523,10 +523,10 @@ function getTaskStatusLabel(s: string): string {
 	return map[s] || s;
 }
 
-function getOnTimeLabel(end: number | null, deadline: number | null, status: string): string {
+function getOnTimeLabel(end: Date | null, deadline: Date | null, status: string): string {
 	if (!['completed', 'verified'].includes(status)) return '-';
 	if (!end || !deadline) return '未设置截止时间';
-	return end <= deadline ? '是' : '否';
+	return new Date(end).getTime() <= new Date(deadline).getTime() ? '是' : '否';
 }
 
 function getPropertyTypeLabel(t: string): string {

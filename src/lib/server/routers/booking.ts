@@ -36,10 +36,10 @@ export const bookingRouter = router({
 				conditions.push(eq(bookingTable.source, input.source));
 			}
 			if (input.dateFrom) {
-				conditions.push(gte(bookingTable.checkInDate, input.dateFrom.getTime()));
+				conditions.push(gte(bookingTable.checkInDate, input.dateFrom));
 			}
 			if (input.dateTo) {
-				conditions.push(lte(bookingTable.checkOutDate, input.dateTo.getTime()));
+				conditions.push(lte(bookingTable.checkOutDate, input.dateTo));
 			}
 
 			const where = conditions.length > 0 ? and(...conditions) : undefined;
@@ -55,13 +55,13 @@ export const bookingRouter = router({
 				.orderBy(desc(bookingTable.checkInDate))
 				.limit(input.pageSize)
 				.offset(offset)
-				.all();
+				;
 
 			const total = await ctx.db
 				.select({ count: bookingTable.id })
 				.from(bookingTable)
 				.where(where)
-				.all()
+				
 				.then((rows) => rows.length);
 
 			return {
@@ -76,15 +76,14 @@ export const bookingRouter = router({
 	get: protectedProcedure
 		.input(z.object({ id: z.string() }))
 		.query(async ({ ctx, input }) => {
-			const booking = await ctx.db
+			const [booking] = await ctx.db
 				.select({
 					booking: bookingTable,
 					property: propertyTable
 				})
 				.from(bookingTable)
 				.leftJoin(propertyTable, eq(bookingTable.propertyId, propertyTable.id))
-				.where(eq(bookingTable.id, input.id))
-				.get();
+				.where(eq(bookingTable.id, input.id));
 
 			if (!booking) {
 				throw new TRPCError({ code: 'NOT_FOUND', message: '预订不存在' });
@@ -94,7 +93,7 @@ export const bookingRouter = router({
 				.select()
 				.from(guestDocumentTable)
 				.where(eq(guestDocumentTable.bookingId, input.id))
-				.all();
+				;
 
 			return { ...booking, documents };
 		}),
@@ -116,17 +115,17 @@ export const bookingRouter = router({
 		)
 		.mutation(async ({ ctx, input }) => {
 			const id = generateIdFromEntropySize(16);
-			return ctx.db
+			const [result] = await ctx.db
 				.insert(bookingTable)
 				.values({
 					id,
 					...input,
-					checkInDate: input.checkInDate.getTime(),
-					checkOutDate: input.checkOutDate.getTime(),
+					checkInDate: input.checkInDate,
+					checkOutDate: input.checkOutDate,
 					status: 'confirmed'
 				})
-				.returning()
-				.get();
+				.returning();
+			return result;
 		}),
 
 	update: managerProcedure
@@ -147,17 +146,17 @@ export const bookingRouter = router({
 		)
 		.mutation(async ({ ctx, input }) => {
 			const { id, ...data } = input;
-			return ctx.db
+			const [result] = await ctx.db
 				.update(bookingTable)
 				.set({
 					...data,
-					checkInDate: data.checkInDate?.getTime(),
-					checkOutDate: data.checkOutDate?.getTime(),
+					checkInDate: data.checkInDate,
+					checkOutDate: data.checkOutDate,
 					updatedAt: new Date()
 				})
 				.where(eq(bookingTable.id, id))
-				.returning()
-				.get();
+				.returning();
+			return result;
 		}),
 
 	addDocument: managerProcedure
@@ -173,25 +172,25 @@ export const bookingRouter = router({
 		)
 		.mutation(async ({ ctx, input }) => {
 			const id = generateIdFromEntropySize(16);
-			return ctx.db
+			const [result] = await ctx.db
 				.insert(guestDocumentTable)
 				.values({ id, ...input })
-				.returning()
-				.get();
+				.returning();
+			return result;
 		}),
 
 	verifyDocument: managerProcedure
 		.input(z.object({ documentId: z.string() }))
 		.mutation(async ({ ctx, input }) => {
-			return ctx.db
+			const [result] = await ctx.db
 				.update(guestDocumentTable)
 				.set({
-					verifiedAt: Date.now(),
+					verifiedAt: new Date(),
 					verifiedById: ctx.user.id
 				})
 				.where(eq(guestDocumentTable.id, input.documentId))
-				.returning()
-				.get();
+				.returning();
+			return result;
 		}),
 
 	getDocuments: protectedProcedure
@@ -205,6 +204,6 @@ export const bookingRouter = router({
 				.from(guestDocumentTable)
 				.leftJoin(userTable, eq(guestDocumentTable.verifiedById, userTable.id))
 				.where(eq(guestDocumentTable.bookingId, input.bookingId))
-				.all();
+				;
 		})
 });

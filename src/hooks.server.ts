@@ -28,20 +28,20 @@ const handleAuth: Handle = async ({ event, resolve }) => {
 	if (session?.fresh) {
 		const sessionCookie = lucia.createSessionCookie(session.id);
 		event.cookies.set(sessionCookie.name, sessionCookie.value, {
-			path: '.',
+			path: '/',
 			...sessionCookie.attributes
 		});
 	}
 	if (!session) {
 		const sessionCookie = lucia.createBlankSessionCookie();
 		event.cookies.set(sessionCookie.name, sessionCookie.value, {
-			path: '.',
+			path: '/',
 			...sessionCookie.attributes
 		});
 	}
 
 	if (user) {
-		const dbUser = await db.select().from(userTable).where(eq(userTable.id, user.id)).get();
+		const [dbUser] = await db.select().from(userTable).where(eq(userTable.id, user.id));
 		event.locals.user = dbUser || null;
 	} else {
 		event.locals.user = null;

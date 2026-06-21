@@ -1,30 +1,47 @@
-import { sqliteTable, text, integer } from 'drizzle-orm/sqlite-core';
+import { pgTable, text, integer, timestamp, boolean, pgEnum } from 'drizzle-orm/pg-core';
 import { sql, relations, type InferSelectModel } from 'drizzle-orm';
 
-export const userTable = sqliteTable('user', {
+const userRoleEnum = pgEnum('user_role', ['admin', 'manager', 'cleaner', 'viewer']);
+const propertyTypeEnum = pgEnum('property_type', ['apartment', 'house', 'villa', 'room']);
+const propertyStatusEnum = pgEnum('property_status', ['active', 'maintenance', 'inactive']);
+const bookingSourceEnum = pgEnum('booking_source', ['airbnb', 'tujia', 'xiaozhu', 'meituan', 'direct', 'other']);
+const bookingStatusEnum = pgEnum('booking_status', ['confirmed', 'checked_in', 'checked_out', 'cancelled']);
+const idTypeEnum = pgEnum('id_type', ['id_card', 'passport', 'driver_license', 'other']);
+const taskTypeEnum = pgEnum('task_type', ['checkout_cleaning', 'periodic_cleaning', 'deep_cleaning', 'maintenance']);
+const taskPriorityEnum = pgEnum('task_priority', ['low', 'medium', 'high', 'urgent']);
+const taskStatusEnum = pgEnum('task_status', ['pending', 'assigned', 'accepted', 'in_progress', 'completed', 'verified', 'cancelled', 'missed']);
+const complaintSeverityEnum = pgEnum('complaint_severity', ['low', 'medium', 'high', 'critical']);
+const complaintSourceEnum = pgEnum('complaint_source', ['guest', 'platform_review', 'owner', 'inspection', 'other']);
+const complaintStatusEnum = pgEnum('complaint_status', ['open', 'investigating', 'resolved', 'closed']);
+const anomalyTypeEnum = pgEnum('anomaly_type', ['missed_cleaning', 'late_cleaning', 'quality_issue', 'no_show', 'other']);
+const anomalyImpactLevelEnum = pgEnum('anomaly_impact_level', ['low', 'medium', 'high', 'critical']);
+const anomalyStatusEnum = pgEnum('anomaly_status', ['pending', 'handling', 'resolved', 'closed']);
+const calendarEventTypeEnum = pgEnum('calendar_event_type', ['booking', 'cleaning', 'maintenance', 'other']);
+
+export const userTable = pgTable('user', {
 	id: text('id').primaryKey(),
 	username: text('username').notNull().unique(),
 	realName: text('real_name').notNull(),
 	passwordHash: text('password_hash'),
 	email: text('email').unique(),
 	phone: text('phone'),
-	role: text('role', { enum: ['admin', 'manager', 'cleaner', 'viewer'] }).notNull().default('viewer'),
+	role: userRoleEnum('role').notNull().default('viewer'),
 	avatarUrl: text('avatar_url'),
-	createdAt: integer('created_at').notNull().default(sql`(unixepoch() * 1000)`),
-	updatedAt: integer('updated_at').notNull().default(sql`(unixepoch() * 1000)`)
+	createdAt: timestamp('created_at', { withTimezone: true }).notNull().default(sql`now()`),
+	updatedAt: timestamp('updated_at', { withTimezone: true }).notNull().default(sql`now()`)
 });
 
-export const sessionTable = sqliteTable('session', {
+export const sessionTable = pgTable('session', {
 	id: text('id').primaryKey(),
 	userId: text('user_id').notNull().references(() => userTable.id),
-	expiresAt: integer('expires_at').notNull()
+	expiresAt: timestamp('expires_at', { withTimezone: true }).notNull()
 });
 
-export const propertyTable = sqliteTable('property', {
+export const propertyTable = pgTable('property', {
 	id: text('id').primaryKey(),
 	name: text('name').notNull(),
 	address: text('address').notNull(),
-	type: text('type', { enum: ['apartment', 'house', 'villa', 'room'] }).notNull().default('apartment'),
+	type: propertyTypeEnum('type').notNull().default('apartment'),
 	bedrooms: integer('bedrooms').notNull().default(1),
 	bathrooms: integer('bathrooms').notNull().default(1),
 	area: integer('area'),
@@ -32,93 +49,91 @@ export const propertyTable = sqliteTable('property', {
 	ownerName: text('owner_name'),
 	ownerPhone: text('owner_phone'),
 	description: text('description'),
-	images: text('images').$type<string[]>(),
-	status: text('status', { enum: ['active', 'maintenance', 'inactive'] }).notNull().default('active'),
-	createdAt: integer('created_at').notNull().default(sql`(unixepoch() * 1000)`),
-	updatedAt: integer('updated_at').notNull().default(sql`(unixepoch() * 1000)`),
+	images: text('images').array(),
+	status: propertyStatusEnum('status').notNull().default('active'),
+	createdAt: timestamp('created_at', { withTimezone: true }).notNull().default(sql`now()`),
+	updatedAt: timestamp('updated_at', { withTimezone: true }).notNull().default(sql`now()`),
 	createdById: text('created_by_id').references(() => userTable.id)
 });
 
-export const bookingTable = sqliteTable('booking', {
+export const bookingTable = pgTable('booking', {
 	id: text('id').primaryKey(),
 	propertyId: text('property_id').notNull().references(() => propertyTable.id),
 	guestName: text('guest_name').notNull(),
 	guestPhone: text('guest_phone').notNull(),
-	checkInDate: integer('check_in_date').notNull(),
-	checkOutDate: integer('check_out_date').notNull(),
+	checkInDate: timestamp('check_in_date', { withTimezone: true }).notNull(),
+	checkOutDate: timestamp('check_out_date', { withTimezone: true }).notNull(),
 	adults: integer('adults').notNull().default(1),
 	children: integer('children').notNull().default(0),
-	source: text('source', { enum: ['airbnb', 'tujia', 'xiaozhu', 'meituan', 'direct', 'other'] }).notNull().default('other'),
+	source: bookingSourceEnum('source').notNull().default('other'),
 	totalPrice: integer('total_price'),
-	status: text('status', { enum: ['confirmed', 'checked_in', 'checked_out', 'cancelled'] }).notNull().default('confirmed'),
+	status: bookingStatusEnum('status').notNull().default('confirmed'),
 	notes: text('notes'),
-	createdAt: integer('created_at').notNull().default(sql`(unixepoch() * 1000)`),
-	updatedAt: integer('updated_at').notNull().default(sql`(unixepoch() * 1000)`)
+	createdAt: timestamp('created_at', { withTimezone: true }).notNull().default(sql`now()`),
+	updatedAt: timestamp('updated_at', { withTimezone: true }).notNull().default(sql`now()`)
 });
 
-export const guestDocumentTable = sqliteTable('guest_document', {
+export const guestDocumentTable = pgTable('guest_document', {
 	id: text('id').primaryKey(),
 	bookingId: text('booking_id').notNull().references(() => bookingTable.id),
 	guestName: text('guest_name').notNull(),
-	idType: text('id_type', { enum: ['id_card', 'passport', 'driver_license', 'other'] }).notNull().default('id_card'),
+	idType: idTypeEnum('id_type').notNull().default('id_card'),
 	idNumber: text('id_number').notNull(),
 	idFrontUrl: text('id_front_url'),
 	idBackUrl: text('id_back_url'),
-	verifiedAt: integer('verified_at'),
+	verifiedAt: timestamp('verified_at', { withTimezone: true }),
 	verifiedById: text('verified_by_id').references(() => userTable.id),
-	createdAt: integer('created_at').notNull().default(sql`(unixepoch() * 1000)`)
+	createdAt: timestamp('created_at', { withTimezone: true }).notNull().default(sql`now()`)
 });
 
-export const cleaningTaskTable = sqliteTable('cleaning_task', {
+export const cleaningTaskTable = pgTable('cleaning_task', {
 	id: text('id').primaryKey(),
 	propertyId: text('property_id').notNull().references(() => propertyTable.id),
 	bookingId: text('booking_id').references(() => bookingTable.id),
 	assignedCleanerId: text('assigned_cleaner_id').references(() => userTable.id),
-	scheduledDate: integer('scheduled_date').notNull(),
+	scheduledDate: timestamp('scheduled_date', { withTimezone: true }).notNull(),
 	scheduledStartTime: text('scheduled_start_time'),
-	deadlineTime: integer('deadline_time'),
-	type: text('type', { enum: ['checkout_cleaning', 'periodic_cleaning', 'deep_cleaning', 'maintenance'] }).notNull().default('checkout_cleaning'),
-	priority: text('priority', { enum: ['low', 'medium', 'high', 'urgent'] }).notNull().default('medium'),
+	deadlineTime: timestamp('deadline_time', { withTimezone: true }),
+	type: taskTypeEnum('type').notNull().default('checkout_cleaning'),
+	priority: taskPriorityEnum('priority').notNull().default('medium'),
 	description: text('description'),
-	checklist: text('checklist').$type<string[]>(),
-	status: text('status', {
-		enum: ['pending', 'assigned', 'accepted', 'in_progress', 'completed', 'verified', 'cancelled', 'missed']
-	}).notNull().default('pending'),
-	actualStartTime: integer('actual_start_time'),
-	actualEndTime: integer('actual_end_time'),
-	verifiedAt: integer('verified_at'),
+	checklist: text('checklist').array(),
+	status: taskStatusEnum('status').notNull().default('pending'),
+	actualStartTime: timestamp('actual_start_time', { withTimezone: true }),
+	actualEndTime: timestamp('actual_end_time', { withTimezone: true }),
+	verifiedAt: timestamp('verified_at', { withTimezone: true }),
 	verifiedById: text('verified_by_id').references(() => userTable.id),
 	qualityScore: integer('quality_score'),
-	photos: text('photos').$type<string[]>(),
+	photos: text('photos').array(),
 	cleanerNotes: text('cleaner_notes'),
 	inspectorNotes: text('inspector_notes'),
-	createdAt: integer('created_at').notNull().default(sql`(unixepoch() * 1000)`),
-	updatedAt: integer('updated_at').notNull().default(sql`(unixepoch() * 1000)`),
+	createdAt: timestamp('created_at', { withTimezone: true }).notNull().default(sql`now()`),
+	updatedAt: timestamp('updated_at', { withTimezone: true }).notNull().default(sql`now()`),
 	createdById: text('created_by_id').references(() => userTable.id)
 });
 
-export const taskStatusHistoryTable = sqliteTable('task_status_history', {
+export const taskStatusHistoryTable = pgTable('task_status_history', {
 	id: text('id').primaryKey(),
 	taskId: text('task_id').notNull().references(() => cleaningTaskTable.id),
-	fromStatus: text('from_status'),
-	toStatus: text('to_status').notNull(),
+	fromStatus: taskStatusEnum('from_status'),
+	toStatus: taskStatusEnum('to_status').notNull(),
 	reason: text('reason'),
 	changedById: text('changed_by_id').references(() => userTable.id),
-	changedAt: integer('changed_at').notNull().default(sql`(unixepoch() * 1000)`)
+	changedAt: timestamp('changed_at', { withTimezone: true }).notNull().default(sql`now()`)
 });
 
-export const complaintTable = sqliteTable('complaint', {
+export const complaintTable = pgTable('complaint', {
 	id: text('id').primaryKey(),
 	propertyId: text('property_id').notNull().references(() => propertyTable.id),
 	bookingId: text('booking_id').references(() => bookingTable.id),
 	taskId: text('task_id').references(() => cleaningTaskTable.id),
 	title: text('title').notNull(),
 	content: text('content').notNull(),
-	severity: text('severity', { enum: ['low', 'medium', 'high', 'critical'] }).notNull().default('medium'),
-	source: text('source', { enum: ['guest', 'platform_review', 'owner', 'inspection', 'other'] }).notNull().default('guest'),
-	status: text('status', { enum: ['open', 'investigating', 'resolved', 'closed'] }).notNull().default('open'),
-	tags: text('tags').$type<string[]>(),
-	evidenceUrls: text('evidence_urls').$type<string[]>(),
+	severity: complaintSeverityEnum('severity').notNull().default('medium'),
+	source: complaintSourceEnum('source').notNull().default('guest'),
+	status: complaintStatusEnum('status').notNull().default('open'),
+	tags: text('tags').array(),
+	evidenceUrls: text('evidence_urls').array(),
 	reviewRating: integer('review_rating'),
 	reviewPlatform: text('review_platform'),
 	reviewLink: text('review_link'),
@@ -126,55 +141,55 @@ export const complaintTable = sqliteTable('complaint', {
 	handlerId: text('handler_id').references(() => userTable.id),
 	resolution: text('resolution'),
 	compensation: integer('compensation'),
-	filedAt: integer('filed_at').notNull().default(sql`(unixepoch() * 1000)`),
-	resolvedAt: integer('resolved_at'),
-	closedAt: integer('closed_at'),
-	createdAt: integer('created_at').notNull().default(sql`(unixepoch() * 1000)`),
-	updatedAt: integer('updated_at').notNull().default(sql`(unixepoch() * 1000)`)
+	filedAt: timestamp('filed_at', { withTimezone: true }).notNull().default(sql`now()`),
+	resolvedAt: timestamp('resolved_at', { withTimezone: true }),
+	closedAt: timestamp('closed_at', { withTimezone: true }),
+	createdAt: timestamp('created_at', { withTimezone: true }).notNull().default(sql`now()`),
+	updatedAt: timestamp('updated_at', { withTimezone: true }).notNull().default(sql`now()`)
 });
 
-export const anomalyTable = sqliteTable('anomaly', {
+export const anomalyTable = pgTable('anomaly', {
 	id: text('id').primaryKey(),
 	taskId: text('task_id').notNull().references(() => cleaningTaskTable.id),
 	propertyId: text('property_id').notNull().references(() => propertyTable.id),
-	type: text('type', { enum: ['missed_cleaning', 'late_cleaning', 'quality_issue', 'no_show', 'other'] }).notNull().default('missed_cleaning'),
+	type: anomalyTypeEnum('type').notNull().default('missed_cleaning'),
 	title: text('title').notNull(),
 	description: text('description').notNull(),
 	impactScope: text('impact_scope').notNull(),
-	impactedBookings: text('impacted_bookings').$type<string[]>(),
-	impactLevel: text('impact_level', { enum: ['low', 'medium', 'high', 'critical'] }).notNull().default('medium'),
+	impactedBookings: text('impacted_bookings').array(),
+	impactLevel: anomalyImpactLevelEnum('impact_level').notNull().default('medium'),
 	responsiblePersonId: text('responsible_person_id').references(() => userTable.id),
 	responsibleRole: text('responsible_role'),
-	discoveredAt: integer('discovered_at').notNull().default(sql`(unixepoch() * 1000)`),
+	discoveredAt: timestamp('discovered_at', { withTimezone: true }).notNull().default(sql`now()`),
 	discoveredById: text('discovered_by_id').references(() => userTable.id),
-	status: text('status', { enum: ['pending', 'handling', 'resolved', 'closed'] }).notNull().default('pending'),
+	status: anomalyStatusEnum('status').notNull().default('pending'),
 	handlingMeasures: text('handling_measures'),
 	handlingResult: text('handling_result'),
 	handlingConclusion: text('handling_conclusion'),
 	handledById: text('handled_by_id').references(() => userTable.id),
-	handledAt: integer('handled_at'),
-	closedAt: integer('closed_at'),
+	handledAt: timestamp('handled_at', { withTimezone: true }),
+	closedAt: timestamp('closed_at', { withTimezone: true }),
 	penalty: text('penalty'),
 	compensation: integer('compensation'),
-	followUpRequired: integer('follow_up_required').notNull().default(0),
+	followUpRequired: boolean('follow_up_required').notNull().default(false),
 	followUpNotes: text('follow_up_notes'),
-	createdAt: integer('created_at').notNull().default(sql`(unixepoch() * 1000)`),
-	updatedAt: integer('updated_at').notNull().default(sql`(unixepoch() * 1000)`)
+	createdAt: timestamp('created_at', { withTimezone: true }).notNull().default(sql`now()`),
+	updatedAt: timestamp('updated_at', { withTimezone: true }).notNull().default(sql`now()`)
 });
 
-export const calendarEventTable = sqliteTable('calendar_event', {
+export const calendarEventTable = pgTable('calendar_event', {
 	id: text('id').primaryKey(),
 	propertyId: text('property_id').notNull().references(() => propertyTable.id),
 	title: text('title').notNull(),
-	type: text('type', { enum: ['booking', 'cleaning', 'maintenance', 'other'] }).notNull(),
+	type: calendarEventTypeEnum('type').notNull(),
 	referenceId: text('reference_id'),
-	startDate: integer('start_date').notNull(),
-	endDate: integer('end_date').notNull(),
-	isAllDay: integer('is_all_day').notNull().default(1),
+	startDate: timestamp('start_date', { withTimezone: true }).notNull(),
+	endDate: timestamp('end_date', { withTimezone: true }).notNull(),
+	isAllDay: boolean('is_all_day').notNull().default(true),
 	color: text('color'),
 	notes: text('notes'),
-	createdAt: integer('created_at').notNull().default(sql`(unixepoch() * 1000)`),
-	updatedAt: integer('updated_at').notNull().default(sql`(unixepoch() * 1000)`)
+	createdAt: timestamp('created_at', { withTimezone: true }).notNull().default(sql`now()`),
+	updatedAt: timestamp('updated_at', { withTimezone: true }).notNull().default(sql`now()`)
 });
 
 export const userRelations = relations(userTable, ({ many }) => ({

@@ -34,8 +34,8 @@ export const complaintRouter = router({
 			if (input.status) conditions.push(eq(complaintTable.status, input.status));
 			if (input.severity) conditions.push(eq(complaintTable.severity, input.severity));
 			if (input.source) conditions.push(eq(complaintTable.source, input.source));
-			if (input.dateFrom) conditions.push(gte(complaintTable.filedAt, input.dateFrom.getTime()));
-			if (input.dateTo) conditions.push(lte(complaintTable.filedAt, input.dateTo.getTime()));
+			if (input.dateFrom) conditions.push(gte(complaintTable.filedAt, input.dateFrom));
+			if (input.dateTo) conditions.push(lte(complaintTable.filedAt, input.dateTo));
 
 			const where = conditions.length > 0 ? and(...conditions) : undefined;
 
@@ -56,13 +56,13 @@ export const complaintRouter = router({
 				.orderBy(desc(complaintTable.filedAt))
 				.limit(input.pageSize)
 				.offset(offset)
-				.all();
+				;
 
 			const total = await ctx.db
 				.select({ count: complaintTable.id })
 				.from(complaintTable)
 				.where(where)
-				.all()
+				
 				.then((rows) => rows.length);
 
 			return {
@@ -79,7 +79,7 @@ export const complaintRouter = router({
 		.query(async ({ ctx, input }) => {
 			const handlerUser = aliasedTable(userTable, 'handler');
 
-			const complaint = await ctx.db
+			const [complaint] = await ctx.db
 				.select({
 					complaint: complaintTable,
 					property: propertyTable,
@@ -94,8 +94,7 @@ export const complaintRouter = router({
 				.leftJoin(cleaningTaskTable, eq(complaintTable.taskId, cleaningTaskTable.id))
 				.leftJoin(userTable, eq(complaintTable.responsibleCleanerId, userTable.id))
 				.leftJoin(handlerUser, eq(complaintTable.handlerId, handlerUser.id))
-				.where(eq(complaintTable.id, input.id))
-				.get();
+				.where(eq(complaintTable.id, input.id));
 
 			if (!complaint) {
 				throw new TRPCError({ code: 'NOT_FOUND', message: '客诉不存在' });
@@ -124,7 +123,7 @@ export const complaintRouter = router({
 		)
 		.mutation(async ({ ctx, input }) => {
 			const id = generateIdFromEntropySize(16);
-			return ctx.db
+			const [result] = await ctx.db
 				.insert(complaintTable)
 				.values({
 					id,
@@ -132,8 +131,8 @@ export const complaintRouter = router({
 					handlerId: ctx.user.id,
 					status: 'open'
 				})
-				.returning()
-				.get();
+				.returning();
+			return result;
 		}),
 
 	update: managerProcedure
@@ -160,21 +159,21 @@ export const complaintRouter = router({
 				// allow resolution to be set separately
 			}
 			if (data.status === 'resolved') {
-				updateData.resolvedAt = Date.now();
+				updateData.resolvedAt = new Date();
 			}
 			if (data.status === 'closed') {
-				updateData.closedAt = Date.now();
+				updateData.closedAt = new Date();
 			}
-			return ctx.db
+			const [result] = await ctx.db
 				.update(complaintTable)
 				.set(updateData)
 				.where(eq(complaintTable.id, id))
-				.returning()
-				.get();
+				.returning();
+			return result;
 		}),
 
 	getAllTags: protectedProcedure.query(async ({ ctx }) => {
-		const complaints = await ctx.db.select({ tags: complaintTable.tags }).from(complaintTable).all();
+		const complaints = await ctx.db.select({ tags: complaintTable.tags }).from(complaintTable);
 		const tagSet = new Set<string>();
 		for (const c of complaints) {
 			if (c.tags) {

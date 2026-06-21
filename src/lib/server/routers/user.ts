@@ -21,11 +21,10 @@ export const userRouter = router({
 			})
 		)
 		.mutation(async ({ ctx, input }) => {
-			const existingUser = await ctx.db
+			const [existingUser] = await ctx.db
 				.select()
 				.from(userTable)
-				.where(eq(userTable.username, input.username))
-				.get();
+				.where(eq(userTable.username, input.username));
 
 			if (!existingUser) {
 				throw new TRPCError({ code: 'NOT_FOUND', message: '用户名或密码错误' });
@@ -47,7 +46,7 @@ export const userRouter = router({
 			const session = await lucia.createSession(existingUser.id, {});
 			const sessionCookie = lucia.createSessionCookie(session.id);
 			ctx.event.cookies.set(sessionCookie.name, sessionCookie.value, {
-				path: '.',
+				path: '/',
 				...sessionCookie.attributes
 			});
 
@@ -60,7 +59,7 @@ export const userRouter = router({
 		}
 		const sessionCookie = lucia.createBlankSessionCookie();
 		ctx.event.cookies.set(sessionCookie.name, sessionCookie.value, {
-			path: '.',
+			path: '/',
 			...sessionCookie.attributes
 		});
 		return true;
@@ -95,12 +94,12 @@ export const userRouter = router({
 					.orderBy(desc(userTable.createdAt))
 					.limit(input.pageSize)
 					.offset(offset)
-					.all(),
+					,
 				ctx.db
 					.select({ count: userTable.id })
 					.from(userTable)
 					.where(conditions.length > 0 ? and(...conditions) : undefined)
-					.all()
+					
 					.then((rows) => rows.length)
 			]);
 
@@ -119,7 +118,7 @@ export const userRouter = router({
 			.from(userTable)
 			.where(eq(userTable.role, 'cleaner'))
 			.orderBy(asc(userTable.realName))
-			.all();
+			;
 	}),
 
 	create: adminProcedure
@@ -134,11 +133,10 @@ export const userRouter = router({
 			})
 		)
 		.mutation(async ({ ctx, input }) => {
-			const existing = await ctx.db
+			const [existing] = await ctx.db
 				.select()
 				.from(userTable)
-				.where(eq(userTable.username, input.username))
-				.get();
+				.where(eq(userTable.username, input.username));
 
 			if (existing) {
 				throw new TRPCError({ code: 'CONFLICT', message: '用户名已存在' });
@@ -147,7 +145,7 @@ export const userRouter = router({
 			const userId = generateIdFromEntropySize(16);
 			const hashedPassword = await new Argon2id().hash(input.password);
 
-			const user = await ctx.db
+			const [user] = await ctx.db
 				.insert(userTable)
 				.values({
 					id: userId,
@@ -158,8 +156,7 @@ export const userRouter = router({
 					phone: input.phone,
 					role: input.role
 				})
-				.returning()
-				.get();
+				.returning();
 
 			return user;
 		}),
@@ -179,25 +176,25 @@ export const userRouter = router({
 			const { id, password, ...data } = input;
 			const updateData: any = {
 				...data,
-				updatedAt: Date.now()
+				updatedAt: new Date()
 			};
 
 			if (password) {
 				updateData.passwordHash = await new Argon2id().hash(password);
 			}
 
-			return ctx.db
+			const [result] = await ctx.db
 				.update(userTable)
 				.set(updateData)
 				.where(eq(userTable.id, id))
-				.returning()
-				.get();
+				.returning();
+			return result;
 		}),
 
 	remove: adminProcedure
 		.input(z.object({ id: z.string() }))
 		.mutation(async ({ ctx, input }) => {
-			await ctx.db.delete(userTable).where(eq(userTable.id, id)).run();
+			await ctx.db.delete(userTable).where(eq(userTable.id, input.id));
 			return true;
 		})
 });

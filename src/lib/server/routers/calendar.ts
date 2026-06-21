@@ -17,8 +17,8 @@ export const calendarRouter = router({
 		)
 		.query(async ({ ctx, input }) => {
 			const conditions = [
-				gte(calendarEventTable.startDate, input.start.getTime()),
-				lte(calendarEventTable.endDate, input.end.getTime())
+				gte(calendarEventTable.startDate, input.start),
+				lte(calendarEventTable.endDate, input.end)
 			];
 			if (input.propertyIds && input.propertyIds.length > 0) {
 				conditions.push(eq(calendarEventTable.propertyId, input.propertyIds[0]));
@@ -28,29 +28,29 @@ export const calendarRouter = router({
 				.select()
 				.from(calendarEventTable)
 				.where(and(...conditions))
-				.all();
+				;
 
 			const bookings = await ctx.db
 				.select()
 				.from(bookingTable)
 				.where(
 					and(
-						gte(bookingTable.checkInDate, input.start.getTime()),
-						lte(bookingTable.checkOutDate, input.end.getTime())
+						gte(bookingTable.checkInDate, input.start),
+						lte(bookingTable.checkOutDate, input.end)
 					)
 				)
-				.all();
+				;
 
 			const tasks = await ctx.db
 				.select()
 				.from(cleaningTaskTable)
 				.where(
 					and(
-						gte(cleaningTaskTable.scheduledDate, input.start.getTime()),
-						lte(cleaningTaskTable.scheduledDate, input.end.getTime())
+						gte(cleaningTaskTable.scheduledDate, input.start),
+						lte(cleaningTaskTable.scheduledDate, input.end)
 					)
 				)
-				.all();
+				;
 
 			const bookingEvents = bookings.map((b) => ({
 				id: `booking_${b.id}`,
@@ -76,7 +76,7 @@ export const calendarRouter = router({
 				type: 'cleaning' as const,
 				referenceId: t.id,
 				startDate: t.scheduledDate,
-				endDate: t.scheduledDate + 4 * 60 * 60 * 1000,
+				endDate: new Date(t.scheduledDate.getTime() + 4 * 60 * 60 * 1000),
 				isAllDay: true,
 				color: getTaskStatusColor(t.status),
 				notes: t.description,
@@ -110,16 +110,16 @@ export const calendarRouter = router({
 		)
 		.mutation(async ({ ctx, input }) => {
 			const id = generateIdFromEntropySize(16);
-			return ctx.db
+			const [result] = await ctx.db
 				.insert(calendarEventTable)
 				.values({
 					id,
 					...input,
-					startDate: input.startDate.getTime(),
-					endDate: input.endDate.getTime()
+					startDate: input.startDate,
+					endDate: input.endDate
 				})
-				.returning()
-				.get();
+				.returning();
+			return result;
 		}),
 
 	updateEvent: managerProcedure
@@ -136,23 +136,23 @@ export const calendarRouter = router({
 		)
 		.mutation(async ({ ctx, input }) => {
 			const { id, ...data } = input;
-			return ctx.db
+			const [result] = await ctx.db
 				.update(calendarEventTable)
 				.set({
 					...data,
-					startDate: data.startDate?.getTime(),
-					endDate: data.endDate?.getTime(),
+					startDate: data.startDate,
+					endDate: data.endDate,
 					updatedAt: new Date()
 				})
 				.where(eq(calendarEventTable.id, id))
-				.returning()
-				.get();
+				.returning();
+			return result;
 		}),
 
 	deleteEvent: managerProcedure
 		.input(z.object({ id: z.string() }))
 		.mutation(async ({ ctx, input }) => {
-			await ctx.db.delete(calendarEventTable).where(eq(calendarEventTable.id, input.id)).run();
+			await ctx.db.delete(calendarEventTable).where(eq(calendarEventTable.id, input.id));
 			return true;
 		})
 });

@@ -35,8 +35,8 @@ export const anomalyRouter = router({
 			if (input.status) conditions.push(eq(anomalyTable.status, input.status));
 			if (input.impactLevel) conditions.push(eq(anomalyTable.impactLevel, input.impactLevel));
 			if (input.responsiblePersonId) conditions.push(eq(anomalyTable.responsiblePersonId, input.responsiblePersonId));
-			if (input.dateFrom) conditions.push(gte(anomalyTable.discoveredAt, input.dateFrom.getTime()));
-			if (input.dateTo) conditions.push(lte(anomalyTable.discoveredAt, input.dateTo.getTime()));
+			if (input.dateFrom) conditions.push(gte(anomalyTable.discoveredAt, input.dateFrom));
+			if (input.dateTo) conditions.push(lte(anomalyTable.discoveredAt, input.dateTo));
 
 			const where = conditions.length > 0 ? and(...conditions) : undefined;
 
@@ -62,13 +62,13 @@ export const anomalyRouter = router({
 				.orderBy(desc(anomalyTable.discoveredAt))
 				.limit(input.pageSize)
 				.offset(offset)
-				.all();
+				;
 
 			const total = await ctx.db
 				.select({ count: anomalyTable.id })
 				.from(anomalyTable)
 				.where(where)
-				.all()
+				
 				.then((rows) => rows.length);
 
 			return {
@@ -86,7 +86,7 @@ export const anomalyRouter = router({
 			const discovererUser = aliasedTable(userTable, 'discoverer');
 			const handlerUser = aliasedTable(userTable, 'handler');
 
-			const anomaly = await ctx.db
+			const [anomaly] = await ctx.db
 				.select({
 					anomaly: anomalyTable,
 					property: propertyTable,
@@ -101,8 +101,7 @@ export const anomalyRouter = router({
 				.leftJoin(userTable, eq(anomalyTable.responsiblePersonId, userTable.id))
 				.leftJoin(discovererUser, eq(anomalyTable.discoveredById, discovererUser.id))
 				.leftJoin(handlerUser, eq(anomalyTable.handledById, handlerUser.id))
-				.where(eq(anomalyTable.id, input.id))
-				.get();
+				.where(eq(anomalyTable.id, input.id));
 
 			if (!anomaly) {
 				throw new TRPCError({ code: 'NOT_FOUND', message: '异常单不存在' });
@@ -128,7 +127,7 @@ export const anomalyRouter = router({
 		)
 		.mutation(async ({ ctx, input }) => {
 			const id = generateIdFromEntropySize(16);
-			return ctx.db
+			const [result] = await ctx.db
 				.insert(anomalyTable)
 				.values({
 					id,
@@ -136,8 +135,8 @@ export const anomalyRouter = router({
 					discoveredById: ctx.user.id,
 					status: 'pending'
 				})
-				.returning()
-				.get();
+				.returning();
+			return result;
 		}),
 
 	update: managerProcedure
@@ -165,18 +164,18 @@ export const anomalyRouter = router({
 			const { id, ...data } = input;
 			const updateData: any = { ...data, updatedAt: new Date() };
 			if ((data.status === 'resolved' || data.status === 'closed') && !updateData.handledAt) {
-				updateData.handledAt = Date.now();
+				updateData.handledAt = new Date();
 				updateData.handledById = ctx.user.id;
 			}
 			if (data.status === 'closed') {
-				updateData.closedAt = Date.now();
+				updateData.closedAt = new Date();
 			}
-			return ctx.db
+			const [result] = await ctx.db
 				.update(anomalyTable)
 				.set(updateData)
 				.where(eq(anomalyTable.id, id))
-				.returning()
-				.get();
+				.returning();
+			return result;
 		}),
 
 	generateFromMissedTasks: managerProcedure
@@ -193,41 +192,38 @@ export const anomalyRouter = router({
 				.where(
 					and(
 						eq(cleaningTaskTable.status, 'missed'),
-						gte(cleaningTaskTable.scheduledDate, input.dateFrom.getTime()),
-						lte(cleaningTaskTable.scheduledDate, input.dateTo.getTime())
+						gte(cleaningTaskTable.scheduledDate, input.dateFrom),
+						lte(cleaningTaskTable.scheduledDate, input.dateTo)
 					)
 				)
-				.all();
+				;
 
 			const results = [];
 			for (const task of missedTasks) {
-				const existing = await ctx.db
+				const [existing] = await ctx.db
 					.select()
 					.from(anomalyTable)
-					.where(eq(anomalyTable.taskId, task.id))
-					.get();
+					.where(eq(anomalyTable.taskId, task.id));
 				if (!existing) {
 					const id = generateIdFromEntropySize(16);
-					results.push(
-						await ctx.db
-							.insert(anomalyTable)
-							.values({
-								id,
-								taskId: task.id,
-								propertyId: task.propertyId,
-								type: 'missed_cleaning',
-								title: `保洁漏单 - ${new Date(task.scheduledDate).toLocaleDateString()}`,
-								description: `保洁任务未在计划时间内完成，任务ID: ${task.id}`,
-								impactScope: task.bookingId ? '影响客人入住体验，可能导致客诉或平台差评' : '影响后续预订排期',
-								impactLevel: task.bookingId ? 'high' : 'medium',
-								responsiblePersonId: task.assignedCleanerId,
-								responsibleRole: task.assignedCleanerId ? '保洁员' : '排班人员',
-								discoveredById: ctx.user.id,
-								status: 'pending'
-							})
-							.returning()
-							.get()
-					);
+					const [result] = await ctx.db
+						.insert(anomalyTable)
+						.values({
+							id,
+							taskId: task.id,
+							propertyId: task.propertyId,
+							type: 'missed_cleaning',
+							title: `保洁漏单 - ${task.scheduledDate.toLocaleDateString()}`,
+							description: `保洁任务未在计划时间内完成，任务ID: ${task.id}`,
+							impactScope: task.bookingId ? '影响客人入住体验，可能导致客诉或平台差评' : '影响后续预订排期',
+							impactLevel: task.bookingId ? 'high' : 'medium',
+							responsiblePersonId: task.assignedCleanerId,
+							responsibleRole: task.assignedCleanerId ? '保洁员' : '排班人员',
+							discoveredById: ctx.user.id,
+							status: 'pending'
+						})
+						.returning();
+					results.push(result);
 				}
 			}
 			return results;

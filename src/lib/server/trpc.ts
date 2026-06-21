@@ -15,7 +15,7 @@ export async function createContext(event: RequestEvent) {
 		const result = await lucia.validateSession(sessionId);
 		if (result.session && result.user) {
 			session = result.session as typeof sessionTable.$inferSelect;
-			const userResult = await db.select().from(userTable).where(eq(userTable.id, result.user.id)).get();
+			const [userResult] = await db.select().from(userTable).where(eq(userTable.id, result.user.id));
 			user = userResult || null;
 		}
 	}

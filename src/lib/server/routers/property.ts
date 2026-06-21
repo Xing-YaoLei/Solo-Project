@@ -39,13 +39,13 @@ export const propertyRouter = router({
 				.orderBy(desc(propertyTable.createdAt))
 				.limit(input.pageSize)
 				.offset(offset)
-				.all();
+				;
 
 			const total = await ctx.db
 				.select({ count: propertyTable.id })
 				.from(propertyTable)
 				.where(where)
-				.all()
+				
 				.then((rows) => rows.length);
 
 			return {
@@ -63,17 +63,16 @@ export const propertyRouter = router({
 			.from(propertyTable)
 			.where(eq(propertyTable.status, 'active'))
 			.orderBy(asc(propertyTable.name))
-			.all();
+			;
 	}),
 
 	get: protectedProcedure
 		.input(z.object({ id: z.string() }))
 		.query(async ({ ctx, input }) => {
-			const property = await ctx.db
+			const [property] = await ctx.db
 				.select()
 				.from(propertyTable)
-				.where(eq(propertyTable.id, input.id))
-				.get();
+				.where(eq(propertyTable.id, input.id));
 
 			if (!property) {
 				throw new TRPCError({ code: 'NOT_FOUND', message: '房源不存在' });
@@ -100,15 +99,15 @@ export const propertyRouter = router({
 		)
 		.mutation(async ({ ctx, input }) => {
 			const id = generateIdFromEntropySize(16);
-			return ctx.db
+			const [result] = await ctx.db
 				.insert(propertyTable)
 				.values({
 					id,
 					...input,
 					createdById: ctx.user.id
 				})
-				.returning()
-				.get();
+				.returning();
+			return result;
 		}),
 
 	update: managerProcedure
@@ -131,15 +130,15 @@ export const propertyRouter = router({
 		)
 		.mutation(async ({ ctx, input }) => {
 			const { id, ...data } = input;
-			return ctx.db
+			const [result] = await ctx.db
 				.update(propertyTable)
 				.set({
 					...data,
 					updatedAt: new Date()
 				})
 				.where(eq(propertyTable.id, id))
-				.returning()
-				.get();
+				.returning();
+			return result;
 		}),
 
 	remove: managerProcedure
@@ -148,8 +147,7 @@ export const propertyRouter = router({
 			await ctx.db
 				.update(propertyTable)
 				.set({ status: 'inactive', updatedAt: new Date() })
-				.where(eq(propertyTable.id, input.id))
-				.run();
+				.where(eq(propertyTable.id, input.id));
 			return true;
 		})
 });

@@ -40,10 +40,10 @@ export const cleaningTaskRouter = router({
 				conditions.push(eq(cleaningTaskTable.type, input.type));
 			}
 			if (input.dateFrom) {
-				conditions.push(gte(cleaningTaskTable.scheduledDate, input.dateFrom.getTime()));
+				conditions.push(gte(cleaningTaskTable.scheduledDate, input.dateFrom));
 			}
 			if (input.dateTo) {
-				conditions.push(lte(cleaningTaskTable.scheduledDate, input.dateTo.getTime()));
+				conditions.push(lte(cleaningTaskTable.scheduledDate, input.dateTo));
 			}
 
 			const where = conditions.length > 0 ? and(...conditions) : undefined;
@@ -61,13 +61,13 @@ export const cleaningTaskRouter = router({
 				.orderBy(desc(cleaningTaskTable.scheduledDate))
 				.limit(input.pageSize)
 				.offset(offset)
-				.all();
+				;
 
 			const total = await ctx.db
 				.select({ count: cleaningTaskTable.id })
 				.from(cleaningTaskTable)
 				.where(where)
-				.all()
+				
 				.then((rows) => rows.length);
 
 			return {
@@ -84,7 +84,7 @@ export const cleaningTaskRouter = router({
 		.query(async ({ ctx, input }) => {
 			const verifierUser = aliasedTable(userTable, 'verifier');
 
-			const task = await ctx.db
+			const [task] = await ctx.db
 				.select({
 					task: cleaningTaskTable,
 					property: propertyTable,
@@ -97,8 +97,7 @@ export const cleaningTaskRouter = router({
 				.leftJoin(userTable, eq(cleaningTaskTable.assignedCleanerId, userTable.id))
 				.leftJoin(verifierUser, eq(cleaningTaskTable.verifiedById, verifierUser.id))
 				.leftJoin(bookingTable, eq(cleaningTaskTable.bookingId, bookingTable.id))
-				.where(eq(cleaningTaskTable.id, input.id))
-				.get();
+				.where(eq(cleaningTaskTable.id, input.id));
 
 			if (!task) {
 				throw new TRPCError({ code: 'NOT_FOUND', message: '任务不存在' });
@@ -113,7 +112,7 @@ export const cleaningTaskRouter = router({
 				.leftJoin(userTable, eq(taskStatusHistoryTable.changedById, userTable.id))
 				.where(eq(taskStatusHistoryTable.taskId, input.id))
 				.orderBy(desc(taskStatusHistoryTable.changedAt))
-				.all();
+				;
 
 			return {
 				...task,
@@ -140,18 +139,17 @@ export const cleaningTaskRouter = router({
 			const id = generateIdFromEntropySize(16);
 			const initialStatus: typeof cleaningTaskTable.status.enumValues[number] = input.assignedCleanerId ? 'assigned' : 'pending';
 
-			const task = await ctx.db
+			const [task] = await ctx.db
 				.insert(cleaningTaskTable)
 				.values({
 					id,
 					...input,
-					scheduledDate: input.scheduledDate.getTime(),
-					deadlineTime: input.deadlineTime?.getTime(),
+					scheduledDate: input.scheduledDate,
+					deadlineTime: input.deadlineTime,
 					status: initialStatus,
 					createdById: ctx.user.id
 				})
-				.returning()
-				.get();
+				.returning();
 
 			await ctx.db
 				.insert(taskStatusHistoryTable)
@@ -162,8 +160,7 @@ export const cleaningTaskRouter = router({
 					toStatus: initialStatus,
 					reason: '任务创建',
 					changedById: ctx.user.id
-				})
-				.run();
+				});
 
 			return task;
 		}),
@@ -185,7 +182,7 @@ export const cleaningTaskRouter = router({
 		.mutation(async ({ ctx, input }) => {
 			const { id, ...data } = input;
 
-			const existing = await ctx.db.select().from(cleaningTaskTable).where(eq(cleaningTaskTable.id, id)).get();
+			const [existing] = await ctx.db.select().from(cleaningTaskTable).where(eq(cleaningTaskTable.id, id));
 			if (!existing) {
 				throw new TRPCError({ code: 'NOT_FOUND' });
 			}
@@ -204,18 +201,17 @@ export const cleaningTaskRouter = router({
 
 			const updateData: any = {
 				...data,
-				scheduledDate: data.scheduledDate?.getTime(),
-				deadlineTime: data.deadlineTime?.getTime(),
+				scheduledDate: data.scheduledDate,
+				deadlineTime: data.deadlineTime,
 				status: newStatus,
 				updatedAt: new Date()
 			};
 
-			const task = await ctx.db
+			const [task] = await ctx.db
 				.update(cleaningTaskTable)
 				.set(updateData)
 				.where(eq(cleaningTaskTable.id, id))
-				.returning()
-				.get();
+				.returning();
 
 			if (statusChanged) {
 				await ctx.db
@@ -227,8 +223,7 @@ export const cleaningTaskRouter = router({
 						toStatus: newStatus,
 						reason: '更新任务信息',
 						changedById: ctx.user.id
-					})
-					.run();
+					});
 			}
 
 			return task;
@@ -247,7 +242,7 @@ export const cleaningTaskRouter = router({
 			})
 		)
 		.mutation(async ({ ctx, input }) => {
-			const existing = await ctx.db.select().from(cleaningTaskTable).where(eq(cleaningTaskTable.id, input.id)).get();
+			const [existing] = await ctx.db.select().from(cleaningTaskTable).where(eq(cleaningTaskTable.id, input.id));
 			if (!existing) {
 				throw new TRPCError({ code: 'NOT_FOUND', message: '任务不存在' });
 			}
@@ -276,26 +271,25 @@ export const cleaningTaskRouter = router({
 			};
 
 			if (input.status === 'in_progress') {
-				updateData.actualStartTime = Date.now();
+				updateData.actualStartTime = new Date();
 			}
 			if (input.status === 'completed') {
-				updateData.actualEndTime = Date.now();
+				updateData.actualEndTime = new Date();
 				if (input.cleanerNotes) updateData.cleanerNotes = input.cleanerNotes;
 				if (input.photos) updateData.photos = input.photos;
 			}
 			if (input.status === 'verified') {
-				updateData.verifiedAt = Date.now();
+				updateData.verifiedAt = new Date();
 				updateData.verifiedById = ctx.user.id;
 				if (input.qualityScore !== undefined) updateData.qualityScore = input.qualityScore;
 				if (input.inspectorNotes) updateData.inspectorNotes = input.inspectorNotes;
 			}
 
-			const task = await ctx.db
+			const [task] = await ctx.db
 				.update(cleaningTaskTable)
 				.set(updateData)
 				.where(eq(cleaningTaskTable.id, input.id))
-				.returning()
-				.get();
+				.returning();
 
 			if (existing.status !== input.status) {
 				await ctx.db
@@ -307,8 +301,7 @@ export const cleaningTaskRouter = router({
 						toStatus: input.status,
 						reason: input.reason || '状态变更',
 						changedById: ctx.user.id
-					})
-					.run();
+					});
 			}
 
 			return task;
@@ -317,18 +310,18 @@ export const cleaningTaskRouter = router({
 	acceptTask: protectedProcedure
 		.input(z.object({ id: z.string() }))
 		.mutation(async ({ ctx, input }) => {
-			const task = await ctx.db.select().from(cleaningTaskTable).where(eq(cleaningTaskTable.id, input.id)).get();
+			const [task] = await ctx.db.select().from(cleaningTaskTable).where(eq(cleaningTaskTable.id, input.id));
 			if (!task) throw new TRPCError({ code: 'NOT_FOUND' });
 			if (task.assignedCleanerId !== ctx.user.id) {
 				throw new TRPCError({ code: 'FORBIDDEN', message: '只能接受分配给自己的任务' });
 			}
 
-			return ctx.db
+			const [result] = await ctx.db
 				.update(cleaningTaskTable)
 				.set({ status: 'accepted', updatedAt: new Date() })
 				.where(eq(cleaningTaskTable.id, input.id))
-				.returning()
-				.get();
+				.returning();
+			return result;
 		}),
 
 	batchCreate: managerProcedure
@@ -347,14 +340,14 @@ export const cleaningTaskRouter = router({
 				tasks.push({
 					id,
 					propertyId,
-					scheduledDate: input.scheduledDate.getTime(),
+					scheduledDate: input.scheduledDate,
 					type: input.type,
 					priority: input.priority,
 					status: 'pending' as const,
 					createdById: ctx.user.id
 				});
 			}
-			await ctx.db.insert(cleaningTaskTable).values(tasks).run();
+			await ctx.db.insert(cleaningTaskTable).values(tasks);
 			return tasks;
 		}),
 
@@ -370,6 +363,6 @@ export const cleaningTaskRouter = router({
 				.leftJoin(userTable, eq(taskStatusHistoryTable.changedById, userTable.id))
 				.where(eq(taskStatusHistoryTable.taskId, input.taskId))
 				.orderBy(desc(taskStatusHistoryTable.changedAt))
-				.all();
+				;
 		})
 });
