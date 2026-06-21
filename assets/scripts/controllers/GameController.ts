@@ -65,8 +65,31 @@ export class GameController extends Component {
     private isRestarting: boolean = false;
 
     onLoad() {
+        this.ensureManagers();
         this.initEventListeners();
         this.initKeyboardControls();
+    }
+
+    private ensureManagers() {
+        if (!this.orderManager) {
+            const mgrNode = this.node.getChildByName('Managers') || this.makeChild('Managers');
+            this.orderManager = mgrNode.addComponent(OrderManager);
+            this.riderManager = mgrNode.addComponent(RiderManager);
+            this.subsidyManager = mgrNode.addComponent(SubsidyManager);
+        }
+        if (!this.mapController) {
+            const ctrlNode = this.node.getChildByName('SubControllers') || this.makeChild('SubControllers');
+            this.mapController = ctrlNode.addComponent(MapController);
+            this.addressInputController = ctrlNode.addComponent(AddressInputController);
+            this.riderWarningSystem = ctrlNode.addComponent(RiderWarningSystem);
+            this.trajectoryRenderer = ctrlNode.addComponent(TrajectoryRenderer);
+        }
+    }
+
+    private makeChild(name: string): Node {
+        const n = new Node(name);
+        this.node.addChild(n);
+        return n;
     }
 
     private initEventListeners() {
@@ -87,8 +110,8 @@ export class GameController extends Component {
 
         const key = event.keyCode;
 
-        if (KEYBOARD_SHORTCUTS.assign_rider.includes(KeyCode[key as keyof typeof KeyCode])) {
-            const index = parseInt(KeyCode[key as keyof typeof KeyCode].replace('DIGIT_', '')) - 1;
+        if (key >= KeyCode.DIGIT_1 && key <= KeyCode.DIGIT_5) {
+            const index = key - KeyCode.DIGIT_1;
             this.assignRiderByIndex(index);
         }
 

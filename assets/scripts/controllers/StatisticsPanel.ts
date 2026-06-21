@@ -1,4 +1,4 @@
-import { _decorator, Component, Node, Label, Button, Sprite, Color, Graphics, ProgressBar } from 'cc';
+import { _decorator, Component, Node, Label, Button, Sprite, Color, Graphics, ProgressBar, UITransform } from 'cc';
 import { Statistics } from '../types/GameTypes';
 import { StorageManager } from '../managers/StorageManager';
 import { SUBSIDY_RULES } from '../config/GameConfig';
@@ -72,6 +72,7 @@ export class StatisticsPanel extends Component {
         this.renderInsights();
         this.renderCompensationChart();
 
+        this.node.active = true;
         if (this.panelRoot) {
             this.panelRoot.active = true;
         }
@@ -112,162 +113,83 @@ export class StatisticsPanel extends Component {
     }
 
     private renderCompensationByType() {
-        if (!this.statistics || !this.compensationByTypeContainer || !this.compensationTypeItemPrefab) return;
+        if (!this.statistics) return;
 
-        this.compensationByTypeContainer.removeAllChildren();
+        const container = this.compensationByTypeContainer || this.node.getChildByName('StatsInfo');
+        if (!container) return;
+        container.removeAllChildren();
 
-        const typeNames: Record<string, { name: string; color: Color; icon: string }> = {
-            address: { name: '地址错误', color: new Color(255, 100, 100), icon: '📍' },
-            rider: { name: '骑手拒单', color: new Color(255, 200, 0), icon: '🏍️' },
-            subsidy: { name: '补贴误用', color: new Color(100, 200, 255), icon: '💰' },
-            timing: { name: '超时送达', color: new Color(200, 100, 255), icon: '⏰' },
+        const typeNames: Record<string, string> = {
+            address: '地址错误',
+            rider: '骑手拒单',
+            subsidy: '补贴误用',
+            timing: '超时送达',
         };
 
         const entries = Object.entries(this.statistics.wrongStepStats);
         const total = entries.reduce((sum, [, count]) => sum + count, 0);
 
         if (total === 0) {
-            const emptyNode = new Node('EmptyLabel');
-            const label = emptyNode.addComponent(Label);
-            label.string = '暂无数据';
-            this.compensationByTypeContainer.addChild(emptyNode);
+            this.makeChildLabel(container, '暂无数据', 14, new Color(150, 150, 150));
             return;
         }
 
         entries.sort((a, b) => b[1] - a[1]);
-
         entries.forEach(([type, count]) => {
-            const item = this.compensationTypeItemPrefab!.clone();
-            item.name = `Type_${type}`;
-
-            const iconLabel = item.getChildByName('Icon')?.getComponent(Label);
-            const nameLabel = item.getChildByName('Name')?.getComponent(Label);
-            const countLabel = item.getChildByName('Count')?.getComponent(Label);
-            const percentLabel = item.getChildByName('Percent')?.getComponent(Label);
-            const progressBar = item.getChildByName('Progress')?.getComponent(ProgressBar);
-
-            const typeInfo = typeNames[type] || { name: type, color: new Color(255, 255, 255), icon: '❓' };
             const percentage = Math.round((count / total) * 100);
-
-            if (iconLabel) {
-                iconLabel.string = typeInfo.icon;
-            }
-            if (nameLabel) {
-                nameLabel.string = typeInfo.name;
-                nameLabel.color = typeInfo.color;
-            }
-            if (countLabel) {
-                countLabel.string = `${count}次`;
-            }
-            if (percentLabel) {
-                percentLabel.string = `${percentage}%`;
-            }
-            if (progressBar) {
-                progressBar.progress = percentage / 100;
-                const barSprite = progressBar.node.getChildByName('Bar')?.getComponent(Sprite);
-                if (barSprite) {
-                    barSprite.color = typeInfo.color;
-                }
-            }
-
-            this.compensationByTypeContainer!.addChild(item);
+            const name = typeNames[type] || type;
+            this.makeChildLabel(container, `${name}: ${count}次 (${percentage}%)`, 14, new Color(220, 220, 240));
         });
     }
 
     private renderSubsidyStats() {
-        if (!this.statistics || !this.subsidyStatsContainer || !this.subsidyStatItemPrefab) return;
+        if (!this.statistics) return;
 
-        this.subsidyStatsContainer.removeAllChildren();
+        const container = this.subsidyStatsContainer || this.node.getChildByName('StatsInfo');
+        if (!container) return;
 
         const entries = Object.entries(this.statistics.subsidyEffectiveness);
 
         if (entries.length === 0) {
-            const emptyNode = new Node('EmptyLabel');
-            const label = emptyNode.addComponent(Label);
-            label.string = '暂无补贴使用记录';
-            this.subsidyStatsContainer.addChild(emptyNode);
+            this.makeChildLabel(container, '暂无补贴使用记录', 14, new Color(150, 150, 150));
             return;
         }
 
         entries.sort((a, b) => b[1].saved - a[1].saved);
-
         entries.forEach(([subsidyId, data]) => {
-            const item = this.subsidyStatItemPrefab!.clone();
-            item.name = `Subsidy_${subsidyId}`;
-
             const rule = SUBSIDY_RULES.find(r => r.id === subsidyId);
-
-            const nameLabel = item.getChildByName('Name')?.getComponent(Label);
-            const usedLabel = item.getChildByName('Used')?.getComponent(Label);
-            const savedLabel = item.getChildByName('Saved')?.getComponent(Label);
-            const avgLabel = item.getChildByName('Avg')?.getComponent(Label);
-
-            if (nameLabel) {
-                nameLabel.string = rule?.name || subsidyId;
-            }
-            if (usedLabel) {
-                usedLabel.string = `使用: ${data.used}次`;
-            }
-            if (savedLabel) {
-                savedLabel.string = `节省: ¥${data.saved}`;
-                savedLabel.color = new Color(0, 255, 100);
-            }
-            if (avgLabel) {
-                const avg = data.used > 0 ? Math.round(data.saved / data.used) : 0;
-                avgLabel.string = `平均: ¥${avg}/次`;
-            }
-
-            this.subsidyStatsContainer!.addChild(item);
+            const avg = data.used > 0 ? Math.round(data.saved / data.used) : 0;
+            this.makeChildLabel(container, `${rule?.name || subsidyId}: 使用${data.used}次 节省¥${data.saved} 平均¥${avg}/次`, 14, new Color(100, 200, 255));
         });
     }
 
     private renderInsights() {
-        if (!this.insightsContainer || !this.insightItemPrefab) return;
-
-        this.insightsContainer.removeAllChildren();
+        const container = this.insightsContainer || this.node.getChildByName('StatsInfo');
+        if (!container) return;
 
         const insights = this.storageManager.getPerformanceInsights();
 
         if (insights.length === 0) {
-            const emptyNode = new Node('EmptyLabel');
-            const label = emptyNode.addComponent(Label);
-            label.string = '表现优秀，继续保持！';
-            label.color = new Color(0, 255, 100);
-            this.insightsContainer.addChild(emptyNode);
+            this.makeChildLabel(container, '表现优秀，继续保持！', 14, new Color(0, 255, 100));
             return;
         }
 
         insights.slice(0, 5).forEach((insight, index) => {
-            const item = this.insightItemPrefab!.clone();
-            item.name = `Insight_${index}`;
-
-            const areaLabel = item.getChildByName('Area')?.getComponent(Label);
-            const problemLabel = item.getChildByName('Problem')?.getComponent(Label);
-            const suggestionLabel = item.getChildByName('Suggestion')?.getComponent(Label);
-            const freqLabel = item.getChildByName('Frequency')?.getComponent(Label);
-
-            if (areaLabel) {
-                areaLabel.string = insight.area;
-                const colors: Record<string, Color> = {
-                    '地址处理': new Color(255, 100, 100),
-                    '骑手调度': new Color(255, 200, 0),
-                    '补贴应用': new Color(100, 200, 255),
-                    '时间管理': new Color(200, 100, 255),
-                };
-                areaLabel.color = colors[insight.area] || new Color(255, 255, 255);
-            }
-            if (problemLabel) {
-                problemLabel.string = `问题: ${insight.problem}`;
-            }
-            if (suggestionLabel) {
-                suggestionLabel.string = `建议: ${insight.suggestion}`;
-            }
-            if (freqLabel) {
-                freqLabel.string = `发生: ${insight.frequency}次`;
-            }
-
-            this.insightsContainer!.addChild(item);
+            this.makeChildLabel(container, `[${insight.area}] ${insight.problem} → 建议: ${insight.suggestion} (发生${insight.frequency}次)`, 13, new Color(255, 200, 100));
         });
+    }
+
+    private makeChildLabel(parent: Node, text: string, fontSize: number, color: Color): Label {
+        const n = new Node(`Item_${parent.children.length}`);
+        n.addComponent(UITransform).setContentSize(850, fontSize + 6);
+        const label = n.addComponent(Label);
+        label.string = text;
+        label.fontSize = fontSize;
+        label.lineHeight = fontSize + 4;
+        label.color = color;
+        label.overflow = Label.Overflow.CLAMP;
+        parent.addChild(n);
+        return label;
     }
 
     private renderCompensationChart() {
@@ -314,6 +236,7 @@ export class StatisticsPanel extends Component {
     }
 
     hide() {
+        this.node.active = false;
         if (this.panelRoot) {
             this.panelRoot.active = false;
         }

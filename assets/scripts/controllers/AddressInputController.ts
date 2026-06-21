@@ -1,4 +1,4 @@
-import { _decorator, Component, Node, Label, Input, EventKeyboard, KeyCode, EventTouch, Vec3 } from 'cc';
+import { _decorator, Component, Node, Label, Input, EventKeyboard, KeyCode, EventTouch, Vec3, UITransform, Color } from 'cc';
 import { Position, Order, WrongStep } from '../types/GameTypes';
 import { MAP_LOCATIONS, KEYBOARD_SHORTCUTS } from '../config/GameConfig';
 
@@ -140,7 +140,8 @@ export class AddressInputController extends Component {
     private onTouchStart(event: EventTouch) {
         if (!this.mapContainer || !this.currentOrder) return;
         event.propagationStopped = true;
-        this.touchStartPos.set(event.getUILocation());
+        const loc = event.getUILocation();
+        this.touchStartPos.set(loc.x, loc.y, 0);
     }
 
     private onTouchEnd(event: EventTouch) {
@@ -149,7 +150,8 @@ export class AddressInputController extends Component {
 
         const touchPos = event.getUILocation();
         const worldPos = new Vec3(touchPos.x, touchPos.y, 0);
-        const localPos = this.mapContainer.getComponent('cc.UITransform')?.convertToNodeSpaceAR(worldPos);
+        const transform = this.mapContainer.getComponent(UITransform);
+        const localPos = transform ? transform.convertToNodeSpaceAR(worldPos) : null;
 
         if (!localPos) return;
 
@@ -233,7 +235,7 @@ export class AddressInputController extends Component {
             const label = child.getComponent(Label);
             if (label) {
                 label.color = index === this.selectedIndex ?
-                    new cc.Color(255, 200, 0) : new cc.Color(255, 255, 255);
+                    new Color(255, 200, 0) : new Color(255, 255, 255);
             }
         });
     }

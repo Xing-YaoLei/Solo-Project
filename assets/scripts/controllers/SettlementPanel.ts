@@ -1,4 +1,4 @@
-import { _decorator, Component, Node, Label, Button, Sprite, Color, ScrollView } from 'cc';
+import { _decorator, Component, Node, Label, Button, Sprite, Color, ScrollView, UITransform, Graphics } from 'cc';
 import { GameStateSnapshot, AppealEvidence, Order, WrongStep } from '../types/GameTypes';
 import { GameController } from './GameController';
 import { StorageManager } from '../managers/StorageManager';
@@ -69,19 +69,14 @@ export class SettlementPanel extends Component {
 
     onLoad() {
         this.hide();
+        this.ensurePanelRoot();
+    }
 
-        if (this.restartButton) {
-            this.restartButton.node.on(Button.EventType.CLICK, this.onRestartClicked, this);
+    private ensurePanelRoot() {
+        if (!this.panelRoot) {
+            this.panelRoot = this.node;
         }
-        if (this.reviewButton) {
-            this.reviewButton.node.on(Button.EventType.CLICK, this.onReviewClicked, this);
-        }
-        if (this.nextLevelButton) {
-            this.nextLevelButton.node.on(Button.EventType.CLICK, this.onNextLevelClicked, this);
-        }
-        if (this.appealButton) {
-            this.appealButton.node.on(Button.EventType.CLICK, this.onAppealClicked, this);
-        }
+        this.node.active = false;
     }
 
     setGameController(controller: GameController) {
@@ -167,6 +162,7 @@ export class SettlementPanel extends Component {
         this.saveReplayRecord(isVictory, score, compensation, snapshots, wrongSteps);
         this.updateStatistics(isVictory, score, wrongSteps.length, compensation, subsidyStats, riderStats);
 
+        this.node.active = true;
         if (this.panelRoot) {
             this.panelRoot.active = true;
         }
@@ -204,60 +200,25 @@ export class SettlementPanel extends Component {
     }
 
     private renderWrongSteps(wrongSteps: WrongStep[]) {
-        if (!this.wrongStepsContainer || !this.wrongStepItemPrefab) return;
-
-        this.wrongStepsContainer.removeAllChildren();
+        const container = this.wrongStepsContainer || this.node.getChildByName('WrongStepsInfo');
+        if (!container) return;
+        container.removeAllChildren();
 
         if (wrongSteps.length === 0) {
-            const emptyNode = new Node('EmptyLabel');
-            const label = emptyNode.addComponent(Label);
-            label.string = '太棒了！没有操作失误';
-            label.color = new Color(0, 255, 100);
-            this.wrongStepsContainer.addChild(emptyNode);
+            const label = this.makeChildLabel('EmptyLabel', container, '太棒了！没有操作失误', 14, new Color(0, 255, 100));
             return;
         }
 
+        const typeNames: Record<string, string> = {
+            address: '地址错误',
+            rider: '骑手拒单',
+            subsidy: '补贴误用',
+            timing: '超时',
+        };
+
         wrongSteps.forEach((wrongStep, index) => {
-            const item = this.wrongStepItemPrefab!.clone();
-            item.name = `WrongStep_${index}`;
-
-            const typeLabel = item.getChildByName('Type')?.getComponent(Label);
-            const descLabel = item.getChildByName('Description')?.getComponent(Label);
-            const correctLabel = item.getChildByName('CorrectAction')?.getComponent(Label);
-            const impactLabel = item.getChildByName('Impact')?.getComponent(Label);
-
-            const typeNames: Record<string, string> = {
-                address: '📍 地址错误',
-                rider: '🏍️ 骑手拒单',
-                subsidy: '💰 补贴误用',
-                timing: '⏰ 超时',
-            };
-
-            if (typeLabel) {
-                typeLabel.string = typeNames[wrongStep.type] || wrongStep.type;
-                const colors: Record<string, Color> = {
-                    address: new Color(255, 100, 100),
-                    rider: new Color(255, 200, 0),
-                    subsidy: new Color(100, 200, 255),
-                    timing: new Color(200, 100, 255),
-                };
-                typeLabel.color = colors[wrongStep.type] || new Color(255, 255, 255);
-            }
-
-            if (descLabel) {
-                descLabel.string = wrongStep.description;
-            }
-
-            if (correctLabel) {
-                correctLabel.string = `✓ ${wrongStep.correctAction}`;
-            }
-
-            if (impactLabel) {
-                impactLabel.string =
-                    `影响: ¥${wrongStep.impact.cost} / ${wrongStep.impact.delay}s / 满意度${wrongStep.impact.satisfaction}`;
-            }
-
-            this.wrongStepsContainer!.addChild(item);
+            const text = `[${typeNames[wrongStep.type] || wrongStep.type}] ${wrongStep.description} → ${wrongStep.correctAction} (¥${wrongStep.impact.cost} / ${wrongStep.impact.delay}s / 满意度${wrongStep.impact.satisfaction})`;
+            this.makeChildLabel(`WrongStep_${index}`, container, text, 13, new Color(255, 180, 100));
         });
     }
 
@@ -392,66 +353,32 @@ export class SettlementPanel extends Component {
     }
 
     private renderAppealEvidences() {
-        if (!this.appealEvidenceContainer || !this.appealEvidencePrefab) return;
-
-        this.appealEvidenceContainer.removeAllChildren();
+        const container = this.appealEvidenceContainer || this.node.getChildByName('AppealInfo');
+        if (!container) return;
+        container.removeAllChildren();
 
         if (this.appealEvidences.length === 0) {
-            const emptyNode = new Node('EmptyLabel');
-            const label = emptyNode.addComponent(Label);
-            label.string = '无申诉项';
-            label.color = new Color(150, 150, 150);
-            this.appealEvidenceContainer.addChild(emptyNode);
+            this.makeChildLabel('EmptyLabel', container, '无申诉项', 14, new Color(150, 150, 150));
             return;
         }
 
         this.appealEvidences.forEach((evidence, index) => {
-            const item = this.appealEvidencePrefab!.clone();
-            item.name = `Evidence_${index}`;
-
-            const orderLabel = item.getChildByName('OrderId')?.getComponent(Label);
-            const reasonLabel = item.getChildByName('Reason')?.getComponent(Label);
-            const amountLabel = item.getChildByName('Amount')?.getComponent(Label);
-            const successRateLabel = item.getChildByName('SuccessRate')?.getComponent(Label);
-            const appealableLabel = item.getChildByName('Appealable')?.getComponent(Label);
-            const detailsLabel = item.getChildByName('Details')?.getComponent(Label);
-
-            if (orderLabel) {
-                orderLabel.string = `订单 ${evidence.orderId.substring(0, 8)}`;
-            }
-            if (reasonLabel) {
-                reasonLabel.string = `错因: ${evidence.wrongStep.description}`;
-            }
-            if (amountLabel) {
-                amountLabel.string = `赔付金额: ¥${evidence.compensationAmount}`;
-            }
-            if (successRateLabel) {
-                successRateLabel.string = `申诉成功率: ${Math.floor(evidence.appealSuccessRate * 100)}%`;
-                successRateLabel.color = evidence.appealSuccessRate >= 0.5 ?
-                    new Color(0, 255, 100) : new Color(255, 200, 0);
-            }
-            if (appealableLabel) {
-                appealableLabel.string = evidence.appealable ? '✓ 可申诉' : '✗ 不可申诉';
-                appealableLabel.color = evidence.appealable ?
-                    new Color(0, 255, 100) : new Color(150, 150, 150);
-            }
-            if (detailsLabel) {
-                const timelineStr = evidence.orderTimeline
-                    .map(t => `${Math.floor(t.time)}s: ${t.event}`)
-                    .join('\n');
-                detailsLabel.string = `时间线:\n${timelineStr}`;
-            }
-
-            const button = item.getChildByName('AppealButton')?.getComponent(Button);
-            if (button) {
-                button.node.active = evidence.appealable;
-                button.node.on(Button.EventType.CLICK, () => {
-                    this.attemptAppeal(evidence);
-                }, this);
-            }
-
-            this.appealEvidenceContainer!.addChild(item);
+            const text = `订单${evidence.orderId.substring(0, 8)} | 错因: ${evidence.wrongStep.description} | 赔付¥${evidence.compensationAmount} | 成功率${Math.floor(evidence.appealSuccessRate * 100)}% | ${evidence.appealable ? '可申诉' : '不可申诉'}`;
+            this.makeChildLabel(`Evidence_${index}`, container, text, 13, new Color(200, 200, 255));
         });
+    }
+
+    private makeChildLabel(name: string, parent: Node, text: string, fontSize: number, color: Color): Label {
+        const n = new Node(name);
+        n.addComponent(UITransform).setContentSize(900, fontSize + 6);
+        const label = n.addComponent(Label);
+        label.string = text;
+        label.fontSize = fontSize;
+        label.lineHeight = fontSize + 4;
+        label.color = color;
+        label.overflow = Label.Overflow.CLAMP;
+        parent.addChild(n);
+        return label;
     }
 
     private attemptAppeal(evidence: AppealEvidence) {
@@ -468,17 +395,19 @@ export class SettlementPanel extends Component {
 
     private showAppealResult(success: boolean, amount: number) {
         const resultNode = new Node('AppealResult');
+        resultNode.addComponent(UITransform).setContentSize(400, 30);
         const label = resultNode.addComponent(Label);
 
         if (success) {
-            label.string = `🎉 申诉成功！退回赔付 ¥${amount}`;
+            label.string = `申诉成功！退回赔付 ¥${amount}`;
             label.color = new Color(0, 255, 100);
         } else {
-            label.string = '😔 申诉失败';
+            label.string = '申诉失败';
             label.color = new Color(255, 100, 100);
         }
+        label.fontSize = 18;
 
-        resultNode.setPosition(0, 0, 0);
+        resultNode.setPosition(0, -200, 0);
         this.panelRoot?.addChild(resultNode);
 
         setTimeout(() => {
@@ -556,6 +485,7 @@ export class SettlementPanel extends Component {
     }
 
     hide() {
+        this.node.active = false;
         if (this.panelRoot) {
             this.panelRoot.active = false;
         }

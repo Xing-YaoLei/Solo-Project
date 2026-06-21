@@ -51,7 +51,7 @@ export class ObjectPool<T> {
 
 export class FastResetManager {
     private static instance: FastResetManager;
-    private resetQueue: Array<() => void>[] = [];
+    private resetQueue: Array<() => void> = [];
     private isResetting: boolean = false;
 
     static getInstance(): FastResetManager {

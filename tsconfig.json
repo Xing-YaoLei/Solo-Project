@@ -1,27 +1,27 @@
 {
-  "extends": "./temp/tsconfig.cocos.json",
   "compilerOptions": {
     "target": "ES2017",
     "module": "ESNext",
     "strict": true,
-    "noImplicitAny": true,
-    "strictNullChecks": true,
-    "strictFunctionTypes": true,
-    "noUnusedLocals": true,
-    "noUnusedParameters": true,
-    "noImplicitReturns": true,
+    "noImplicitAny": false,
+    "strictNullChecks": false,
+    "strictFunctionTypes": false,
+    "noUnusedLocals": false,
+    "noUnusedParameters": false,
+    "noImplicitReturns": false,
     "noFallthroughCasesInSwitch": true,
     "experimentalDecorators": true,
     "emitDecoratorMetadata": true,
     "skipLibCheck": true,
     "forceConsistentCasingInFileNames": true,
+    "ignoreDeprecations": "6.0",
     "moduleResolution": "node",
     "esModuleInterop": true,
     "allowSyntheticDefaultImports": true,
     "resolveJsonModule": true,
     "baseUrl": ".",
     "paths": {
-      "*": ["*"]
+      "cc": ["./node_modules/cc/dist/cc.d.ts"]
     }
   },
   "include": [

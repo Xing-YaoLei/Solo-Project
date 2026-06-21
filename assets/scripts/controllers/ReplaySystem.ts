@@ -1,4 +1,4 @@
-import { _decorator, Component, Node, Label, Button, Sprite, Color, Graphics } from 'cc';
+import { _decorator, Component, Node, Label, Button, Sprite, Color, Graphics, UITransform } from 'cc';
 import { ReplayRecord, GameStateSnapshot, WrongStep, Order, Rider } from '../types/GameTypes';
 import { StorageManager } from '../managers/StorageManager';
 import { EventDispatcher } from '../utils/EventDispatcher';
@@ -55,7 +55,7 @@ export class ReplaySystem extends Component {
     private currentPlaybackTime: number = 0;
     private currentSnapshotIndex: number = 0;
     private onReplayLoadedCallback: ((snapshot: GameStateSnapshot) => void) | null = null;
-    private onWrongStepHighlightCallback: ((wrongStep: WrongStep, index: number) => void = null;
+    private onWrongStepHighlightCallback: ((wrongStep: WrongStep, index: number) => void) | null = null;
 
     onLoad() {
         this.loadReplayRecords();
@@ -67,46 +67,22 @@ export class ReplaySystem extends Component {
     }
 
     private renderReplayList() {
-        if (!this.replayListContainer || !this.replayItemPrefab) return;
+        const container = this.replayListContainer || this.node.getChildByName('ReplayInfo');
+        if (!container) return;
+        container.removeAllChildren();
 
-        this.replayListContainer.removeAllChildren();
+        if (this.replayRecords.length === 0) {
+            this.makeChildLabel(container, '暂无回放记录，完成一次训练后自动保存', 16, new Color(150, 150, 150));
+            return;
+        }
 
         this.replayRecords.forEach((record, index) => {
-            const item = this.replayItemPrefab!.clone();
-            item.name = `Replay_${record.id}`;
-
-            const titleLabel = item.getChildByName('Title')?.getComponent(Label);
-            const resultLabel = item.getChildByName('Result')?.getComponent(Label);
-            const scoreLabel = item.getChildByName('Score')?.getComponent(Label);
-            const compLabel = item.getChildByName('Compensation')?.getComponent(Label);
-            const dateLabel = item.getChildByName('Date')?.getComponent(Label);
-
-            if (titleLabel) {
-                titleLabel.string = `关卡 ${record.levelId}`;
-            }
-            if (resultLabel) {
-                resultLabel.string = record.isVictory ? '✓ 胜利' : '✗ 失败';
-                resultLabel.color = record.isVictory ? new Color(0, 255, 0) : new Color(255, 0, 1);
-            }
-            if (scoreLabel) {
-                scoreLabel.string = `分数: ${record.score}`;
-            }
-            if (compLabel) {
-                compLabel.string = `赔付: ${record.totalCompensation}`;
-            }
-            if (dateLabel) {
-                const date = new Date(record.timestamp);
-                dateLabel.string = date.toLocaleString();
-            }
-
-            const button = item.getComponent(Button);
-            if (button) {
-                button.node.on(Button.EventType.CLICK, () => {
-                    this.selectReplay(index);
-                }, this);
-            }
-
-            this.replayListContainer!.addChild(item);
+            const date = new Date(record.timestamp);
+            const text = `关卡${record.levelId} | ${record.isVictory ? '胜利' : '失败'} | 分数${record.score} | 赔付${record.totalCompensation} | ${date.toLocaleString()}`;
+            const label = this.makeChildLabel(container, text, 15, record.isVictory ? new Color(0, 255, 100) : new Color(255, 100, 100));
+            label.node.on(Node.EventType.TOUCH_END, () => {
+                this.selectReplay(index);
+            }, this);
         });
     }
 
@@ -125,6 +101,7 @@ export class ReplaySystem extends Component {
             this.replayDetailPanel.active = true;
         }
 
+        this.node.active = true;
         this.eventDispatcher.emit('replay-selected', { replay: this.currentReplay });
 
         return true;
@@ -140,57 +117,29 @@ export class ReplaySystem extends Component {
     }
 
     private renderWrongSteps() {
-        if (!this.currentReplay || !this.wrongStepsContainer || !this.wrongStepItemPrefab) return;
+        if (!this.currentReplay) return;
 
-        this.wrongStepsContainer.removeAllChildren();
+        const container = this.wrongStepsContainer || this.node.getChildByName('ReplayInfo');
+        if (!container) return;
+
+        if (this.currentReplay.wrongSteps.length === 0) {
+            this.makeChildLabel(container, '本局无操作失误', 14, new Color(0, 255, 100));
+            return;
+        }
+
+        const typeNames: Record<string, string> = {
+            address: '地址',
+            rider: '骑手',
+            subsidy: '补贴',
+            timing: '时间',
+        };
 
         this.currentReplay.wrongSteps.forEach((wrongStep, index) => {
-            const item = this.wrongStepItemPrefab!.clone();
-            item.name = `WrongStep_${index}`;
-
-            const typeLabel = item.getChildByName('Type')?.getComponent(Label);
-            const descLabel = item.getChildByName('Description')?.getComponent(Label);
-            const correctLabel = item.getChildByName('CorrectAction')?.getComponent(Label);
-            const impactLabel = item.getChildByName('Impact')?.getComponent(Label);
-
-            const typeNames: Record<string, string> = {
-                address: '地址',
-                rider: '骑手',
-                subsidy: '补贴',
-                timing: '时间',
-            };
-
-            if (typeLabel) {
-                typeLabel.string = typeNames[wrongStep.type] || wrongStep.type;
-                const colors: Record<string, Color> = {
-                    address: new Color(255, 100, 100),
-                    rider: new Color(255, 200, 0),
-                    subsidy: new Color(100, 200, 255),
-                    timing: new Color(200, 100, 255),
-                };
-                typeLabel.color = colors[wrongStep.type] || new Color(255, 255, 255);
-            }
-
-            if (descLabel) {
-                descLabel.string = wrongStep.description;
-            }
-
-            if (correctLabel) {
-                correctLabel.string = `正确做法: ${wrongStep.correctAction}`;
-            }
-
-            if (impactLabel) {
-                impactLabel.string = `影响: 成本${wrongStep.impact.cost}元 / 延迟${wrongStep.impact.delay}秒 / 满意度${wrongStep.impact.satisfaction}`;
-            }
-
-            const button = item.getComponent(Button);
-            if (button) {
-                button.node.on(Button.EventType.CLICK, () => {
-                    this.highlightWrongStep(index);
-                }, this);
-            }
-
-            this.wrongStepsContainer!.addChild(item);
+            const text = `[${typeNames[wrongStep.type] || wrongStep.type}] ${wrongStep.description} → 正确: ${wrongStep.correctAction} (¥${wrongStep.impact.cost})`;
+            const label = this.makeChildLabel(container, text, 13, new Color(255, 180, 100));
+            label.node.on(Node.EventType.TOUCH_END, () => {
+                this.highlightWrongStep(index);
+            }, this);
         });
     }
 
@@ -251,7 +200,7 @@ export class ReplaySystem extends Component {
     }
 
     update(deltaTime: number) {
-        if (!this.isPlaying && this.currentReplay) {
+        if (this.isPlaying && this.currentReplay) {
             const adjustedDelta = deltaTime * this.replaySpeed;
             this.currentPlaybackTime += adjustedDelta;
 
@@ -281,7 +230,7 @@ export class ReplaySystem extends Component {
     }
 
     jumpToSnapshot(index: number) {
-        if (!this.currentReplay && index >= 0 && index < this.currentReplay.gameStateSnapshots.length) {
+        if (this.currentReplay && index >= 0 && index < this.currentReplay.gameStateSnapshots.length) {
             this.currentSnapshotIndex = index;
             this.currentPlaybackTime = this.currentReplay.gameStateSnapshots[index].time;
             this.emitSnapshot();
@@ -345,11 +294,13 @@ export class ReplaySystem extends Component {
     refreshReplayList() {
         this.loadReplayRecords();
         this.renderReplayList();
+        this.node.active = true;
     }
 
     closeReplay() {
         this.isPlaying = false;
         this.currentReplay = null;
+        this.node.active = false;
         if (this.replayDetailPanel) {
             this.replayDetailPanel.active = false;
         }
@@ -381,5 +332,18 @@ export class ReplaySystem extends Component {
 
     isReplayPlaying(): boolean {
         return this.isPlaying;
+    }
+
+    private makeChildLabel(parent: Node, text: string, fontSize: number, color: Color): Label {
+        const n = new Node(`Item_${parent.children.length}`);
+        n.addComponent(UITransform).setContentSize(850, fontSize + 8);
+        const label = n.addComponent(Label);
+        label.string = text;
+        label.fontSize = fontSize;
+        label.lineHeight = fontSize + 4;
+        label.color = color;
+        label.overflow = Label.Overflow.CLAMP;
+        parent.addChild(n);
+        return label;
     }
 }
