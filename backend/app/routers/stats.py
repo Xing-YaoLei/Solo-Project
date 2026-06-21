@@ -17,6 +17,7 @@ def get_compensate_overview(
     end_date: Optional[str] = None,
     area: Optional[str] = None,
     handler: Optional[str] = None,
+    status: Optional[str] = None,
     db: Session = Depends(get_db)
 ):
     query = db.query(models.Appeal).join(models.Order, models.Appeal.order_id == models.Order.id)
@@ -31,6 +32,8 @@ def get_compensate_overview(
         )
     if handler:
         query = query.filter(models.Appeal.handler == handler)
+    if status:
+        query = query.filter(models.Appeal.status == status)
 
     appeals = query.all()
 
@@ -86,14 +89,19 @@ def get_compensate_by_area(
     start_date: Optional[str] = None,
     end_date: Optional[str] = None,
     handler: Optional[str] = None,
+    status: Optional[str] = None,
     db: Session = Depends(get_db)
 ):
     query = db.query(
         models.Order.pickup_area,
         func.count(models.Appeal.id).label('appeal_count'),
         func.sum(models.Appeal.compensate_amount).label('compensate_amount')
-    ).join(models.Order, models.Appeal.order_id == models.Order.id)\
-     .filter(models.Appeal.status == "resolved")
+    ).join(models.Order, models.Appeal.order_id == models.Order.id)
+
+    if status:
+        query = query.filter(models.Appeal.status == status)
+    else:
+        query = query.filter(models.Appeal.status == "resolved")
 
     if start_date:
         query = query.filter(models.Appeal.created_at >= datetime.fromisoformat(start_date))
@@ -123,14 +131,19 @@ def get_compensate_by_handler(
     start_date: Optional[str] = None,
     end_date: Optional[str] = None,
     area: Optional[str] = None,
+    status: Optional[str] = None,
     db: Session = Depends(get_db)
 ):
     query = db.query(
         models.Appeal.handler,
         func.count(models.Appeal.id).label('handle_count'),
         func.sum(models.Appeal.compensate_amount).label('compensate_amount')
-    ).join(models.Order, models.Appeal.order_id == models.Order.id)\
-     .filter(models.Appeal.status == "resolved")
+    ).join(models.Order, models.Appeal.order_id == models.Order.id)
+
+    if status:
+        query = query.filter(models.Appeal.status == status)
+    else:
+        query = query.filter(models.Appeal.status == "resolved")
 
     if start_date:
         query = query.filter(models.Appeal.handle_time >= datetime.fromisoformat(start_date))
@@ -163,6 +176,7 @@ def get_compensate_trend(
     days: int = 7,
     area: Optional[str] = None,
     handler: Optional[str] = None,
+    status: Optional[str] = None,
     db: Session = Depends(get_db)
 ):
     end_date = datetime.utcnow()
@@ -177,8 +191,12 @@ def get_compensate_trend(
 
         query = db.query(models.Appeal).join(models.Order, models.Appeal.order_id == models.Order.id)\
             .filter(models.Appeal.created_at >= day_start)\
-            .filter(models.Appeal.created_at < day_end)\
-            .filter(models.Appeal.status == "resolved")
+            .filter(models.Appeal.created_at < day_end)
+
+        if status:
+            query = query.filter(models.Appeal.status == status)
+        else:
+            query = query.filter(models.Appeal.status == "resolved")
 
         if area:
             query = query.filter(

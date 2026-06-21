@@ -316,9 +316,9 @@ def reject_order(reject_req: schemas.OrderRejectRequest, db: Session = Depends(g
         reject_reason=reject_req.reject_reason,
         reject_detail=reject_req.reject_detail,
         responsibility=responsibility,
-        is_reminded=True,
-        reminded_at=datetime.utcnow(),
-        handler=expected_handler
+        is_reminded=False,
+        reminded_at=None,
+        handler=None
     )
     db.add(reject_record)
     db.flush()
@@ -336,7 +336,7 @@ def reject_order(reject_req: schemas.OrderRejectRequest, db: Session = Depends(g
         operator_type="rider", operator_id=rider.id, operator_name=rider.name,
         reason=f"拒单: {reject_req.reject_reason.value}",
         remark=reject_req.reject_detail,
-        extra_data={"responsibility": responsibility, "handler": expected_handler, "reminded": True}
+        extra_data={"responsibility": responsibility, "handler": None, "reminded": False}
     )
 
     rider.reject_count += 1
@@ -344,18 +344,33 @@ def reject_order(reject_req: schemas.OrderRejectRequest, db: Session = Depends(g
     db.commit()
     db.refresh(reject_record)
 
+    celery_dispatched = False
     try:
         from ..celery.tasks import handle_order_reject
         handle_order_reject.delay(reject_record.id, order.id, responsibility)
+        celery_dispatched = True
     except Exception as e:
         import logging
-        logging.getLogger(__name__).warning(f"Celery拒单提醒任务发送失败(已同步写入): {e}")
+        logging.getLogger(__name__).warning(f"Celery拒单任务发送失败，降级同步分派处理组: {e}")
+        reject_record.handler = expected_handler
+        reject_record.is_reminded = True
+        reject_record.reminded_at = datetime.utcnow()
+        log = add_status_log(
+            db, order.id, models.OrderStatus.REJECTED.value, models.OrderStatus.REJECTED.value,
+            operator_type="system", operator_name="system",
+            reason="拒单提醒分派（降级同步）",
+            remark=f"责任方={responsibility}, 处理组={expected_handler}",
+            extra_data={"responsibility": responsibility, "handler": expected_handler, "reminded": True}
+        )
+        order.updated_at = datetime.utcnow()
+        db.commit()
 
     return success_response({
         "message": "拒单成功",
         "responsibility": responsibility,
-        "handler": expected_handler,
-        "is_reminded": True,
+        "handler": reject_record.handler,
+        "is_reminded": reject_record.is_reminded,
+        "celery_dispatched": celery_dispatched,
         "reject_record_id": reject_record.id
     })
 

@@ -1,12 +1,46 @@
 import sys
 import os
+from urllib.parse import urlparse
 
 sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
 from app.database import Base, engine, SessionLocal
 from app import models
+from app.config import get_settings
 from datetime import datetime, timedelta
 import random
+import psycopg
+
+
+def ensure_database():
+    settings = get_settings()
+    db_url = settings.database_url
+
+    parsed = urlparse(db_url.replace("postgresql+psycopg://", "postgresql://"))
+    user = parsed.username or "postgres"
+    password = parsed.password or ""
+    host = parsed.hostname or "localhost"
+    port = parsed.port or 5432
+    db_name = parsed.path.lstrip("/") or "errand_db"
+
+    admin_conn_str = f"host={host} port={port} user={user}"
+    if password:
+        admin_conn_str += f" password={password}"
+    admin_conn_str += " dbname=postgres"
+
+    conn = psycopg.connect(admin_conn_str, autocommit=True)
+    try:
+        cur = conn.cursor()
+        cur.execute("SELECT 1 FROM pg_database WHERE datname = %s", (db_name,))
+        exists = cur.fetchone()
+        if exists:
+            print(f"数据库 {db_name} 已存在，跳过创建")
+        else:
+            cur.execute(f'CREATE DATABASE "{db_name}"')
+            print(f"数据库 {db_name} 创建成功")
+        cur.close()
+    finally:
+        conn.close()
 
 
 def init_db():
@@ -163,5 +197,6 @@ def seed_data():
 
 
 if __name__ == "__main__":
+    ensure_database()
     init_db()
     seed_data()

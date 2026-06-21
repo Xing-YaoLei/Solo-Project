@@ -68,6 +68,9 @@ export default function Stats() {
       if (values.handler) {
         params.handler = values.handler
       }
+      if (values.status) {
+        params.status = values.status
+      }
       if (values.dateRange && values.dateRange.length === 2) {
         params.start_date = values.dateRange[0].format('YYYY-MM-DD')
         params.end_date = values.dateRange[1].format('YYYY-MM-DD')
@@ -76,6 +79,7 @@ export default function Stats() {
       const trendParams = { days: 7 }
       if (values.area) trendParams.area = values.area
       if (values.handler) trendParams.handler = values.handler
+      if (values.status) trendParams.status = values.status
 
       const [overviewRes, areaRes, handlerRes, trendRes] = await Promise.all([
         statsAPI.getCompensateOverview(params),
@@ -273,6 +277,14 @@ export default function Stats() {
                     {h}
                   </Option>
                 ))}
+              </Select>
+            </Form.Item>
+            <Form.Item name="status" label="状态">
+              <Select placeholder="全部状态" style={{ width: 140 }} allowClear>
+                <Option value="pending">待处理</Option>
+                <Option value="processing">处理中</Option>
+                <Option value="resolved">已解决</Option>
+                <Option value="rejected">已驳回</Option>
               </Select>
             </Form.Item>
             <Form.Item name="dateRange" label="日期范围">
