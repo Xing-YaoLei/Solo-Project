@@ -20,7 +20,7 @@ from app.dashboard import create_app
 server = create_app(os.environ.get('FLASK_ENV', 'default'))
 
 if __name__ == '__main__':
-    debug = os.environ.get('FLASK_DEBUG', '1') == '1'
+    debug = False
     port = int(os.environ.get('PORT', 8050))
     print("=" * 60)
     print("  法律服务案件委托风险监测平台")

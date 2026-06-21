@@ -323,10 +323,14 @@ class ExportService:
         if not df.empty:
             for col_idx in range(len(df.columns)):
                 ws.write(start_row, col_idx, df.columns[col_idx], header_fmt)
-                max_len = max(
-                    df[df.columns[col_idx]].astype(str).map(len).max() if len(df) > 0 else 0,
-                    len(str(df.columns[col_idx]))
-                )
+                try:
+                    col_vals = df[df.columns[col_idx]].fillna('').astype(str)
+                    max_len = max(
+                        col_vals.str.len().max() if len(df) > 0 else 0,
+                        len(str(df.columns[col_idx]))
+                    )
+                except Exception:
+                    max_len = len(str(df.columns[col_idx]))
                 ws.set_column(col_idx, col_idx, min(max_len + 2, 50))
 
         ws.freeze_panes(start_row + 1, 0)

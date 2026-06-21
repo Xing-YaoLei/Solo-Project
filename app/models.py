@@ -2,9 +2,43 @@ from datetime import datetime
 from flask_sqlalchemy import SQLAlchemy
 from werkzeug.security import generate_password_hash, check_password_hash
 from flask_login import UserMixin
+from sqlalchemy import TypeDecorator, String
+from sqlalchemy.dialects import postgresql
+import json
 import uuid
 
 db = SQLAlchemy()
+
+
+class ArrayType(TypeDecorator):
+    impl = String
+    cache_ok = True
+
+    def __init__(self, item_type, **kwargs):
+        self.item_type = item_type
+        super().__init__(**kwargs)
+
+    def load_dialect_impl(self, dialect):
+        if dialect.name == 'postgresql':
+            return dialect.type_descriptor(postgresql.ARRAY(self.item_type))
+        return dialect.type_descriptor(String())
+
+    def process_bind_param(self, value, dialect):
+        if dialect.name == 'postgresql':
+            return value
+        if value is None:
+            return None
+        return json.dumps(value)
+
+    def process_result_value(self, value, dialect):
+        if dialect.name == 'postgresql':
+            return value
+        if value is None:
+            return None
+        try:
+            return json.loads(value)
+        except (json.JSONDecodeError, TypeError):
+            return []
 
 
 class User(UserMixin, db.Model):
@@ -107,7 +141,7 @@ class Case(db.Model):
     client_id = db.Column(db.String(36), db.ForeignKey('clients.id'), nullable=False, index=True)
     opposing_party = db.Column(db.String(200))
     responsible_lawyer_id = db.Column(db.String(36), db.ForeignKey('users.id'), index=True)
-    assistant_lawyer_ids = db.Column(db.ARRAY(db.String(36)))
+    assistant_lawyer_ids = db.Column(ArrayType(db.String(36)))
     entrusted_at = db.Column(db.DateTime, index=True)
     accepted_at = db.Column(db.DateTime, index=True)
     filed_at = db.Column(db.DateTime, index=True)
@@ -265,13 +299,13 @@ class Hearing(db.Model):
     actual_ended_at = db.Column(db.DateTime)
     court_room = db.Column(db.String(100))
     presiding_judge = db.Column(db.String(100))
-    judge_panel = db.Column(db.ARRAY(db.String(100)))
-    clerk = db.Column(db.String(100))
-    attending_lawyers = db.Column(db.ARRAY(db.String(36)))
+    judge_panel = db.Column(ArrayType(db.String(100)))
+    courtroom = db.Column(db.String(100))
+    attending_lawyers = db.Column(ArrayType(db.String(36)))
     location = db.Column(db.String(300))
     online_link = db.Column(db.String(500))
     status = db.Column(db.String(20), nullable=False, default='已排期')
-    anomalies = db.Column(db.ARRAY(db.String(100)))
+    anomalies = db.Column(ArrayType(db.String(100)))
     preparation_status = db.Column(db.String(20), default='未开始')
     checklist = db.Column(db.JSON)
     notes = db.Column(db.Text)
@@ -298,7 +332,6 @@ class Hearing(db.Model):
             'court_room': self.court_room,
             'presiding_judge': self.presiding_judge,
             'judge_panel': self.judge_panel,
-            'clerk': self.clerk,
             'attending_lawyers': self.attending_lawyers,
             'location': self.location,
             'online_link': self.online_link,
@@ -389,8 +422,8 @@ class Email(db.Model):
     subject = db.Column(db.String(500))
     sender = db.Column(db.String(200))
     sender_name = db.Column(db.String(200))
-    recipients = db.Column(db.ARRAY(db.String(200)))
-    cc_recipients = db.Column(db.ARRAY(db.String(200)))
+    recipients = db.Column(ArrayType(db.String(200)))
+    cc_recipients = db.Column(ArrayType(db.String(200)))
     sent_at = db.Column(db.DateTime, index=True)
     received_at = db.Column(db.DateTime, default=datetime.utcnow, index=True)
     body_text = db.Column(db.Text)
@@ -401,7 +434,7 @@ class Email(db.Model):
     client_id = db.Column(db.String(36), db.ForeignKey('clients.id'), index=True)
     auto_classified = db.Column(db.Boolean, default=False)
     classification_confidence = db.Column(db.Float)
-    labels = db.Column(db.ARRAY(db.String(50)))
+    labels = db.Column(ArrayType(db.String(50)))
     processed = db.Column(db.Boolean, default=False)
     processed_at = db.Column(db.DateTime)
     created_at = db.Column(db.DateTime, default=datetime.utcnow)

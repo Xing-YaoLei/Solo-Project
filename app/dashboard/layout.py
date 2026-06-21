@@ -6,7 +6,7 @@ from typing import Dict, Any, Optional, Tuple
 import logging
 
 import dash
-from dash import dcc, html, Input, Output, State, CallbackContext, ALL
+from dash import dcc, html, Input, Output, State, ALL
 import dash_bootstrap_components as dbc
 import pandas as pd
 import numpy as np
@@ -228,7 +228,7 @@ def _ensure_demo_data():
                     scheduled_at=now + timedelta(days=3, hours=9),
                     scheduled_end_at=now + timedelta(days=3, hours=11, minutes=30),
                     court_room='海淀法院第12法庭', presiding_judge='张法官',
-                    judge_panel=['张法官', '陪审员A', '陪审员B'], clerk='书记员小王',
+                    judge_panel=['张法官', '陪审员A', '陪审员B'],
                     attending_lawyers=[lawyer_id], location='北京市海淀区人民法院',
                     status='正常', anomalies=[], preparation_status='进行中',
                     checklist={'证据目录': True, '质证意见': False, '出庭函': True}),
@@ -236,7 +236,7 @@ def _ensure_demo_data():
                     scheduled_at=now + timedelta(days=1, hours=14),
                     scheduled_end_at=now + timedelta(days=1, hours=17),
                     court_room='浦东法院第3法庭', presiding_judge='王法官',
-                    judge_panel=['王法官', '李法官', '赵法官'], clerk='书记员小郑',
+                    judge_panel=['王法官', '李法官', '赵法官'],
                     attending_lawyers=[partner_id, lawyer_id], location='上海市浦东新区人民法院',
                     status='正常', anomalies=[], preparation_status='进行中',
                     checklist={'证据原件': True, '代理词': False, '质证意见': True}),
@@ -251,7 +251,7 @@ def _ensure_demo_data():
                     scheduled_at=now + timedelta(days=10, hours=9, minutes=30),
                     scheduled_end_at=now + timedelta(days=10, hours=12),
                     court_room='最高院知产庭第四法庭', presiding_judge='刘法官',
-                    judge_panel=['刘法官', '周法官', '吴法官'], clerk='书记员小何',
+                    judge_panel=['刘法官', '周法官', '吴法官'],
                     attending_lawyers=[partner_id], location='最高人民法院知识产权法庭',
                     status='正常', anomalies=[], preparation_status='未开始',
                     checklist={'上诉状': True, '新证据': False, '庭审大纲': False}),

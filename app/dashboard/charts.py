@@ -139,7 +139,25 @@ class CaseStageChart:
         valid_stages = [s for s in CaseStageChart.STAGE_ORDER if s in df['阶段'].values]
         filtered = df[df['阶段'].isin(valid_stages)].copy()
 
+        has_finance = '平均金额' in filtered.columns
         bar_colors = [STAGE_COLORS.get(s, COLOR_PALETTE['accent']) for s in filtered['阶段']]
+
+        if has_finance:
+            hover_template = (
+                '<b>%{x}</b><br>'
+                '案件数: %{y} 件<br>'
+                '占比: %{customdata[0]}%<br>'
+                '平均标的: ¥%{customdata[1]:,.0f}<extra></extra>'
+            )
+            custom_data = filtered[['占比', '平均金额']].values
+        else:
+            hover_template = (
+                '<b>%{x}</b><br>'
+                '案件数: %{y} 件<br>'
+                '占比: %{customdata}%<extra></extra>'
+            )
+            custom_data = filtered['占比'].values
+
         fig.add_trace(
             go.Bar(
                 x=filtered['阶段'],
@@ -148,13 +166,8 @@ class CaseStageChart:
                 text=filtered['数量'],
                 textposition='outside',
                 texttemplate='%{text} 件',
-                hovertemplate=(
-                    '<b>%{x}</b><br>'
-                    '案件数: %{y} 件<br>'
-                    '占比: %{customdata[0]}%<br>'
-                    '平均标的: ¥%{customdata[1]:,.0f}<extra></extra>'
-                ),
-                customdata=filtered[['占比', '平均金额']].values
+                hovertemplate=hover_template,
+                customdata=custom_data
             ),
             row=1, col=1
         )

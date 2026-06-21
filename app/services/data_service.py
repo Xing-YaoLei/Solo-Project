@@ -19,6 +19,11 @@ class QueryService:
         perms = config['ROLE_PERMISSIONS'].get(role, {})
         scope = perms.get('scope', 'assigned')
 
+        is_virtual = hasattr(user, '_share_context')
+
+        if is_virtual and scope in ('assigned', 'team', 'department'):
+            return query
+
         if scope in ('all', 'all_readonly'):
             return query
 
@@ -33,6 +38,17 @@ class QueryService:
                 client_ids = Case.query.filter(Case.responsible_lawyer_id.in_(dept_ids)).with_entities(Case.client_id).all()
                 cids = [c[0] for c in client_ids]
                 return query.filter(Client.id.in_(cids))
+            elif model in (Evidence, Hearing, PaymentTransaction):
+                dept_lawyers = User.query.filter_by(department=user.department).with_entities(User.id).all()
+                dept_ids = [u.id for u in dept_lawyers]
+                case_ids = Case.query.filter(Case.responsible_lawyer_id.in_(dept_ids)).with_entities(Case.id).all()
+                cids = [c[0] for c in case_ids]
+                if model == Evidence:
+                    return query.filter(Evidence.case_id.in_(cids))
+                elif model == Hearing:
+                    return query.filter(Hearing.case_id.in_(cids))
+                elif model == PaymentTransaction:
+                    return query.filter(PaymentTransaction.case_id.in_(cids))
             else:
                 return query
 
@@ -53,6 +69,20 @@ class QueryService:
                 ).with_entities(Case.client_id).all()
                 cids = [c[0] for c in case_client_ids]
                 return query.filter(Client.id.in_(cids))
+            elif model in (Evidence, Hearing, PaymentTransaction):
+                case_q = Case.query.filter(
+                    or_(
+                        Case.responsible_lawyer_id == user.id,
+                        Case.assistant_lawyer_ids.any(user.id)
+                    )
+                ).with_entities(Case.id)
+                case_ids = [c[0] for c in case_q.all()]
+                if model == Evidence:
+                    return query.filter(Evidence.case_id.in_(case_ids))
+                elif model == Hearing:
+                    return query.filter(Hearing.case_id.in_(case_ids))
+                elif model == PaymentTransaction:
+                    return query.filter(PaymentTransaction.case_id.in_(case_ids))
             else:
                 return query
 
@@ -81,7 +111,54 @@ class QueryService:
                 return query
 
         elif scope == 'own_cases':
-            if model == Case:
+            if is_virtual:
+                share_ctx = getattr(user, '_share_context', {})
+                filters = share_ctx.get('filters', {})
+                v_client_ids = filters.get('client_id', [])
+                v_case_ids = filters.get('case_id', [])
+
+                if model == Case:
+                    if v_client_ids:
+                        return query.filter(Case.client_id.in_(v_client_ids))
+                    elif v_case_ids:
+                        return query.filter(Case.id.in_(v_case_ids))
+                    else:
+                        return query.filter(False)
+                elif model == Client:
+                    if v_client_ids:
+                        return query.filter(Client.id.in_(v_client_ids))
+                    else:
+                        return query.filter(False)
+                elif model == Evidence:
+                    case_q = Case.query
+                    if v_client_ids:
+                        case_q = case_q.filter(Case.client_id.in_(v_client_ids))
+                    elif v_case_ids:
+                        case_q = case_q.filter(Case.id.in_(v_case_ids))
+                    else:
+                        return query.filter(False)
+                    cids = [c.id for c in case_q.with_entities(Case.id).all()]
+                    return query.filter(Evidence.case_id.in_(cids))
+                elif model == Hearing:
+                    case_q = Case.query
+                    if v_client_ids:
+                        case_q = case_q.filter(Case.client_id.in_(v_client_ids))
+                    elif v_case_ids:
+                        case_q = case_q.filter(Case.id.in_(v_case_ids))
+                    else:
+                        return query.filter(False)
+                    cids = [c.id for c in case_q.with_entities(Case.id).all()]
+                    return query.filter(Hearing.case_id.in_(cids))
+                elif model == PaymentTransaction:
+                    if v_client_ids:
+                        return query.filter(PaymentTransaction.client_id.in_(v_client_ids))
+                    elif v_case_ids:
+                        return query.filter(PaymentTransaction.case_id.in_(v_case_ids))
+                    else:
+                        return query.filter(False)
+                else:
+                    return query
+            elif model == Case:
                 return query.filter(Case.client_id == user.id)
             elif model == Client:
                 return query.filter(Client.id == user.id)
@@ -167,12 +244,15 @@ class TrendService:
     @staticmethod
     def get_case_stage_distribution(cases_df: pd.DataFrame) -> pd.DataFrame:
         if cases_df.empty:
-            return pd.DataFrame(columns=['阶段', '数量', '占比', '平均金额'])
+            return pd.DataFrame(columns=['阶段', '数量', '占比'])
         df = cases_df.copy()
-        dist = df.groupby('current_stage').agg(
-            数量=('id', 'count'),
-            平均金额=('claim_amount', 'mean')
-        ).reindex(TrendService.STAGE_ORDER).fillna(0)
+
+        has_finance = 'claim_amount' in df.columns
+        agg_dict = {'数量': ('id', 'count')}
+        if has_finance:
+            agg_dict['平均金额'] = ('claim_amount', 'mean')
+
+        dist = df.groupby('current_stage').agg(**agg_dict).reindex(TrendService.STAGE_ORDER).fillna(0)
         dist = dist.reset_index().rename(columns={'current_stage': '阶段'})
         total = dist['数量'].sum()
         dist['占比'] = (dist['数量'] / total * 100).round(1) if total > 0 else 0
@@ -261,14 +341,23 @@ class FinanceService:
         if payments_df.empty:
             return pd.DataFrame()
         df = payments_df.copy()
-        summary = df.groupby('case_id').agg(
-            合同总额=('contract_amount', 'sum'),
-            应收总额=('scheduled_amount', 'sum'),
-            实收总额=('actual_amount', 'sum'),
-            笔数=('id', 'count')
-        ).reset_index()
-        summary['回款率'] = (summary['实收总额'] / summary['应收总额'] * 100).round(1).where(summary['应收总额'] > 0, 0)
-        summary['差额'] = summary['应收总额'] - summary['实收总额']
+
+        has_finance = all(col in df.columns for col in ['contract_amount', 'scheduled_amount', 'actual_amount'])
+
+        if has_finance:
+            summary = df.groupby('case_id').agg(
+                合同总额=('contract_amount', 'sum'),
+                应收总额=('scheduled_amount', 'sum'),
+                实收总额=('actual_amount', 'sum'),
+                笔数=('id', 'count')
+            ).reset_index()
+            summary['回款率'] = (summary['实收总额'] / summary['应收总额'] * 100).round(1).where(summary['应收总额'] > 0, 0)
+            summary['差额'] = summary['应收总额'] - summary['实收总额']
+        else:
+            summary = df.groupby('case_id').agg(
+                笔数=('id', 'count')
+            ).reset_index()
+
         if not cases_df.empty:
             case_info = cases_df[['id', 'case_number', 'case_name', 'client_name', 'current_stage']]
             case_info = case_info.rename(columns={'id': 'case_id'})
