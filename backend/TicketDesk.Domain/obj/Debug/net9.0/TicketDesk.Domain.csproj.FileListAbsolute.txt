@@ -1,0 +1,12 @@
+/Users/yaoleyxing/Developer/solo-mange-pro/MP0402/backend/TicketDesk.Domain/bin/Debug/net9.0/TicketDesk.Domain.deps.json
+/Users/yaoleyxing/Developer/solo-mange-pro/MP0402/backend/TicketDesk.Domain/bin/Debug/net9.0/TicketDesk.Domain.dll
+/Users/yaoleyxing/Developer/solo-mange-pro/MP0402/backend/TicketDesk.Domain/bin/Debug/net9.0/TicketDesk.Domain.pdb
+/Users/yaoleyxing/Developer/solo-mange-pro/MP0402/backend/TicketDesk.Domain/obj/Debug/net9.0/TicketDesk.Domain.GeneratedMSBuildEditorConfig.editorconfig
+/Users/yaoleyxing/Developer/solo-mange-pro/MP0402/backend/TicketDesk.Domain/obj/Debug/net9.0/TicketDesk.Domain.AssemblyInfoInputs.cache
+/Users/yaoleyxing/Developer/solo-mange-pro/MP0402/backend/TicketDesk.Domain/obj/Debug/net9.0/TicketDesk.Domain.AssemblyInfo.cs
+/Users/yaoleyxing/Developer/solo-mange-pro/MP0402/backend/TicketDesk.Domain/obj/Debug/net9.0/TicketDesk.Domain.csproj.CoreCompileInputs.cache
+/Users/yaoleyxing/Developer/solo-mange-pro/MP0402/backend/TicketDesk.Domain/obj/Debug/net9.0/TicketDesk.Domain.sourcelink.json
+/Users/yaoleyxing/Developer/solo-mange-pro/MP0402/backend/TicketDesk.Domain/obj/Debug/net9.0/TicketDesk.Domain.dll
+/Users/yaoleyxing/Developer/solo-mange-pro/MP0402/backend/TicketDesk.Domain/obj/Debug/net9.0/refint/TicketDesk.Domain.dll
+/Users/yaoleyxing/Developer/solo-mange-pro/MP0402/backend/TicketDesk.Domain/obj/Debug/net9.0/TicketDesk.Domain.pdb
+/Users/yaoleyxing/Developer/solo-mange-pro/MP0402/backend/TicketDesk.Domain/obj/Debug/net9.0/ref/TicketDesk.Domain.dll
