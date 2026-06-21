@@ -1,4 +1,4 @@
-import React, { useEffect, useMemo, useRef } from 'react';
+import { useEffect, useMemo, useRef, ComponentRef } from 'react';
 import { useThree, useFrame } from '@react-three/fiber';
 import { OrbitControls, Stars, ContactShadows } from '@react-three/drei';
 import { Physics } from '@react-three/rapier';
@@ -76,13 +76,11 @@ function SceneLighting({ children }: { children: React.ReactNode }) {
   );
 }
 
-interface CameraControlsHandle {
-  target: THREE.Vector3;
-}
+type OrbitControlsHandle = ComponentRef<typeof OrbitControls>;
 
 function CameraController({ targetOrder }: { targetOrder?: SceneOrder | null }) {
   const { camera } = useThree();
-  const controlsRef = useRef<CameraControlsHandle | null>(null);
+  const controlsRef = useRef<OrbitControlsHandle>(null);
   const targetPos = useRef(new THREE.Vector3(0, 14, 18));
   const lookAt = useRef(new THREE.Vector3(0, 0, 0));
 
@@ -107,8 +105,7 @@ function CameraController({ targetOrder }: { targetOrder?: SceneOrder | null }) 
 
   return (
     <OrbitControls
-      // eslint-disable-next-line @typescript-eslint/no-explicit-any
-      ref={controlsRef as unknown as any}
+      ref={controlsRef}
       enablePan
       enableZoom
       enableRotate
