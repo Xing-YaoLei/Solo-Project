@@ -9,14 +9,17 @@ import {
 } from '@nestjs/common';
 import { AuthGuard } from '@nestjs/passport';
 import { ConflictCheckService } from './conflict-check.service';
-import { CreateConflictCheckDto, ArchiveConflictCheckDto } from './dto/conflict-check.dto';
+import {
+  CreateConflictCheckDto,
+  ArchiveConflictCheckDto,
+} from './dto/conflict-check.dto';
 
-@Controller('cases/:caseId/conflict-checks')
-@UseGuards(AuthGuard('jwt'))
+@Controller()
 export class ConflictCheckController {
   constructor(private conflictCheckService: ConflictCheckService) {}
 
-  @Post()
+  @Post('cases/:caseId/conflict-checks')
+  @UseGuards(AuthGuard('jwt'))
   create(
     @Param('caseId') caseId: string,
     @Req() req: any,
@@ -25,12 +28,14 @@ export class ConflictCheckController {
     return this.conflictCheckService.performCheck(caseId, req.user.userId);
   }
 
-  @Get()
+  @Get('cases/:caseId/conflict-checks')
+  @UseGuards(AuthGuard('jwt'))
   findAll(@Param('caseId') caseId: string) {
     return this.conflictCheckService.findAll(caseId);
   }
 
-  @Post(':id/archive')
+  @Post('conflict-checks/:id/archive')
+  @UseGuards(AuthGuard('jwt'))
   archive(
     @Param('id') id: string,
     @Body() dto: ArchiveConflictCheckDto,

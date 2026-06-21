@@ -8,6 +8,7 @@ import { MaterialsModule } from './materials/materials.module';
 import { ConflictCheckModule } from './conflict-check/conflict-check.module';
 import { TimelineModule } from './timeline/timeline.module';
 import { ReportsModule } from './reports/reports.module';
+import { InvoicesModule } from './invoices/invoices.module';
 
 @Module({
   imports: [
@@ -20,6 +21,7 @@ import { ReportsModule } from './reports/reports.module';
     ConflictCheckModule,
     TimelineModule,
     ReportsModule,
+    InvoicesModule,
   ],
 })
 export class AppModule {}

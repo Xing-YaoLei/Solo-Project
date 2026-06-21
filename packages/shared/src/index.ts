@@ -159,6 +159,7 @@ export interface LawyerSupplementDTO {
 }
 
 export interface ConflictCheckResultDTO {
+  id: string;
   caseId: string;
   checkedBy: string;
   hasConflict: boolean;
@@ -166,9 +167,11 @@ export interface ConflictCheckResultDTO {
   conflictingCaseIds?: string[];
   checkedAt: string;
   archivedAt?: string;
+  archivePath?: string;
 }
 
 export interface TimelineEventDTO {
+  id?: string;
   caseId: string;
   eventType: TimelineEventType;
   title: string;

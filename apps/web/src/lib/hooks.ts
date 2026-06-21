@@ -9,6 +9,7 @@ import type {
   MonthlyReportDTO,
   CaseStatus,
   CaseType,
+  PaymentStatus,
 } from '@legal/shared';
 
 interface UseQueryResult<T> {
@@ -18,7 +19,11 @@ interface UseQueryResult<T> {
   refetch: () => void;
 }
 
-function useQuery<T>(url: string | null, params?: Record<string, unknown>): UseQueryResult<T> {
+function useQuery<T>(
+  url: string | null,
+  params?: Record<string, unknown>,
+  opts: { skipNull?: boolean } = {},
+): UseQueryResult<T> {
   const [data, setData] = useState<T | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -33,7 +38,13 @@ function useQuery<T>(url: string | null, params?: Record<string, unknown>): UseQ
     api
       .get(url, { params })
       .then((res) => setData(res.data))
-      .catch((err) => setError(err.response?.data?.message || err.message))
+      .catch((err) => {
+        if (opts.skipNull && err.response?.status === 401) {
+          setData(null as T);
+          return;
+        }
+        setError(err.response?.data?.message || err.message);
+      })
       .finally(() => setLoading(false));
   }, [url, JSON.stringify(params)]);
 
@@ -51,17 +62,29 @@ export function useCases(filters?: {
   page?: number;
   limit?: number;
 }) {
-  return useQuery<{ items: CaseListItemDTO[]; total: number }>('/cases', filters as Record<string, unknown>);
+  return useQuery<{ items: CaseListItemDTO[]; total: number; page: number; limit: number; totalPages: number }>(
+    '/cases',
+    filters as Record<string, unknown>,
+    { skipNull: true },
+  );
 }
 
 export function useCaseDetail(id: string | null) {
-  return useQuery<CaseDetailDTO>(id ? `/cases/${id}` : null);
+  return useQuery<CaseDetailDTO>(id ? `/cases/${id}` : null, undefined, { skipNull: true });
 }
 
 export function useTimeline(caseId: string | null) {
-  return useQuery<TimelineEventDTO[]>(caseId ? `/cases/${caseId}/timeline` : null);
+  return useQuery<TimelineEventDTO[]>(
+    caseId ? `/cases/${caseId}/timeline` : null,
+    undefined,
+    { skipNull: true },
+  );
 }
 
-export function useMonthlyReport(year: number, month: number) {
-  return useQuery<MonthlyReportDTO>('/reports/monthly', { year, month });
+export function useMonthlyReport(year: number, month: number, opts?: { lawyerId?: string; caseType?: CaseType; paymentStatus?: PaymentStatus }) {
+  return useQuery<MonthlyReportDTO>(
+    '/reports/monthly',
+    { year, month, ...(opts || {}) },
+    { skipNull: true },
+  );
 }

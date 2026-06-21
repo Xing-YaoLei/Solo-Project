@@ -1,8 +1,15 @@
 import { Injectable, NotFoundException } from '@nestjs/common';
 import { PrismaService } from '../prisma/prisma.service';
 import { TimelineService } from '../timeline/timeline.service';
-import { CreateMaterialDto, UpdateMaterialDto, ResubmitMaterialDto } from './dto/materials.dto';
-import { TimelineEventType, MaterialStatus } from '@legal/shared';
+import {
+  CreateMaterialDto,
+  UpdateMaterialDto,
+  ResubmitMaterialDto,
+} from './dto/materials.dto';
+import {
+  TimelineEventType,
+  MaterialStatus,
+} from '@legal/shared';
 
 @Injectable()
 export class MaterialsService {
@@ -12,7 +19,9 @@ export class MaterialsService {
   ) {}
 
   async create(caseId: string, userId: string, dto: CreateMaterialDto) {
-    const caseData = await this.prisma.case.findUnique({ where: { id: caseId } });
+    const caseData = await this.prisma.case.findUnique({
+      where: { id: caseId },
+    });
     if (!caseData) {
       throw new NotFoundException(`Case ${caseId} not found`);
     }
@@ -31,51 +40,143 @@ export class MaterialsService {
       },
     });
 
-    const operator = await this.prisma.user.findUnique({ where: { id: userId } });
+    const operator = await this.prisma.user.findUnique({
+      where: { id: userId },
+    });
 
     await this.timelineService.addEvent({
       caseId,
       eventType: TimelineEventType.MATERIAL_UPLOADED,
       title: '材料上传',
-      content: `上传材料: ${dto.name}`,
+      content: `上传材料: ${dto.name}${dto.pageTotal ? ` (共${dto.pageTotal}页)` : ''}`,
       operatorId: userId,
       operatorName: operator?.name || '',
     });
 
-    return material;
+    return this.toDTO(material);
+  }
+
+  private toDTO(m: any) {
+    return {
+      id: m.id,
+      name: m.name,
+      type: m.materialType,
+      status: m.status,
+      fileUrl: m.fileUrl,
+      fileSize: m.fileSize,
+      pageTotal: m.pageTotal,
+      missingPages: m.missingPages || [],
+      version: m.version,
+      uploadedAt: m.createdAt.toISOString(),
+      reviewedAt: m.reviewedAt ? m.reviewedAt.toISOString() : undefined,
+      reviewNote: m.reviewNote,
+    };
   }
 
   async findAll(caseId: string) {
-    const caseData = await this.prisma.case.findUnique({ where: { id: caseId } });
+    const caseData = await this.prisma.case.findUnique({
+      where: { id: caseId },
+    });
     if (!caseData) {
       throw new NotFoundException(`Case ${caseId} not found`);
     }
 
-    return this.prisma.caseMaterial.findMany({
+    const list = await this.prisma.caseMaterial.findMany({
       where: { caseId },
       orderBy: { createdAt: 'desc' },
     });
+    return list.map((m) => this.toDTO(m));
+  }
+
+  async approve(id: string, userId: string, note?: string) {
+    const material = await this.prisma.caseMaterial.findUnique({
+      where: { id },
+    });
+    if (!material) {
+      throw new NotFoundException(`Material ${id} not found`);
+    }
+    const updated = await this.prisma.caseMaterial.update({
+      where: { id },
+      data: {
+        status: MaterialStatus.APPROVED,
+        reviewedAt: new Date(),
+        reviewNote: note || material.reviewNote || '材料审核通过',
+      },
+    });
+    const operator = await this.prisma.user.findUnique({
+      where: { id: userId },
+    });
+    await this.timelineService.addEvent({
+      caseId: updated.caseId,
+      eventType: TimelineEventType.COMMUNICATION,
+      title: '材料审核通过',
+      content: `材料「${material.name}」审核通过${note ? `：${note}` : ''}`,
+      operatorId: userId,
+      operatorName: operator?.name || '',
+    });
+    return this.toDTO(updated);
+  }
+
+  async reject(id: string, userId: string, note?: string) {
+    const material = await this.prisma.caseMaterial.findUnique({
+      where: { id },
+    });
+    if (!material) {
+      throw new NotFoundException(`Material ${id} not found`);
+    }
+    const updated = await this.prisma.caseMaterial.update({
+      where: { id },
+      data: {
+        status: MaterialStatus.REJECTED,
+        reviewedAt: new Date(),
+        reviewNote: note || '材料不符合要求',
+      },
+    });
+    const operator = await this.prisma.user.findUnique({
+      where: { id: userId },
+    });
+    await this.timelineService.addEvent({
+      caseId: updated.caseId,
+      eventType: TimelineEventType.MATERIAL_INCOMPLETE_NOTICE,
+      title: '材料审核驳回',
+      content: `材料「${material.name}」被驳回${note ? `：${note}` : '：需重新提交'}`,
+      operatorId: userId,
+      operatorName: operator?.name || '',
+    });
+    return this.toDTO(updated);
   }
 
   async update(id: string, userId: string, dto: UpdateMaterialDto) {
-    const material = await this.prisma.caseMaterial.findUnique({ where: { id } });
+    const material = await this.prisma.caseMaterial.findUnique({
+      where: { id },
+    });
     if (!material) {
       throw new NotFoundException(`Material ${id} not found`);
     }
 
     const updateData: Record<string, unknown> = { ...dto };
-    if (dto.status === MaterialStatus.APPROVED || dto.status === MaterialStatus.REJECTED) {
+    if (
+      dto.status === MaterialStatus.APPROVED ||
+      dto.status === MaterialStatus.REJECTED
+    ) {
       updateData.reviewedAt = new Date();
     }
 
-    return this.prisma.caseMaterial.update({
+    const updated = await this.prisma.caseMaterial.update({
       where: { id },
       data: updateData,
     });
+    return this.toDTO(updated);
   }
 
-  async resubmit(id: string, userId: string, dto: ResubmitMaterialDto) {
-    const material = await this.prisma.caseMaterial.findUnique({ where: { id } });
+  async resubmit(
+    id: string,
+    userId: string,
+    dto: ResubmitMaterialDto,
+  ) {
+    const material = await this.prisma.caseMaterial.findUnique({
+      where: { id },
+    });
     if (!material) {
       throw new NotFoundException(`Material ${id} not found`);
     }
@@ -91,17 +192,20 @@ export class MaterialsService {
       },
     });
 
-    const operator = await this.prisma.user.findUnique({ where: { id: userId } });
+    const operator = await this.prisma.user.findUnique({
+      where: { id: userId },
+    });
 
     await this.timelineService.addEvent({
       caseId: material.caseId,
       eventType: TimelineEventType.MATERIAL_RESUBMITTED,
       title: '材料重新提交',
-      content: `材料「${material.name}」重新提交，版本: ${resubmitted.version}`,
+      content: `材料「${material.name}」重新提交，新版本: v${resubmitted.version}`,
       operatorId: userId,
       operatorName: operator?.name || '',
+      metadata: { version: resubmitted.version, oldVersion: material.version },
     });
 
-    return resubmitted;
+    return this.toDTO(resubmitted);
   }
 }

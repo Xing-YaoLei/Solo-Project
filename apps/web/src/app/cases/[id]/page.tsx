@@ -9,6 +9,7 @@ import {
   FeeType,
   MaterialType,
   MaterialStatus,
+  PaymentStatus,
 } from '@legal/shared';
 import type {
   CaseDetailDTO,
@@ -78,6 +79,14 @@ const materialStatusConfig: Record<MaterialStatus, { label: string; className: s
   [MaterialStatus.RESUBMITTED]: { label: '已重新提交', className: 'bg-purple-100 text-purple-700' },
 };
 
+const paymentStatusConfig: Record<PaymentStatus, { label: string; className: string }> = {
+  [PaymentStatus.UNPAID]: { label: '未付款', className: 'bg-slate-100 text-slate-700' },
+  [PaymentStatus.PARTIAL]: { label: '部分付款', className: 'bg-amber-100 text-amber-700' },
+  [PaymentStatus.PAID]: { label: '已付款', className: 'bg-green-100 text-green-700' },
+  [PaymentStatus.OVERDUE]: { label: '逾期', className: 'bg-red-100 text-red-700' },
+  [PaymentStatus.REFUNDED]: { label: '已退款', className: 'bg-gray-100 text-gray-600' },
+};
+
 const tabs = [
   { id: 'overview', label: '案件概览' },
   { id: 'materials', label: '材料清单' },
@@ -91,6 +100,12 @@ export default function CaseDetailPage() {
   const id = params.id as string;
   const { data: caseDetail, loading, refetch } = useCaseDetail(id);
   const [activeTab, setActiveTab] = useState('overview');
+  const [actionMsg, setActionMsg] = useState('');
+
+  const showMsg = (msg: string) => {
+    setActionMsg(msg);
+    setTimeout(() => setActionMsg(''), 3000);
+  };
 
   if (loading) {
     return (
@@ -103,8 +118,11 @@ export default function CaseDetailPage() {
   if (!caseDetail) {
     return (
       <div className="p-6 flex flex-col items-center justify-center min-h-[60vh]">
-        <p className="text-slate-400 mb-4">案件不存在</p>
-        <Link href="/cases" className="text-blue-600 hover:text-blue-700 text-sm font-medium">
+        <p className="text-slate-400 mb-4">案件不存在或需要登录后查看</p>
+        <Link href="/login" className="text-blue-600 hover:text-blue-700 text-sm font-medium mr-4">
+          去登录
+        </Link>
+        <Link href="/cases" className="text-slate-500 hover:text-slate-700 text-sm font-medium">
           返回案件列表
         </Link>
       </div>
@@ -120,9 +138,16 @@ export default function CaseDetailPage() {
           </svg>
         </Link>
         <div className="flex-1">
-          <div className="flex items-center gap-3">
+          <div className="flex items-center gap-3 flex-wrap">
             <h1 className="text-2xl font-bold text-slate-800">{caseDetail.title}</h1>
             <StatusBadge status={caseDetail.status} size="md" />
+            <span
+              className={`inline-flex items-center px-2.5 py-1 rounded-full text-xs font-medium ${
+                paymentStatusConfig[caseDetail.paymentStatus]?.className || 'bg-gray-100 text-gray-600'
+              }`}
+            >
+              {paymentStatusConfig[caseDetail.paymentStatus]?.label || caseDetail.paymentStatus}
+            </span>
           </div>
           <p className="text-sm text-slate-500 mt-1">
             编号: {caseDetail.id.slice(0, 8).toUpperCase()} · 创建于{' '}
@@ -131,13 +156,19 @@ export default function CaseDetailPage() {
         </div>
       </div>
 
+      {actionMsg && (
+        <div className="bg-green-50 border border-green-200 text-green-700 px-4 py-2.5 rounded-lg text-sm">
+          {actionMsg}
+        </div>
+      )}
+
       <div className="border-b border-slate-200">
-        <nav className="flex gap-0">
+        <nav className="flex gap-0 overflow-x-auto">
           {tabs.map((tab) => (
             <button
               key={tab.id}
               onClick={() => setActiveTab(tab.id)}
-              className={`px-5 py-3 text-sm font-medium border-b-2 transition-colors ${
+              className={`px-5 py-3 text-sm font-medium border-b-2 transition-colors whitespace-nowrap ${
                 activeTab === tab.id
                   ? 'border-blue-600 text-blue-600'
                   : 'border-transparent text-slate-500 hover:text-slate-700 hover:border-slate-300'
@@ -149,11 +180,11 @@ export default function CaseDetailPage() {
         </nav>
       </div>
 
-      {activeTab === 'overview' && <OverviewTab detail={caseDetail} />}
-      {activeTab === 'materials' && <MaterialsTab detail={caseDetail} onRefetch={refetch} />}
-      {activeTab === 'review' && <ReviewTab detail={caseDetail} onRefetch={refetch} />}
+      {activeTab === 'overview' && <OverviewTab detail={caseDetail} onNotify={showMsg} onRefetch={refetch} />}
+      {activeTab === 'materials' && <MaterialsTab detail={caseDetail} onNotify={showMsg} onRefetch={refetch} />}
+      {activeTab === 'review' && <ReviewTab detail={caseDetail} onNotify={showMsg} onRefetch={refetch} />}
       {activeTab === 'timeline' && <TimelineTab detail={caseDetail} />}
-      {activeTab === 'conflict' && <ConflictTab detail={caseDetail} onRefetch={refetch} />}
+      {activeTab === 'conflict' && <ConflictTab detail={caseDetail} onNotify={showMsg} onRefetch={refetch} />}
     </div>
   );
 }
@@ -167,7 +198,29 @@ function InfoRow({ label, value }: { label: string; value: React.ReactNode }) {
   );
 }
 
-function OverviewTab({ detail }: { detail: CaseDetailDTO }) {
+function OverviewTab({ detail, onNotify, onRefetch }: { detail: CaseDetailDTO; onNotify: (m: string) => void; onRefetch: () => void }) {
+  const [paymentStatus, setPaymentStatus] = useState<PaymentStatus>(detail.paymentStatus);
+  const [paymentMethod, setPaymentMethod] = useState('');
+  const [paymentNote, setPaymentNote] = useState('');
+  const [savingPayment, setSavingPayment] = useState(false);
+
+  const handleSavePayment = async () => {
+    setSavingPayment(true);
+    try {
+      await api.patch(`/cases/${detail.id}/payment-status`, {
+        paymentStatus,
+        paymentMethod: paymentMethod || undefined,
+        note: paymentNote || undefined,
+      });
+      onNotify('回款状态已更新');
+      onRefetch();
+    } catch (e: any) {
+      onNotify(e.response?.data?.message || '更新失败');
+    } finally {
+      setSavingPayment(false);
+    }
+  };
+
   return (
     <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
       <div className="bg-white rounded-xl border border-slate-200 overflow-hidden">
@@ -179,6 +232,11 @@ function OverviewTab({ detail }: { detail: CaseDetailDTO }) {
           <InfoRow label="案件类型" value={caseTypeLabels[detail.caseType]} />
           <InfoRow label="案件阶段" value={detail.caseStage ? caseStageLabels[detail.caseStage] : '-'} />
           <InfoRow label="状态" value={<StatusBadge status={detail.status} />} />
+          <InfoRow label="回款状态" value={
+            <span className={`px-2 py-0.5 rounded-full text-xs font-medium ${paymentStatusConfig[detail.paymentStatus]?.className || ''}`}>
+              {paymentStatusConfig[detail.paymentStatus]?.label || detail.paymentStatus}
+            </span>
+          } />
           <InfoRow label="创建时间" value={new Date(detail.createdAt).toLocaleString('zh-CN')} />
           <InfoRow label="更新时间" value={new Date(detail.updatedAt).toLocaleString('zh-CN')} />
         </div>
@@ -207,47 +265,120 @@ function OverviewTab({ detail }: { detail: CaseDetailDTO }) {
         </div>
       </div>
 
-      {(detail.lawyerName || detail.assistantName || detail.feeType) && (
-        <div className="bg-white rounded-xl border border-slate-200 overflow-hidden lg:col-span-2">
-          <div className="px-6 py-4 bg-slate-50 border-b border-slate-200">
-            <h3 className="text-sm font-semibold text-slate-800">承办信息</h3>
-          </div>
-          <div className="px-6 divide-y divide-slate-100">
+      <div className="bg-white rounded-xl border border-slate-200 overflow-hidden lg:col-span-2">
+        <div className="px-6 py-4 bg-slate-50 border-b border-slate-200">
+          <h3 className="text-sm font-semibold text-slate-800">承办 & 回款</h3>
+        </div>
+        <div className="p-6 grid grid-cols-1 lg:grid-cols-2 gap-6">
+          <div className="divide-y divide-slate-100">
             <InfoRow label="承办律师" value={detail.lawyerName} />
             <InfoRow label="助理" value={detail.assistantName} />
             <InfoRow label="收费方式" value={detail.feeType ? feeTypeLabels[detail.feeType] : '-'} />
+            <InfoRow label="约定费用" value={detail.feeAmount ? `¥${Number(detail.feeAmount).toLocaleString()}` : '-'} />
             <InfoRow label="庭审地点" value={detail.trialLocation} />
             <InfoRow
               label="下次庭审"
               value={detail.nextTrialDate ? new Date(detail.nextTrialDate).toLocaleString('zh-CN') : '-'}
             />
           </div>
+          <div className="space-y-4">
+            <div>
+              <label className="block text-sm font-medium text-slate-700 mb-1.5">回款状态</label>
+              <select
+                value={paymentStatus}
+                onChange={(e) => setPaymentStatus(e.target.value as PaymentStatus)}
+                className="w-full border border-slate-300 rounded-lg px-4 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+              >
+                {Object.entries(paymentStatusConfig).map(([value, cfg]) => (
+                  <option key={value} value={value}>{cfg.label}</option>
+                ))}
+              </select>
+            </div>
+            <div>
+              <label className="block text-sm font-medium text-slate-700 mb-1.5">付款方式（选填）</label>
+              <input
+                type="text"
+                value={paymentMethod}
+                onChange={(e) => setPaymentMethod(e.target.value)}
+                placeholder="如：银行转账、支付宝、微信..."
+                className="w-full border border-slate-300 rounded-lg px-4 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+              />
+            </div>
+            <div>
+              <label className="block text-sm font-medium text-slate-700 mb-1.5">备注（选填）</label>
+              <textarea
+                value={paymentNote}
+                onChange={(e) => setPaymentNote(e.target.value)}
+                rows={2}
+                placeholder="回款备注..."
+                className="w-full border border-slate-300 rounded-lg px-4 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 resize-none"
+              />
+            </div>
+            <button
+              onClick={handleSavePayment}
+              disabled={savingPayment}
+              className="bg-blue-600 hover:bg-blue-700 disabled:bg-blue-400 text-white px-5 py-2.5 rounded-lg text-sm font-medium transition-colors"
+            >
+              {savingPayment ? '保存中...' : '保存回款状态'}
+            </button>
+          </div>
         </div>
-      )}
+        {detail.riskWarnings && detail.riskWarnings.length > 0 && (
+          <div className="border-t border-slate-100 p-6">
+            <h4 className="text-sm font-medium text-slate-700 mb-3">风险提示</h4>
+            <ul className="space-y-1.5">
+              {detail.riskWarnings.map((w, i) => (
+                <li key={i} className="text-sm text-amber-700 flex items-start gap-2">
+                  <svg className="w-4 h-4 mt-0.5 shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+                    <path strokeLinecap="round" strokeLinejoin="round" d="M12 9v3.75m-9.303 3.376c-.866 1.5.217 3.374 1.948 3.374h14.71c1.73 0 2.813-1.874 1.948-3.374L13.949 3.378c-.866-1.5-3.032-1.5-3.898 0L2.697 16.126zM12 15.75h.007v.008H12v-.008z" />
+                  </svg>
+                  {w}
+                </li>
+              ))}
+            </ul>
+          </div>
+        )}
+      </div>
     </div>
   );
 }
 
-function MaterialsTab({ detail, onRefetch }: { detail: CaseDetailDTO; onRefetch: () => void }) {
+function MaterialsTab({ detail, onNotify, onRefetch }: { detail: CaseDetailDTO; onNotify: (m: string) => void; onRefetch: () => void }) {
   const handleApprove = async (materialId: string) => {
     try {
       await api.post(`/cases/${detail.id}/materials/${materialId}/approve`);
+      onNotify('材料已通过审核');
       onRefetch();
-    } catch {}
+    } catch (e: any) {
+      onNotify(e.response?.data?.message || '操作失败');
+    }
   };
 
   const handleReject = async (materialId: string) => {
+    const note = prompt('请输入驳回原因：');
+    if (note === null) return;
     try {
-      await api.post(`/cases/${detail.id}/materials/${materialId}/reject`);
+      await api.post(`/cases/${detail.id}/materials/${materialId}/reject`, { note });
+      onNotify('材料已驳回');
       onRefetch();
-    } catch {}
+    } catch (e: any) {
+      onNotify(e.response?.data?.message || '操作失败');
+    }
   };
 
   const handleResubmit = async (materialId: string) => {
+    const fileUrl = prompt('请输入重新提交的文件地址：');
+    if (!fileUrl) return;
     try {
-      await api.post(`/cases/${detail.id}/materials/${materialId}/resubmit`);
+      await api.post(`/cases/${detail.id}/materials/${materialId}/resubmit`, {
+        fileUrl,
+        fileSize: 0,
+      });
+      onNotify('材料已重新提交');
       onRefetch();
-    } catch {}
+    } catch (e: any) {
+      onNotify(e.response?.data?.message || '操作失败');
+    }
   };
 
   return (
@@ -282,7 +413,11 @@ function MaterialsTab({ detail, onRefetch }: { detail: CaseDetailDTO; onRefetch:
 
               return (
                 <tr key={material.id} className="hover:bg-slate-50">
-                  <td className="px-5 py-3 text-slate-800 font-medium">{material.name}</td>
+                  <td className="px-5 py-3 text-slate-800 font-medium">
+                    <a href={material.fileUrl || '#'} target="_blank" rel="noopener noreferrer" className="text-blue-600 hover:text-blue-700">
+                      {material.name}
+                    </a>
+                  </td>
                   <td className="px-5 py-3 text-slate-600">
                     {materialTypeLabels[material.type] || material.type}
                   </td>
@@ -311,26 +446,27 @@ function MaterialsTab({ detail, onRefetch }: { detail: CaseDetailDTO; onRefetch:
                   <td className="px-5 py-3 text-right">
                     <div className="flex items-center justify-end gap-2">
                       {(material.status === MaterialStatus.PENDING ||
-                        material.status === MaterialStatus.RESUBMITTED) && (
+                        material.status === MaterialStatus.RESUBMITTED ||
+                        material.status === MaterialStatus.MISSING) && (
                         <>
                           <button
                             onClick={() => handleApprove(material.id)}
-                            className="text-green-600 hover:text-green-700 text-xs font-medium"
+                            className="text-green-600 hover:text-green-700 text-xs font-medium px-2 py-1 rounded hover:bg-green-50"
                           >
                             通过
                           </button>
                           <button
                             onClick={() => handleReject(material.id)}
-                            className="text-red-600 hover:text-red-700 text-xs font-medium"
+                            className="text-red-600 hover:text-red-700 text-xs font-medium px-2 py-1 rounded hover:bg-red-50"
                           >
                             驳回
                           </button>
                         </>
                       )}
-                      {material.status === MaterialStatus.REJECTED && (
+                      {(material.status === MaterialStatus.REJECTED || material.status === MaterialStatus.MISSING) && (
                         <button
                           onClick={() => handleResubmit(material.id)}
-                          className="text-blue-600 hover:text-blue-700 text-xs font-medium"
+                          className="text-blue-600 hover:text-blue-700 text-xs font-medium px-2 py-1 rounded hover:bg-blue-50"
                         >
                           重新提交
                         </button>
@@ -347,7 +483,7 @@ function MaterialsTab({ detail, onRefetch }: { detail: CaseDetailDTO; onRefetch:
   );
 }
 
-function ReviewTab({ detail, onRefetch }: { detail: CaseDetailDTO; onRefetch: () => void }) {
+function ReviewTab({ detail, onNotify, onRefetch }: { detail: CaseDetailDTO; onNotify: (m: string) => void; onRefetch: () => void }) {
   const [reviewForm, setReviewForm] = useState({
     identityVerified: false,
     identityNote: '',
@@ -356,6 +492,7 @@ function ReviewTab({ detail, onRefetch }: { detail: CaseDetailDTO; onRefetch: ()
     reviewNote: '',
     materialsApproved: [] as string[],
     materialsRejected: [] as string[],
+    materialsMissing: [] as MissingMaterialDTO[],
   });
 
   const [supplementForm, setSupplementForm] = useState({
@@ -363,9 +500,9 @@ function ReviewTab({ detail, onRefetch }: { detail: CaseDetailDTO; onRefetch: ()
     trialDate: '',
     trialLocation: '',
     feeType: FeeType.HOURLY,
-    feeAmount: '',
-    feeNote: '',
-    riskWarnings: [] as string[],
+    feeAmount: String(detail.feeAmount || ''),
+    feeNote: detail.feeNote || '',
+    riskWarnings: [...(detail.riskWarnings || [])],
     supplementNote: '',
   });
 
@@ -381,15 +518,22 @@ function ReviewTab({ detail, onRefetch }: { detail: CaseDetailDTO; onRefetch: ()
         evidenceNote: reviewForm.evidenceNote || undefined,
         materialsApproved: reviewForm.materialsApproved,
         materialsRejected: reviewForm.materialsRejected,
-        materialsMissing: [],
+        materialsMissing: reviewForm.materialsMissing,
         reviewNote: reviewForm.reviewNote || undefined,
       };
       await api.post(`/cases/${detail.id}/assistant-review`, payload);
+      onNotify('助理审核已提交');
       onRefetch();
-    } catch {}
+    } catch (e: any) {
+      onNotify(e.response?.data?.message || '提交失败');
+    }
   };
 
   const handleLawyerSupplement = async () => {
+    if (!supplementForm.feeAmount) {
+      onNotify('请填写费用金额');
+      return;
+    }
     try {
       const payload: LawyerSupplementDTO = {
         caseId: detail.id,
@@ -403,8 +547,11 @@ function ReviewTab({ detail, onRefetch }: { detail: CaseDetailDTO; onRefetch: ()
         supplementNote: supplementForm.supplementNote || undefined,
       };
       await api.post(`/cases/${detail.id}/lawyer-supplement`, payload);
+      onNotify('律师补充信息已保存，案件已进入进行中状态');
       onRefetch();
-    } catch {}
+    } catch (e: any) {
+      onNotify(e.response?.data?.message || '提交失败');
+    }
   };
 
   const toggleMaterialApprove = (materialId: string) => {
@@ -430,8 +577,9 @@ function ReviewTab({ detail, onRefetch }: { detail: CaseDetailDTO; onRefetch: ()
   return (
     <div className="space-y-6">
       <div className="bg-white rounded-xl border border-slate-200 overflow-hidden">
-        <div className="px-6 py-4 bg-slate-50 border-b border-slate-200">
+        <div className="px-6 py-4 bg-slate-50 border-b border-slate-200 flex items-center justify-between">
           <h3 className="text-sm font-semibold text-slate-800">助理审核</h3>
+          <span className="text-xs text-slate-500">核对身份 + 证据清单 + 材料审核</span>
         </div>
         <div className="p-6 space-y-5">
           <div className="space-y-4">
@@ -480,14 +628,14 @@ function ReviewTab({ detail, onRefetch }: { detail: CaseDetailDTO; onRefetch: ()
 
           {detail.materials.length > 0 && (
             <div className="space-y-3">
-              <h4 className="text-sm font-medium text-slate-700">材料审核</h4>
+              <h4 className="text-sm font-medium text-slate-700">材料审核（通过/驳回切换）</h4>
               <div className="divide-y divide-slate-100 border border-slate-200 rounded-lg">
                 {detail.materials.map((material) => (
                   <div key={material.id} className="px-4 py-3 flex items-center justify-between">
                     <div>
                       <p className="text-sm text-slate-800">{material.name}</p>
                       <p className="text-xs text-slate-500">
-                        {materialTypeLabels[material.type]} · v{material.version}
+                        {materialTypeLabels[material.type]} · v{material.version} · 页数: {material.pageTotal || '未知'}
                       </p>
                     </div>
                     <div className="flex gap-2">
@@ -525,24 +673,32 @@ function ReviewTab({ detail, onRefetch }: { detail: CaseDetailDTO; onRefetch: ()
             <textarea
               value={reviewForm.reviewNote}
               onChange={(e) => setReviewForm({ ...reviewForm, reviewNote: e.target.value })}
-              placeholder="审核备注（选填）"
+              placeholder="整体审核备注（选填，若材料不完整请写入要求）"
               rows={3}
               className="w-full border border-slate-300 rounded-lg px-4 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 resize-none"
             />
+          </div>
+
+          <div className="rounded-lg bg-blue-50 border border-blue-100 p-4">
+            <p className="text-xs text-blue-700 leading-relaxed">
+              <strong>提交结果：</strong>若身份核验 × 或证据清单 × 或存在待审核/缺失材料 → 状态转为「材料不完整」，客户会收到补传通知；
+              全部通过 → 自动触发利益冲突检查。
+            </p>
           </div>
 
           <button
             onClick={handleAssistantReview}
             className="bg-blue-600 text-white px-5 py-2.5 rounded-lg text-sm font-medium hover:bg-blue-700 transition-colors"
           >
-            提交审核
+            提交审核结果
           </button>
         </div>
       </div>
 
       <div className="bg-white rounded-xl border border-slate-200 overflow-hidden">
-        <div className="px-6 py-4 bg-slate-50 border-b border-slate-200">
+        <div className="px-6 py-4 bg-slate-50 border-b border-slate-200 flex items-center justify-between">
           <h3 className="text-sm font-semibold text-slate-800">律师补充</h3>
+          <span className="text-xs text-slate-500">冲突检查通过后，设定阶段/庭审/费用</span>
         </div>
         <div className="p-6 space-y-5">
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
@@ -611,7 +767,7 @@ function ReviewTab({ detail, onRefetch }: { detail: CaseDetailDTO; onRefetch: ()
               />
             </div>
             <div>
-              <label className="block text-sm font-medium text-slate-700 mb-1.5">费用金额</label>
+              <label className="block text-sm font-medium text-slate-700 mb-1.5">费用金额（元）</label>
               <input
                 type="number"
                 value={supplementForm.feeAmount}
@@ -625,13 +781,34 @@ function ReviewTab({ detail, onRefetch }: { detail: CaseDetailDTO; onRefetch: ()
           </div>
 
           <div>
+            <label className="block text-sm font-medium text-slate-700 mb-1.5">费用备注</label>
+            <textarea
+              value={supplementForm.feeNote}
+              onChange={(e) => setSupplementForm({ ...supplementForm, feeNote: e.target.value })}
+              rows={2}
+              placeholder="费用说明（选填）"
+              className="w-full border border-slate-300 rounded-lg px-4 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 resize-none"
+            />
+          </div>
+
+          <div>
             <label className="block text-sm font-medium text-slate-700 mb-1.5">风险提示</label>
             <div className="flex gap-2">
               <input
                 type="text"
                 value={newRiskWarning}
                 onChange={(e) => setNewRiskWarning(e.target.value)}
-                placeholder="输入风险提示内容"
+                placeholder="输入风险提示内容，回车或点添加"
+                onKeyDown={(e) => {
+                  if (e.key === 'Enter' && newRiskWarning.trim()) {
+                    e.preventDefault();
+                    setSupplementForm({
+                      ...supplementForm,
+                      riskWarnings: [...supplementForm.riskWarnings, newRiskWarning.trim()],
+                    });
+                    setNewRiskWarning('');
+                  }
+                }}
                 className="flex-1 border border-slate-300 rounded-lg px-4 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
               />
               <button
@@ -695,7 +872,7 @@ function ReviewTab({ detail, onRefetch }: { detail: CaseDetailDTO; onRefetch: ()
             onClick={handleLawyerSupplement}
             className="bg-blue-600 text-white px-5 py-2.5 rounded-lg text-sm font-medium hover:bg-blue-700 transition-colors"
           >
-            提交补充信息
+            提交补充信息（案件转入进行中）
           </button>
         </div>
       </div>
@@ -711,26 +888,50 @@ function TimelineTab({ detail }: { detail: CaseDetailDTO }) {
   );
 }
 
-function ConflictTab({ detail, onRefetch }: { detail: CaseDetailDTO; onRefetch: () => void }) {
-  const handleArchive = async () => {
+function ConflictTab({ detail, onNotify, onRefetch }: { detail: CaseDetailDTO; onNotify: (m: string) => void; onRefetch: () => void }) {
+  const handleArchive = async (checkId: string) => {
+    if (!confirm('确认将此冲突检查结果永久归档？归档后将不可修改，用于后续委托争议存证。')) return;
     try {
-      await api.post(`/cases/${detail.id}/conflict-check/archive`);
+      await api.post(`/conflict-checks/${checkId}/archive`, {
+        archivePath: `/archives/conflict/${detail.id}/${checkId}.pdf`,
+      });
+      onNotify('冲突检查结果已独立归档');
       onRefetch();
-    } catch {}
+    } catch (e: any) {
+      onNotify(e.response?.data?.message || '归档失败');
+    }
+  };
+
+  const handlePerformCheck = async () => {
+    try {
+      await api.post(`/cases/${detail.id}/conflict-checks`, {});
+      onNotify('冲突检查已完成');
+      onRefetch();
+    } catch (e: any) {
+      onNotify(e.response?.data?.message || '检查失败');
+    }
   };
 
   return (
     <div className="space-y-4">
+      <div className="flex justify-end">
+        <button
+          onClick={handlePerformCheck}
+          className="bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded-lg text-sm font-medium transition-colors"
+        >
+          立即执行冲突检查
+        </button>
+      </div>
       {detail.conflictChecks && detail.conflictChecks.length > 0 ? (
-        detail.conflictChecks.map((check, index) => (
-          <ConflictCheckCard key={index} check={check} onArchive={handleArchive} />
+        detail.conflictChecks.map((check) => (
+          <ConflictCheckCard key={check.id} check={check as any} onArchive={() => handleArchive(check.id)} />
         ))
       ) : (
         <div className="bg-white rounded-xl border border-slate-200 p-12 text-center">
           <svg className="mx-auto w-12 h-12 text-slate-300" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1}>
             <path strokeLinecap="round" strokeLinejoin="round" d="M9 12.75L11.25 15 15 9.75m-3-7.036A11.959 11.959 0 013.598 6 11.99 11.99 0 003 9.749c0 5.592 3.824 10.29 9 11.623 5.176-1.332 9-6.03 9-11.622 0-1.31-.21-2.571-.598-3.751h-.152c-3.196 0-6.1-1.248-8.25-3.285z" />
           </svg>
-          <p className="mt-3 text-sm text-slate-400">暂无冲突检查记录</p>
+          <p className="mt-3 text-sm text-slate-400">暂无冲突检查记录，点击右上角「立即执行冲突检查」开始</p>
         </div>
       )}
     </div>
