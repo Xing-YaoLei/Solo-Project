@@ -5,13 +5,14 @@ const prisma = new PrismaClient();
 async function main() {
   console.log('Start seeding...');
 
-  await prisma.user.deleteMany();
-  await prisma.activity.deleteMany();
-  await prisma.ticketType.deleteMany();
+  await prisma.shareLink.deleteMany();
+  await prisma.lockRecord.deleteMany();
   await prisma.order.deleteMany();
   await prisma.seatAllocation.deleteMany();
-  await prisma.lockRecord.deleteMany();
-  await prisma.shareLink.deleteMany();
+  await prisma.ticketType.deleteMany();
+  await prisma.dashboardSnapshot.deleteMany();
+  await prisma.activity.deleteMany();
+  await prisma.user.deleteMany();
 
   const admin = await prisma.user.create({
     data: {
@@ -196,7 +197,7 @@ async function main() {
       const status = orderStatuses[Math.floor(Math.random() * orderStatuses.length)];
       const ticketType = ticketTypes[Math.floor(Math.random() * ticketTypes.length)];
       const quantity = Math.floor(Math.random() * 6) + 1;
-      const amount = ticketType.price.toNumber() * quantity;
+      const amount = Number(ticketType.price) * quantity;
 
       orders.push({
         activityId: activity.id,

@@ -5,6 +5,7 @@ import {
   filterOverviewByRole,
   filterOrderCompositionByRole,
   filterLockRecordsByRole,
+  filterAreaHeatmapByRole,
 } from '@/services/dashboardService';
 import { UserRole } from '@prisma/client';
 
@@ -60,6 +61,8 @@ export async function GET(
       }));
     }
 
+    const filteredAreaHeatmap = filterAreaHeatmapByRole(snapshot.areaHeatmap, role);
+
     return NextResponse.json({
       success: true,
       data: {
@@ -75,7 +78,7 @@ export async function GET(
         orderComposition: filteredOrderComposition,
         ticketTypes: filteredTicketTypes,
         lockRecords: filteredLockRecords,
-        areaHeatmap: snapshot.areaHeatmap,
+        areaHeatmap: filteredAreaHeatmap,
       },
     });
   } catch (error) {

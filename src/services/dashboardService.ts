@@ -568,6 +568,45 @@ export function filterLockRecordsByRole(
   return data;
 }
 
+export function filterAreaHeatmapByRole(
+  data: AreaHeatmapData[],
+  role: UserRole
+): AreaHeatmapData[] {
+  if (role === UserRole.admin || role === UserRole.manager) {
+    return data;
+  }
+
+  if (role === UserRole.finance) {
+    return data.map(area => ({
+      ...area,
+      rows: area.rows.map(row => ({
+        ...row,
+        rate: 0,
+      })),
+    }));
+  }
+
+  if (role === UserRole.operator) {
+    return data.map(area => {
+      if (area.area === 'VIP') {
+        return {
+          ...area,
+          rows: area.rows.map(row => ({
+            ...row,
+            sold: 0,
+            rate: 0,
+          })),
+          occupancyRate: 0,
+          soldSeats: 0,
+        };
+      }
+      return area;
+    });
+  }
+
+  return data;
+}
+
 export async function validateShareToken(token: string): Promise<{
   valid: boolean;
   role?: UserRole;
