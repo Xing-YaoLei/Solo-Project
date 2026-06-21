@@ -1,11 +1,11 @@
 'use client'
 
 import * as React from 'react'
-import { motion } from 'framer-motion'
+import { motion, HTMLMotionProps } from 'framer-motion'
 import { cn } from '@/lib/utils'
 
 interface TabsProps {
-  defaultValue: string
+  defaultValue?: string
   value?: string
   onValueChange?: (value: string) => void
   className?: string
@@ -28,7 +28,7 @@ function useTabs() {
 }
 
 function Tabs({ defaultValue, value, onValueChange, className, children }: TabsProps) {
-  const [internalValue, setInternalValue] = React.useState(defaultValue)
+  const [internalValue, setInternalValue] = React.useState(defaultValue ?? '')
   const currentValue = value ?? internalValue
 
   const handleChange = React.useCallback(
@@ -93,7 +93,7 @@ function TabsTrigger({ className, value, children, ...props }: TabsTriggerProps)
   )
 }
 
-interface TabsContentProps extends React.HTMLAttributes<HTMLDivElement> {
+type TabsContentProps = Omit<HTMLMotionProps<'div'>, 'onAnimationStart'> & {
   value: string
 }
 
@@ -110,7 +110,7 @@ function TabsContent({ className, value, ...props }: TabsContentProps) {
       exit={{ opacity: 0, y: -10 }}
       transition={{ duration: 0.2 }}
       className={cn('mt-2', className)}
-      {...props}
+      {...(props as any)}
     />
   )
 }

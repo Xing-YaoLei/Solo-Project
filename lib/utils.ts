@@ -87,6 +87,10 @@ export function getTaskPriorityLabel(priority: string): string {
   return labels[priority] || priority
 }
 
+export function getPriorityLabel(priority: string): string {
+  return getTaskPriorityLabel(priority)
+}
+
 export function getDamageLevelLabel(level: string): string {
   const labels: Record<string, string> = {
     minor: '轻微',

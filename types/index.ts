@@ -105,7 +105,7 @@ export interface Conclusion {
   authorId: string
   authorName: string
   createdAt: Date
-  attachments: string[]
+  attachments?: string[] | null
 }
 
 export interface SubsidyRule {

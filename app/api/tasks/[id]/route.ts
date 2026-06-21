@@ -18,10 +18,10 @@ const resolveSchema = z.object({
 
 export async function GET(
   request: Request,
-  { params }: { params: { id: string } }
+  context: { params: { id: string } }
 ) {
   try {
-    const { id } = params
+    const { id } = context.params
 
     let task: Task | null
 
@@ -51,10 +51,10 @@ export async function GET(
 
 export async function PUT(
   request: Request,
-  { params }: { params: { id: string } }
+  context: { params: { id: string } }
 ) {
   try {
-    const { id } = params
+    const { id } = context.params
     const body = await request.json()
     const validated = statusUpdateSchema.safeParse(body)
 
@@ -98,11 +98,11 @@ export async function PUT(
 
 export async function POST(
   request: Request,
-  { params }: { params: { id: string } }
+  context: { params: { id: string } }
 ) {
   const url = new URL(request.url)
   if (url.pathname.endsWith('/resolve')) {
-    return handleResolve(request, params)
+    return handleResolve(request, context.params)
   }
 
   return NextResponse.json(
@@ -113,7 +113,7 @@ export async function POST(
 
 async function handleResolve(
   request: Request,
-  { params }: { params: { id: string } }
+  params: { id: string }
 ) {
   try {
     const { id } = params

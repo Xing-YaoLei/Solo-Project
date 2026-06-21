@@ -5,10 +5,10 @@ import type { OrderDetail } from '@/types'
 
 export async function GET(
   request: Request,
-  { params }: { params: { id: string } }
+  context: { params: { id: string } }
 ) {
   try {
-    const { id } = params
+    const { id } = context.params
 
     let order: OrderDetail | null
 

@@ -1,7 +1,7 @@
 'use client'
 
 import * as React from 'react'
-import { motion, AnimatePresence } from 'framer-motion'
+import { motion, AnimatePresence, HTMLMotionProps } from 'framer-motion'
 import { X } from 'lucide-react'
 import { cn } from '@/lib/utils'
 
@@ -37,8 +37,10 @@ function Dialog({ open, onOpenChange, children }: DialogProps) {
   )
 }
 
-interface DialogContentProps extends React.HTMLAttributes<HTMLDivElement> {
+type DialogContentProps = Omit<HTMLMotionProps<'div'>, 'children' | 'onAnimationStart'> & {
   onOpenChange?: (open: boolean) => void
+  className?: string
+  children?: React.ReactNode
 }
 
 function DialogContent({ className, onOpenChange, children, ...props }: DialogContentProps) {
@@ -52,7 +54,7 @@ function DialogContent({ className, onOpenChange, children, ...props }: DialogCo
         'fixed left-1/2 top-1/2 z-50 w-full max-w-lg -translate-x-1/2 -translate-y-1/2 rounded-xl border border-border bg-card p-6 shadow-2xl',
         className
       )}
-      {...props}
+      {...(props as any)}
     >
       {children}
       <button
