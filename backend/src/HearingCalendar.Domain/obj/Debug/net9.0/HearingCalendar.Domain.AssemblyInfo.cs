@@ -13,7 +13,7 @@ using System.Reflection;
 [assembly: System.Reflection.AssemblyCompanyAttribute("HearingCalendar.Domain")]
 [assembly: System.Reflection.AssemblyConfigurationAttribute("Debug")]
 [assembly: System.Reflection.AssemblyFileVersionAttribute("1.0.0.0")]
-[assembly: System.Reflection.AssemblyInformationalVersionAttribute("1.0.0+da0c2261061a9c37359ee2704038d20f64ebc84a")]
+[assembly: System.Reflection.AssemblyInformationalVersionAttribute("1.0.0+a9aaa97888114df341f45e25a40836ca36f6b1aa")]
 [assembly: System.Reflection.AssemblyProductAttribute("HearingCalendar.Domain")]
 [assembly: System.Reflection.AssemblyTitleAttribute("HearingCalendar.Domain")]
 [assembly: System.Reflection.AssemblyVersionAttribute("1.0.0.0")]

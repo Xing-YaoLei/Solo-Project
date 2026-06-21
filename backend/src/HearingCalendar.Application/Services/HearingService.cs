@@ -146,7 +146,7 @@ public class HearingService : IHearingService
         return await GetByIdAsync(hearing.Id);
     }
 
-    public async Task ChangeStatusAsync(Guid id, HearingStatus newStatus, Guid userId, string? reason = null)
+    public async Task ChangeStatusAsync(Guid id, HearingStatus newStatus, Guid userId, string? reason = null, Guid? relatedAttachmentId = null)
     {
         var hearing = await _hearingRepo.GetByIdAsync(id);
         if (hearing is null)
@@ -162,7 +162,8 @@ public class HearingService : IHearingService
             FromStatus = oldStatus,
             ToStatus = newStatus,
             ChangedBy = userId,
-            Reason = reason
+            Reason = reason,
+            RelatedAttachmentId = relatedAttachmentId
         });
 
         await _auditTrailRepo.LogAsync(nameof(HearingSchedule), id, $"StatusChange:{oldStatus}->{newStatus}", userId, reason);
@@ -245,7 +246,7 @@ public class HearingService : IHearingService
                 a.Id, a.HearingId, a.FileName, a.FilePath, a.FileType,
                 a.FileSize, a.AttachmentType, a.UploadedBy, a.Description, a.CreatedAt)).ToList(),
             h.StatusLogs.Select(s => new StatusLogEntry(
-                s.Id, s.FromStatus, s.ToStatus, s.ChangedBy, s.Reason, s.CreatedAt)).ToList(),
+                s.Id, s.FromStatus, s.ToStatus, s.ChangedBy, s.Reason, s.CreatedAt, s.RelatedAttachmentId)).ToList(),
             h.CreatedAt,
             h.UpdatedAt);
     }

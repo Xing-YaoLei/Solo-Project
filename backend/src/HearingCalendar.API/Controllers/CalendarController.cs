@@ -1,11 +1,15 @@
 using HearingCalendar.Application.Dtos;
 using HearingCalendar.Application.Interfaces;
+using HearingCalendar.Domain.Enums;
+using HearingCalendar.API.Security;
+using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 
 namespace HearingCalendar.API.Controllers;
 
 [ApiController]
 [Route("api/[controller]")]
+[Authorize]
 public class CalendarController : ControllerBase
 {
     private readonly ICalendarService _calendarService;
@@ -16,6 +20,8 @@ public class CalendarController : ControllerBase
     }
 
     [HttpPost("slots")]
+    [RoleAuthorize(UserRole.Partner)]
+    [RoleAuthorize(UserRole.Assistant)]
     public async Task<ActionResult<CalendarSlotResponse>> CreateSlot([FromBody] CreateCalendarSlotRequest request)
     {
         var result = await _calendarService.CreateSlotAsync(request);
@@ -33,6 +39,7 @@ public class CalendarController : ControllerBase
     }
 
     [HttpPost("capacity-rules")]
+    [RoleAuthorize(UserRole.Partner)]
     public async Task<ActionResult<CapacityRuleResponse>> CreateCapacityRule([FromBody] CreateCapacityRuleRequest request)
     {
         var result = await _calendarService.CreateCapacityRuleAsync(request);

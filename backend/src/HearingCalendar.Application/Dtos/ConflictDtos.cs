@@ -5,7 +5,8 @@ namespace HearingCalendar.Application.Dtos;
 public record CreateConflictRequest(
     Guid HearingId,
     ConflictType ConflictType,
-    string Description);
+    string Description,
+    Guid? RelatedAttachmentId);
 
 public record ResolveConflictRequest(
     string Resolution,

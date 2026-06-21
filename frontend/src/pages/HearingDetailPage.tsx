@@ -69,7 +69,7 @@ export default function HearingDetailPage() {
   const handleStatusChange = async (values: any) => {
     if (!id) return;
     try {
-      await changeStatus(id, values.status, values.reason);
+      await changeStatus(id, values.status, values.reason, values.relatedAttachmentId);
       message.success('状态已更新');
       setStatusModalOpen(false);
       statusForm.resetFields();
@@ -164,13 +164,26 @@ export default function HearingDetailPage() {
 
       {conflicts.length > 0 && (
         <Card title="利益冲突" style={{ marginTop: 16 }}>
-          {conflicts.map(c => (
-            <Card key={c.id} size="small" style={{ marginBottom: 8 }} type="inner"
-              title={<Space><Tag color="red">{ConflictTypeLabel[c.conflictType]}</Tag><Tag>{ConflictResolutionStatusLabel[c.resolutionStatus]}</Tag></Space>}>
-              <p>{c.description}</p>
-              {c.resolution && <p style={{ color: 'green' }}>解决方案: {c.resolution}</p>}
-            </Card>
-          ))}
+          {conflicts.map(c => {
+            const relatedAtt = attachments.find(a => a.id === c.relatedAttachmentId);
+            return (
+              <Card key={c.id} size="small" style={{ marginBottom: 8 }} type="inner"
+                title={<Space><Tag color="red">{ConflictTypeLabel[c.conflictType]}</Tag><Tag>{ConflictResolutionStatusLabel[c.resolutionStatus]}</Tag></Space>}>
+                <p>{c.description}</p>
+                {c.relatedAttachmentId && relatedAtt && (
+                  <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 8 }}>
+                    <span style={{ fontSize: 12, color: '#1890ff' }}>📎 原始材料:</span>
+                    <a onClick={() => handleDownload(relatedAtt.id, relatedAtt.fileName)} style={{ fontSize: 12 }}>
+                      {relatedAtt.fileName}
+                    </a>
+                    <Tag style={{ fontSize: 11 }}>{AttachmentTypeLabel[relatedAtt.attachmentType]}</Tag>
+                  </div>
+                )}
+                {c.resolution && <p style={{ color: 'green' }}>解决方案: {c.resolution}</p>}
+                <p style={{ fontSize: 12, color: '#999', margin: 0 }}>检测时间: {formatDateTime(c.detectedAt)}</p>
+              </Card>
+            );
+          })}
         </Card>
       )}
       {canManageConflicts(user!.role) && (
@@ -185,19 +198,40 @@ export default function HearingDetailPage() {
       </Card>
 
       <Card title="状态变更记录" style={{ marginTop: 16 }}>
-        <Timeline items={(currentHearing.statusLogs || []).map((log: StatusLog) => ({
-          children: <Space direction="vertical" size={0}>
-            <span>{HearingStatusLabel[log.fromStatus]} → <Tag color={getStatusColor(log.toStatus)}>{HearingStatusLabel[log.toStatus]}</Tag></span>
-            <span style={{ fontSize: 12, color: '#999' }}>{formatDateTime(log.createdAt)} {log.reason && `| 原因: ${log.reason}`}</span>
-            {log.relatedAttachmentId && <a onClick={() => { const a = attachments.find(a => a.id === log.relatedAttachmentId); if (a) handleDownload(a.id, a.fileName); }}>查看关联附件</a>}
-          </Space>,
-        }))} />
+        <Timeline items={(currentHearing.statusLogs || []).map((log: StatusLog) => {
+          const relatedAtt = attachments.find(a => a.id === log.relatedAttachmentId);
+          return {
+            children: <Space direction="vertical" size={2} style={{ width: '100%' }}>
+              <span>{HearingStatusLabel[log.fromStatus]} → <Tag color={getStatusColor(log.toStatus)}>{HearingStatusLabel[log.toStatus]}</Tag></span>
+              <span style={{ fontSize: 12, color: '#999' }}>{formatDateTime(log.createdAt)} {log.reason && `| 原因: ${log.reason}`}</span>
+              {log.relatedAttachmentId && relatedAtt && (
+                <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginTop: 4 }}>
+                  <span style={{ fontSize: 12, color: '#1890ff' }}>📎 关联原始材料:</span>
+                  <a onClick={() => handleDownload(relatedAtt.id, relatedAtt.fileName)} style={{ fontSize: 12 }}>
+                    {relatedAtt.fileName}
+                  </a>
+                  <Tag style={{ fontSize: 11 }}>{AttachmentTypeLabel[relatedAtt.attachmentType]}</Tag>
+                </div>
+              )}
+              {log.relatedAttachmentId && !relatedAtt && (
+                <span style={{ fontSize: 12, color: '#999' }}>📎 关联附件ID: {log.relatedAttachmentId}</span>
+              )}
+            </Space>,
+          };
+        })} />
       </Card>
 
       <Modal title="变更状态" open={statusModalOpen} onCancel={() => setStatusModalOpen(false)} onOk={() => statusForm.submit()}>
         <Form form={statusForm} onFinish={handleStatusChange}>
           <Form.Item name="status" label="新状态" rules={[{ required: true }]}><Select options={Object.entries(HearingStatusLabel).map(([k, v]) => ({ value: Number(k), label: v }))} /></Form.Item>
-          <Form.Item name="reason" label="原因"><Input.TextArea rows={3} /></Form.Item>
+          <Form.Item name="reason" label="原因"><Input.TextArea rows={3} placeholder="请说明状态变更的原因" /></Form.Item>
+          <Form.Item name="relatedAttachmentId" label="关联原始材料">
+            <Select
+              allowClear
+              placeholder="选择关联的附件材料"
+              options={attachments.map(a => ({ value: a.id, label: `${a.fileName} (${AttachmentTypeLabel[a.attachmentType]})` }))}
+            />
+          </Form.Item>
         </Form>
       </Modal>
       <Modal title="添加参与人" open={addParticipantOpen} onCancel={() => setAddParticipantOpen(false)} onOk={() => participantForm.submit()}>
@@ -209,7 +243,14 @@ export default function HearingDetailPage() {
       <Modal title="报告利益冲突" open={addConflictOpen} onCancel={() => setAddConflictOpen(false)} onOk={() => conflictForm.submit()}>
         <Form form={conflictForm} onFinish={handleAddConflict}>
           <Form.Item name="conflictType" label="冲突类型" rules={[{ required: true }]}><Select options={Object.entries(ConflictTypeLabel).map(([k, v]) => ({ value: Number(k), label: v }))} /></Form.Item>
-          <Form.Item name="description" label="描述" rules={[{ required: true }]}><Input.TextArea rows={4} /></Form.Item>
+          <Form.Item name="description" label="冲突描述" rules={[{ required: true }]}><Input.TextArea rows={4} placeholder="请详细描述利益冲突情况" /></Form.Item>
+          <Form.Item name="relatedAttachmentId" label="关联原始材料">
+            <Select
+              allowClear
+              placeholder="选择关联的证据材料"
+              options={attachments.map(a => ({ value: a.id, label: `${a.fileName} (${AttachmentTypeLabel[a.attachmentType]})` }))}
+            />
+          </Form.Item>
         </Form>
       </Modal>
       <Modal title="添加提醒" open={addReminderOpen} onCancel={() => setAddReminderOpen(false)} onOk={() => reminderForm.submit()}>

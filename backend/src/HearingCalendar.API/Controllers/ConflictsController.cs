@@ -1,6 +1,8 @@
 using System.Security.Claims;
 using HearingCalendar.Application.Dtos;
 using HearingCalendar.Application.Interfaces;
+using HearingCalendar.Domain.Enums;
+using HearingCalendar.API.Security;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 
@@ -8,6 +10,7 @@ namespace HearingCalendar.API.Controllers;
 
 [ApiController]
 [Route("api/[controller]")]
+[Authorize]
 public class ConflictsController : ControllerBase
 {
     private readonly IConflictService _conflictService;
@@ -39,7 +42,8 @@ public class ConflictsController : ControllerBase
     }
 
     [HttpPost]
-    [Authorize]
+    [RoleAuthorize(UserRole.Partner)]
+    [RoleAuthorize(UserRole.Lawyer)]
     public async Task<ActionResult<ConflictResponse>> Create([FromBody] CreateConflictRequest request)
     {
         var userId = Guid.Parse(User.FindFirstValue(ClaimTypes.NameIdentifier)!);
@@ -48,7 +52,7 @@ public class ConflictsController : ControllerBase
     }
 
     [HttpPut("{id}/resolve")]
-    [Authorize]
+    [RoleAuthorize(UserRole.Partner)]
     public async Task<ActionResult<ConflictResponse>> Resolve(Guid id, [FromBody] ResolveConflictRequest request)
     {
         var userId = Guid.Parse(User.FindFirstValue(ClaimTypes.NameIdentifier)!);

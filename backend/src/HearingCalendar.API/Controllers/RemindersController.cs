@@ -1,11 +1,15 @@
 using HearingCalendar.Application.Dtos;
 using HearingCalendar.Application.Interfaces;
+using HearingCalendar.Domain.Enums;
+using HearingCalendar.API.Security;
+using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 
 namespace HearingCalendar.API.Controllers;
 
 [ApiController]
 [Route("api/[controller]")]
+[Authorize]
 public class RemindersController : ControllerBase
 {
     private readonly IReminderService _reminderService;
@@ -16,6 +20,9 @@ public class RemindersController : ControllerBase
     }
 
     [HttpPost]
+    [RoleAuthorize(UserRole.Lawyer)]
+    [RoleAuthorize(UserRole.Assistant)]
+    [RoleAuthorize(UserRole.Partner)]
     public async Task<ActionResult<ReminderResponse>> Create([FromBody] CreateReminderRequest request)
     {
         var result = await _reminderService.CreateAsync(request);
@@ -30,6 +37,9 @@ public class RemindersController : ControllerBase
     }
 
     [HttpGet("pending")]
+    [RoleAuthorize(UserRole.Lawyer)]
+    [RoleAuthorize(UserRole.Assistant)]
+    [RoleAuthorize(UserRole.Partner)]
     public async Task<ActionResult<IEnumerable<ReminderResponse>>> GetPending()
     {
         var result = await _reminderService.GetPendingRemindersAsync();

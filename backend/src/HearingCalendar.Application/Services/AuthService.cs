@@ -49,8 +49,9 @@ public class AuthService : IAuthService
 
     private string GenerateJwtToken(User user, DateTime expiresAt)
     {
-        var secretKey = _configuration["Jwt:SecretKey"] ?? throw new InvalidOperationException("JWT SecretKey not configured");
+        var secretKey = _configuration["Jwt:Key"] ?? throw new InvalidOperationException("JWT Key not configured");
         var issuer = _configuration["Jwt:Issuer"] ?? "HearingCalendar";
+        var audience = _configuration["Jwt:Audience"] ?? "HearingCalendarUsers";
 
         var key = new SymmetricSecurityKey(Encoding.UTF8.GetBytes(secretKey));
         var credentials = new SigningCredentials(key, SecurityAlgorithms.HmacSha256);
@@ -65,7 +66,7 @@ public class AuthService : IAuthService
 
         var token = new JwtSecurityToken(
             issuer: issuer,
-            audience: issuer,
+            audience: audience,
             claims: claims,
             expires: expiresAt,
             signingCredentials: credentials

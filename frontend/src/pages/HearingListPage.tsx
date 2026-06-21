@@ -1,5 +1,5 @@
 import { useState, useEffect, useCallback } from 'react';
-import { Table, Card, Space, Button, Select, DatePicker, Tag, Modal, Form, Input, message, Popconfirm, Tooltip, Switch } from 'antd';
+import { Table, Card, Space, Button, Select, DatePicker, TimePicker, Tag, Modal, Form, Input, message, Popconfirm, Tooltip, Switch } from 'antd';
 import { PlusOutlined, EditOutlined, DeleteOutlined } from '@ant-design/icons';
 import { useNavigate } from 'react-router-dom';
 import dayjs from 'dayjs';
@@ -20,9 +20,11 @@ export default function HearingListPage() {
   const [dateRange, setDateRange] = useState<[dayjs.Dayjs | null, dayjs.Dayjs | null]>();
   const [conflictFilter, setConflictFilter] = useState<boolean>();
   const [statusModalOpen, setStatusModalOpen] = useState(false);
+  const [createModalOpen, setCreateModalOpen] = useState(false);
   const [currentHearingId, setCurrentHearingId] = useState<string>();
   const [batchStatusModalOpen, setBatchStatusModalOpen] = useState(false);
   const [statusForm] = Form.useForm();
+  const [createForm] = Form.useForm();
   const [batchStatusForm] = Form.useForm();
 
   useEffect(() => { fetchHearings(1, 20); }, []);
@@ -35,6 +37,28 @@ export default function HearingListPage() {
       conflictFlagged: conflictFilter,
     });
   }, [statusFilter, dateRange, conflictFilter, fetchHearings]);
+
+  const handleCreate = async (values: any) => {
+    try {
+      const data = {
+        caseNumber: values.caseNumber,
+        caseName: values.caseName,
+        courtName: values.courtName,
+        courtRoom: values.courtRoom,
+        hearingDate: values.hearingDate.format('YYYY-MM-DD'),
+        startTime: values.timeRange?.[0]?.format('HH:mm'),
+        endTime: values.timeRange?.[1]?.format('HH:mm'),
+        assignedLawyerId: values.assignedLawyerId,
+        notes: values.notes,
+      };
+      const newHearing = await useHearingStore.getState().createHearing(data);
+      message.success('创建成功');
+      setCreateModalOpen(false);
+      createForm.resetFields();
+      fetchHearings(1, 20);
+      navigate(`/hearings/${newHearing.id}`);
+    } catch { message.error('创建失败'); }
+  };
 
   const handleStatusChange = async (values: any) => {
     try {
@@ -80,7 +104,7 @@ export default function HearingListPage() {
   return (
     <Card title="排程列表" extra={
       <Space>
-        {canCreateHearing(user!.role) && <Button type="primary" icon={<PlusOutlined />} onClick={() => navigate('/hearings/new')}>新建排程</Button>}
+        {canCreateHearing(user!.role) && <Button type="primary" icon={<PlusOutlined />} onClick={() => setCreateModalOpen(true)}>新建排程</Button>}
         {selectedRowKeys.length > 0 && canEditHearing(user!.role) && <Button onClick={() => setBatchStatusModalOpen(true)}>批量变更状态 ({selectedRowKeys.length})</Button>}
       </Space>
     }>
@@ -95,6 +119,38 @@ export default function HearingListPage() {
         rowSelection={{ selectedRowKeys, onChange: (keys) => setSelectedRowKeys(keys as string[]) }}
         pagination={{ current: hearings?.page, pageSize: hearings?.pageSize, total: hearings?.totalCount, onChange: handleTableChange }}
       />
+
+      <Modal title="新建排程" open={createModalOpen} onCancel={() => setCreateModalOpen(false)} onOk={() => createForm.submit()} width={600} destroyOnClose>
+        <Form form={createForm} onFinish={handleCreate} layout="vertical">
+          <Form.Item name="caseNumber" label="案号" rules={[{ required: true, message: '请输入案号' }]}>
+            <Input placeholder="如：(2024)沪民初字第001号" />
+          </Form.Item>
+          <Form.Item name="caseName" label="案名" rules={[{ required: true, message: '请输入案名' }]}>
+            <Input placeholder="如：某公司诉某合同纠纷案" />
+          </Form.Item>
+          <Form.Item name="courtName" label="法院" rules={[{ required: true, message: '请输入法院名称' }]}>
+            <Input placeholder="如：上海市浦东新区人民法院" />
+          </Form.Item>
+          <Form.Item name="courtRoom" label="法庭" rules={[{ required: true, message: '请输入法庭' }]}>
+            <Input placeholder="如：第一法庭" />
+          </Form.Item>
+          <Space style={{ width: '100%' }}>
+            <Form.Item name="hearingDate" label="开庭日期" rules={[{ required: true }]} style={{ flex: 1, marginBottom: 0 }}>
+              <DatePicker style={{ width: '100%' }} />
+            </Form.Item>
+            <Form.Item name="timeRange" label="时段" rules={[{ required: true }]} style={{ flex: 1.5, marginBottom: 0 }}>
+              <TimePicker.RangePicker style={{ width: '100%' }} format="HH:mm" />
+            </Form.Item>
+          </Space>
+          <Form.Item name="assignedLawyerId" label="负责律师ID">
+            <Input placeholder="可选，输入律师用户ID" />
+          </Form.Item>
+          <Form.Item name="notes" label="备注">
+            <Input.TextArea rows={3} />
+          </Form.Item>
+        </Form>
+      </Modal>
+
       <Modal title="变更状态" open={statusModalOpen} onCancel={() => setStatusModalOpen(false)} onOk={() => statusForm.submit()}>
         <Form form={statusForm} onFinish={handleStatusChange}>
           <Form.Item name="status" label="新状态" rules={[{ required: true }]}><Select options={Object.entries(HearingStatusLabel).map(([k, v]) => ({ value: Number(k), label: v }))} /></Form.Item>

@@ -11,7 +11,7 @@ interface HearingState {
   fetchHearing: (id: string) => Promise<void>;
   createHearing: (data: any) => Promise<HearingSchedule>;
   updateHearing: (id: string, data: any) => Promise<HearingSchedule>;
-  changeStatus: (id: string, status: HearingStatus, reason?: string) => Promise<void>;
+  changeStatus: (id: string, status: HearingStatus, reason?: string, relatedAttachmentId?: string) => Promise<void>;
   batchChangeStatus: (ids: string[], status: HearingStatus, reason?: string) => Promise<void>;
   deleteHearing: (id: string) => Promise<void>;
 }
@@ -43,8 +43,8 @@ export const useHearingStore = create<HearingState>((set) => ({
     set({ currentHearing: hearing });
     return hearing;
   },
-  changeStatus: async (id, status, reason) => {
-    await hearingService.changeStatus(id, status, reason);
+  changeStatus: async (id, status, reason, relatedAttachmentId) => {
+    await hearingService.changeStatus(id, status, reason, relatedAttachmentId);
   },
   batchChangeStatus: async (ids, status, reason) => {
     await hearingService.batchChangeStatus(ids, status, reason);

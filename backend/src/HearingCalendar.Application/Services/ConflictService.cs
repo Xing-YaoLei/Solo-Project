@@ -32,6 +32,7 @@ public class ConflictService : IConflictService
             DetectedBy = userId,
             DetectedAt = DateTime.UtcNow,
             ResolutionStatus = ConflictResolutionStatus.Detected,
+            RelatedAttachmentId = request.RelatedAttachmentId,
             CreatedAt = DateTime.UtcNow,
             UpdatedAt = DateTime.UtcNow
         };

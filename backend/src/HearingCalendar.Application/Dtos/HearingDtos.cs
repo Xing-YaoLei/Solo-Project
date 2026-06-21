@@ -69,4 +69,5 @@ public record StatusLogEntry(
     HearingStatus ToStatus,
     Guid ChangedBy,
     string? Reason,
-    DateTime CreatedAt);
+    DateTime CreatedAt,
+    Guid? RelatedAttachmentId);

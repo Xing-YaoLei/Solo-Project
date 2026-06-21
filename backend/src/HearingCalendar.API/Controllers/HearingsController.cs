@@ -2,6 +2,7 @@ using System.Security.Claims;
 using HearingCalendar.Application.Dtos;
 using HearingCalendar.Application.Interfaces;
 using HearingCalendar.Domain.Enums;
+using HearingCalendar.API.Security;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 
@@ -9,6 +10,7 @@ namespace HearingCalendar.API.Controllers;
 
 [ApiController]
 [Route("api/[controller]")]
+[Authorize]
 public class HearingsController : ControllerBase
 {
     private readonly IHearingService _hearingService;
@@ -47,7 +49,9 @@ public class HearingsController : ControllerBase
     }
 
     [HttpPost]
-    [Authorize]
+    [RoleAuthorize(UserRole.Lawyer)]
+    [RoleAuthorize(UserRole.Assistant)]
+    [RoleAuthorize(UserRole.Partner)]
     public async Task<ActionResult<HearingDetailResponse>> Create([FromBody] CreateHearingRequest request)
     {
         var userId = Guid.Parse(User.FindFirstValue(ClaimTypes.NameIdentifier)!);
@@ -56,7 +60,9 @@ public class HearingsController : ControllerBase
     }
 
     [HttpPut("{id}")]
-    [Authorize]
+    [RoleAuthorize(UserRole.Lawyer)]
+    [RoleAuthorize(UserRole.Assistant)]
+    [RoleAuthorize(UserRole.Partner)]
     public async Task<ActionResult<HearingDetailResponse>> Update(Guid id, [FromBody] UpdateHearingRequest request)
     {
         var userId = Guid.Parse(User.FindFirstValue(ClaimTypes.NameIdentifier)!);
@@ -65,16 +71,20 @@ public class HearingsController : ControllerBase
     }
 
     [HttpPatch("{id}/status")]
-    [Authorize]
+    [RoleAuthorize(UserRole.Lawyer)]
+    [RoleAuthorize(UserRole.Assistant)]
+    [RoleAuthorize(UserRole.Partner)]
     public async Task<IActionResult> ChangeStatus(Guid id, [FromBody] ChangeStatusRequest request)
     {
         var userId = Guid.Parse(User.FindFirstValue(ClaimTypes.NameIdentifier)!);
-        await _hearingService.ChangeStatusAsync(id, request.Status, userId, request.Reason);
+        await _hearingService.ChangeStatusAsync(id, request.Status, userId, request.Reason, request.RelatedAttachmentId);
         return NoContent();
     }
 
     [HttpPost("batch/status")]
-    [Authorize]
+    [RoleAuthorize(UserRole.Lawyer)]
+    [RoleAuthorize(UserRole.Assistant)]
+    [RoleAuthorize(UserRole.Partner)]
     public async Task<IActionResult> BatchChangeStatus([FromBody] BatchStatusUpdateRequest request)
     {
         var userId = Guid.Parse(User.FindFirstValue(ClaimTypes.NameIdentifier)!);
@@ -83,7 +93,7 @@ public class HearingsController : ControllerBase
     }
 
     [HttpDelete("{id}")]
-    [Authorize]
+    [RoleAuthorize(UserRole.Partner)]
     public async Task<IActionResult> Delete(Guid id)
     {
         var userId = Guid.Parse(User.FindFirstValue(ClaimTypes.NameIdentifier)!);
@@ -102,7 +112,9 @@ public class HearingsController : ControllerBase
     }
 
     [HttpPost("{id}/participants")]
-    [Authorize]
+    [RoleAuthorize(UserRole.Lawyer)]
+    [RoleAuthorize(UserRole.Assistant)]
+    [RoleAuthorize(UserRole.Partner)]
     public async Task<ActionResult<ParticipantResponse>> AddParticipant(
         Guid id,
         [FromBody] AddParticipantRequest request)
@@ -114,7 +126,8 @@ public class HearingsController : ControllerBase
     }
 
     [HttpPut("participants/{participantId}/attendance")]
-    [Authorize]
+    [RoleAuthorize(UserRole.Lawyer)]
+    [RoleAuthorize(UserRole.Assistant)]
     public async Task<ActionResult<ParticipantResponse>> UpdateAttendance(
         Guid participantId,
         [FromBody] UpdateAttendanceRequest request)
@@ -125,7 +138,9 @@ public class HearingsController : ControllerBase
     }
 
     [HttpPost("participants/batch-attendance")]
-    [Authorize]
+    [RoleAuthorize(UserRole.Lawyer)]
+    [RoleAuthorize(UserRole.Assistant)]
+    [RoleAuthorize(UserRole.Partner)]
     public async Task<IActionResult> BatchUpdateAttendance([FromBody] BatchAttendanceRequest request)
     {
         var userId = Guid.Parse(User.FindFirstValue(ClaimTypes.NameIdentifier)!);
@@ -134,7 +149,9 @@ public class HearingsController : ControllerBase
     }
 
     [HttpDelete("participants/{participantId}")]
-    [Authorize]
+    [RoleAuthorize(UserRole.Lawyer)]
+    [RoleAuthorize(UserRole.Assistant)]
+    [RoleAuthorize(UserRole.Partner)]
     public async Task<IActionResult> RemoveParticipant(Guid participantId)
     {
         var userId = Guid.Parse(User.FindFirstValue(ClaimTypes.NameIdentifier)!);
@@ -150,7 +167,9 @@ public class HearingsController : ControllerBase
     }
 
     [HttpPost("{id}/attachments")]
-    [Authorize]
+    [RoleAuthorize(UserRole.Lawyer)]
+    [RoleAuthorize(UserRole.Assistant)]
+    [RoleAuthorize(UserRole.Partner)]
     public async Task<ActionResult<AttachmentResponse>> UploadAttachment(
         Guid id,
         IFormFile file,
@@ -172,7 +191,8 @@ public class HearingsController : ControllerBase
     }
 
     [HttpDelete("attachments/{attachmentId}")]
-    [Authorize]
+    [RoleAuthorize(UserRole.Lawyer)]
+    [RoleAuthorize(UserRole.Partner)]
     public async Task<IActionResult> DeleteAttachment(Guid attachmentId)
     {
         var userId = Guid.Parse(User.FindFirstValue(ClaimTypes.NameIdentifier)!);
@@ -188,4 +208,4 @@ public class HearingsController : ControllerBase
     }
 }
 
-public record ChangeStatusRequest(HearingStatus Status, string? Reason);
+public record ChangeStatusRequest(HearingStatus Status, string? Reason, Guid? RelatedAttachmentId);

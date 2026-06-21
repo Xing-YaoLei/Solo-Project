@@ -1,11 +1,15 @@
 using HearingCalendar.Application.Dtos;
 using HearingCalendar.Application.Interfaces;
+using HearingCalendar.Domain.Enums;
+using HearingCalendar.API.Security;
+using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 
 namespace HearingCalendar.API.Controllers;
 
 [ApiController]
 [Route("api/[controller]")]
+[Authorize]
 public class StatisticsController : ControllerBase
 {
     private readonly IStatisticsService _statisticsService;
@@ -16,6 +20,8 @@ public class StatisticsController : ControllerBase
     }
 
     [HttpGet("overview")]
+    [RoleAuthorize(UserRole.Partner)]
+    [RoleAuthorize(UserRole.Lawyer)]
     public async Task<ActionResult<StatisticsOverviewResponse>> GetOverview(
         [FromQuery] DateOnly? from = null,
         [FromQuery] DateOnly? to = null)
@@ -25,6 +31,8 @@ public class StatisticsController : ControllerBase
     }
 
     [HttpGet("client-satisfaction")]
+    [RoleAuthorize(UserRole.Partner)]
+    [RoleAuthorize(UserRole.Lawyer)]
     public async Task<ActionResult<IEnumerable<ClientSatisfactionReport>>> GetClientSatisfaction(
         [FromQuery] DateOnly? from = null,
         [FromQuery] DateOnly? to = null)
@@ -34,6 +42,8 @@ public class StatisticsController : ControllerBase
     }
 
     [HttpGet("hearing-stats")]
+    [RoleAuthorize(UserRole.Partner)]
+    [RoleAuthorize(UserRole.Lawyer)]
     public async Task<ActionResult<IEnumerable<HearingStatistics>>> GetHearingStatistics(
         [FromQuery] DateOnly from,
         [FromQuery] DateOnly to)
@@ -43,6 +53,8 @@ public class StatisticsController : ControllerBase
     }
 
     [HttpGet("client-satisfaction/{clientId}")]
+    [RoleAuthorize(UserRole.Partner)]
+    [RoleAuthorize(UserRole.Lawyer)]
     public async Task<ActionResult<ClientSatisfactionReport>> GetClientSatisfactionDetail(Guid clientId)
     {
         var result = await _statisticsService.GetClientSatisfactionDetailAsync(clientId);
