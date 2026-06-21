@@ -1,18 +1,19 @@
 import { NextResponse } from 'next/server';
-import { generateMockTicketTypes } from '@/lib/mockData';
+import { getTicketTypes } from '@/services/dashboardService';
 
 export async function GET(request: Request) {
   try {
     const { searchParams } = new URL(request.url);
-    const activityId = searchParams.get('activityId');
-    
-    const ticketTypes = generateMockTicketTypes();
-    
+    const activityIdsParam = searchParams.get('activityIds');
+    const activityIds = activityIdsParam ? activityIdsParam.split(',') : undefined;
+
+    const ticketTypes = await getTicketTypes(activityIds);
+
     return NextResponse.json({
       success: true,
       data: {
         ticketTypes,
-        activityId,
+        activityIds,
         lastRefreshedAt: new Date().toISOString(),
       },
     });

@@ -1,19 +1,31 @@
 import { NextResponse } from 'next/server';
 import * as XLSX from 'xlsx';
-import { generateMockOverview, generateMockSeatTrend, generateMockOrderComposition, generateMockTicketTypes, generateMockLockRecords } from '@/lib/mockData';
-import { getOccupancyRateSpec, formatCurrency, formatPercent, formatDate } from '@/lib/utils';
+import {
+  getDashboardOverview,
+  getSeatTrendData,
+  getOrderComposition,
+  getTicketTypes,
+  getLockRecords,
+  getOccupancyRateSpec,
+} from '@/services/dashboardService';
+import { formatCurrency, formatPercent, formatDate } from '@/lib/utils';
 import type { ExportOptions } from '@/types';
 
 export async function POST(request: Request) {
   try {
     const body = (await request.json()) as ExportOptions;
-    const { format, includeOccupancySpec, sections } = body;
+    const { format, includeOccupancySpec, sections, activityIds } = body;
 
-    const overview = generateMockOverview();
-    const seatTrend = generateMockSeatTrend();
-    const orderComp = generateMockOrderComposition();
-    const ticketTypes = generateMockTicketTypes();
-    const lockRecords = generateMockLockRecords();
+    const ids = activityIds && activityIds.length > 0 ? activityIds : undefined;
+
+    const [overview, seatTrend, orderComp, ticketTypes, lockRecordsResult, occupancySpec] = await Promise.all([
+      getDashboardOverview(ids),
+      sections.includes('seatTrend') || sections.length === 0 ? getSeatTrendData(ids) : Promise.resolve([]),
+      getOrderComposition(ids),
+      getTicketTypes(ids),
+      getLockRecords({ activityIds: ids, pageSize: 1000 }),
+      getOccupancyRateSpec(),
+    ]);
 
     const wb = XLSX.utils.book_new();
 
@@ -21,6 +33,7 @@ export async function POST(request: Request) {
       const overviewData = [
         ['活动票务座位分配看板 - 概览数据'],
         ['导出时间', formatDate(new Date())],
+        ['数据更新时间', formatDate(overview.lastRefreshedAt)],
         [],
         ['核心指标'],
         ['总座位数', overview.totalSeats],
@@ -28,19 +41,17 @@ export async function POST(request: Request) {
         ['上座率', formatPercent(overview.occupancyRate)],
         ['锁座数量', overview.lockedSeats],
         ['异常数量', overview.anomalyCount],
-        ['数据更新时间', formatDate(overview.lastRefreshedAt)],
       ];
 
       if (includeOccupancySpec) {
-        const spec = getOccupancyRateSpec();
         overviewData.push(
           [],
           ['上座率计算口径说明'],
-          ['计算方法', spec.calculationMethod],
-          ['计算公式', spec.formula],
-          ['排除座位', spec.excludedSeats.join('; ')],
-          ['数据来源', spec.dataSources.join(', ')],
-          ['口径更新时间', formatDate(spec.updateTime)]
+          ['计算方法', occupancySpec.calculationMethod],
+          ['计算公式', occupancySpec.formula],
+          ['排除座位', occupancySpec.excludedSeats.join('; ')],
+          ['数据来源', occupancySpec.dataSources.join(', ')],
+          ['口径更新时间', formatDate(occupancySpec.updateTime)]
         );
       }
 
@@ -75,7 +86,7 @@ export async function POST(request: Request) {
         ...orderComp.bySource.map(s => [
           s.label,
           s.value,
-          formatPercent(s.value / orderComp.totalOrders),
+          formatPercent(orderComp.totalOrders > 0 ? s.value / orderComp.totalOrders : 0),
         ]),
         [],
         ['按支付方式分布'],
@@ -83,7 +94,7 @@ export async function POST(request: Request) {
         ...orderComp.byPaymentMethod.map(p => [
           p.label,
           p.value,
-          formatPercent(p.value / orderComp.totalOrders),
+          formatPercent(orderComp.totalOrders > 0 ? p.value / orderComp.totalOrders : 0),
         ]),
         [],
         ['按票种分布'],
@@ -91,7 +102,7 @@ export async function POST(request: Request) {
         ...orderComp.byTicketType.map(t => [
           t.label,
           t.value,
-          formatPercent(t.value / orderComp.totalOrders),
+          formatPercent(orderComp.totalOrders > 0 ? t.value / orderComp.totalOrders : 0),
         ]),
       ];
       const wsOrders = XLSX.utils.aoa_to_sheet(orderData);
@@ -124,7 +135,7 @@ export async function POST(request: Request) {
     if (sections.includes('lockRecords') || sections.length === 0) {
       const lockData = [
         ['座位信息', '操作人', '锁座原因', '锁座时长', '锁座时间', '过期时间', '状态', '是否异常', '异常类型', '异常说明'],
-        ...lockRecords.map(r => [
+        ...lockRecordsResult.records.map(r => [
           r.seatInfo,
           r.operatorName,
           r.lockReason,

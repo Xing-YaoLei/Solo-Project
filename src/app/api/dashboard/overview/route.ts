@@ -1,17 +1,20 @@
 import { NextResponse } from 'next/server';
-import { generateMockOverview } from '@/lib/mockData';
-import { getOccupancyRateSpec } from '@/lib/utils';
+import { getDashboardOverview, getOccupancyRateSpec } from '@/services/dashboardService';
 
-export async function GET() {
+export async function GET(request: Request) {
   try {
-    const overview = generateMockOverview();
-    
+    const { searchParams } = new URL(request.url);
+    const activityIdsParam = searchParams.get('activityIds');
+    const activityIds = activityIdsParam ? activityIdsParam.split(',') : undefined;
+
+    const overview = await getDashboardOverview(activityIds);
+    const occupancyRateSpec = await getOccupancyRateSpec();
+
     return NextResponse.json({
       success: true,
       data: {
         ...overview,
-        lastRefreshedAt: new Date().toISOString(),
-        occupancyRateSpec: getOccupancyRateSpec(),
+        occupancyRateSpec,
       },
     });
   } catch (error) {

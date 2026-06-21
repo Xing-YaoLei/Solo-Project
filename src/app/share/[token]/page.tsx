@@ -2,55 +2,89 @@
 
 import { useState, useEffect } from 'react';
 import { notFound } from 'next/navigation';
-import { useDashboardStore } from '@/store/useDashboardStore';
 import { StatCard } from '@/components/StatCard';
 import { SeatTrendChart } from '@/components/charts/SeatTrendChart';
 import { CompositionPieChart } from '@/components/charts/CompositionPieChart';
 import { Users, Ticket, TrendingUp, Lock, AlertTriangle, Clock, Info, ArrowLeft } from 'lucide-react';
-import { formatPercent, formatDate } from '@/lib/utils';
-import { UserRoleLabels } from '@/types';
+import { formatPercent, formatDate, getRelativeTime } from '@/lib/utils';
+import { UserRoleLabels, type DashboardOverview, type SeatTrendDataPoint, type OrderComposition } from '@/types';
+import { UserRole } from '@prisma/client';
 import Link from 'next/link';
 
 interface SharePageProps {
   params: { token: string };
 }
 
+interface ShareData {
+  shareInfo: {
+    role: UserRole;
+    expiresAt: string;
+    activityIds: string[];
+  };
+  overview: DashboardOverview;
+  seatTrend: SeatTrendDataPoint[];
+  orderComposition: OrderComposition;
+}
+
 export default function SharePage({ params }: SharePageProps) {
   const { token } = params;
-  const [isValid, setIsValid] = useState(true);
-  const [shareInfo, setShareInfo] = useState<{ role: string; expiresAt: Date } | null>(null);
-  
-  const {
-    overview,
-    seatTrend,
-    orderComposition,
-    isLoading,
-    fetchOverview,
-    fetchSeatTrend,
-    fetchOrderComposition,
-  } = useDashboardStore();
+  const [isValid, setIsValid] = useState<boolean | null>(null);
+  const [shareData, setShareData] = useState<ShareData | null>(null);
+  const [error, setError] = useState<string>('');
+  const [currentTime, setCurrentTime] = useState(new Date());
 
   useEffect(() => {
-    if (!token || token.length !== 32) {
+    const timer = setInterval(() => {
+      setCurrentTime(new Date());
+    }, 60000);
+    return () => clearInterval(timer);
+  }, []);
+
+  useEffect(() => {
+    if (!token) {
       setIsValid(false);
       return;
     }
 
-    setShareInfo({
-      role: 'operator',
-      expiresAt: new Date(Date.now() + 24 * 60 * 60 * 1000),
-    });
+    const fetchShareData = async () => {
+      try {
+        const response = await fetch(`/api/share/${token}`);
+        const result = await response.json();
 
-    fetchOverview();
-    fetchSeatTrend();
-    fetchOrderComposition();
-  }, [token, fetchOverview, fetchSeatTrend, fetchOrderComposition]);
+        if (result.success) {
+          setShareData(result.data);
+          setIsValid(true);
+        } else {
+          setError(result.error || '无效的分享链接');
+          setIsValid(false);
+        }
+      } catch (err) {
+        setError('获取分享数据失败');
+        setIsValid(false);
+      }
+    };
 
-  if (!isValid) {
-    notFound();
+    fetchShareData();
+  }, [token]);
+
+  if (isValid === false) {
+    return (
+      <div className="flex min-h-screen items-center justify-center bg-background">
+        <div className="text-center max-w-md mx-auto p-6">
+          <div className="mx-auto h-16 w-16 rounded-full bg-danger/20 flex items-center justify-center mb-4">
+            <AlertTriangle className="h-8 w-8 text-danger" />
+          </div>
+          <h1 className="text-xl font-bold text-white mb-2">链接无效</h1>
+          <p className="text-neutral-400 mb-6">{error || '该分享链接不存在或已被撤销'}</p>
+          <Link href="/" className="btn-primary">
+            返回看板首页
+          </Link>
+        </div>
+      </div>
+    );
   }
 
-  if (isLoading && !overview) {
+  if (!shareData) {
     return (
       <div className="flex min-h-screen items-center justify-center bg-background">
         <div className="text-center">
@@ -60,6 +94,9 @@ export default function SharePage({ params }: SharePageProps) {
       </div>
     );
   }
+
+  const { shareInfo, overview, seatTrend, orderComposition } = shareData;
+  const isExpired = new Date(shareInfo.expiresAt) < currentTime;
 
   return (
     <div className="min-h-screen bg-background">
@@ -80,20 +117,21 @@ export default function SharePage({ params }: SharePageProps) {
           </div>
 
           <div className="flex items-center gap-4">
-            {shareInfo && (
-              <div className="hidden sm:flex items-center gap-2 rounded-lg bg-neutral-800/50 px-3 py-1.5">
-                <span className="text-xs text-neutral-400">
-                  权限：{UserRoleLabels[shareInfo.role as keyof typeof UserRoleLabels]}
-                </span>
-              </div>
-            )}
+            <div className="hidden sm:flex items-center gap-2 rounded-lg bg-neutral-800/50 px-3 py-1.5">
+              <span className="text-xs text-neutral-400">
+                权限：{UserRoleLabels[shareInfo.role]}
+              </span>
+            </div>
             {overview?.lastRefreshedAt && (
               <div className="flex items-center gap-2 rounded-lg bg-neutral-800/50 px-3 py-1.5">
                 <Clock className="h-4 w-4 text-success" />
                 <span className="text-xs text-neutral-300">
                   最近刷新：
-                  <span className="font-mono text-success" title={formatDate(overview.lastRefreshedAt)}>
-                    {formatDate(overview.lastRefreshedAt)}
+                  <span
+                    className="font-mono text-success"
+                    title={formatDate(overview.lastRefreshedAt)}
+                  >
+                    {getRelativeTime(overview.lastRefreshedAt)}
                   </span>
                 </span>
               </div>
@@ -104,7 +142,7 @@ export default function SharePage({ params }: SharePageProps) {
 
       <main className="p-4 lg:p-6">
         <div className="max-w-7xl mx-auto space-y-6 animate-fade-in">
-          {shareInfo && new Date() > shareInfo.expiresAt && (
+          {isExpired && (
             <div className="card border-danger/30 bg-danger/5 p-4">
               <div className="flex items-center gap-3">
                 <AlertTriangle className="h-5 w-5 text-danger" />
@@ -112,6 +150,20 @@ export default function SharePage({ params }: SharePageProps) {
                   <p className="font-medium text-danger">链接已过期</p>
                   <p className="text-sm text-neutral-400">
                     该分享链接已于 {formatDate(shareInfo.expiresAt)} 过期，请联系分享者获取新链接。
+                  </p>
+                </div>
+              </div>
+            </div>
+          )}
+
+          {shareInfo.role === UserRole.finance && (
+            <div className="card border-warning/30 bg-warning/5 p-4">
+              <div className="flex items-center gap-3">
+                <Info className="h-5 w-5 text-warning" />
+                <div>
+                  <p className="font-medium text-warning">财务视图</p>
+                  <p className="text-sm text-neutral-400">
+                    当前为财务人员视图，仅展示财务相关数据指标
                   </p>
                 </div>
               </div>
@@ -139,19 +191,21 @@ export default function SharePage({ params }: SharePageProps) {
               title="上座率"
               value={overview?.occupancyRate || 0}
               isPercentage
-              icon={<TrendingUp className="h-6 w-6 text-accent" />}
+              icon={<TrendingUp className="h-6 w-6 text-warning" />}
               gradientFrom="#F59E0B"
               gradientTo="#FBBF24"
               delay={0.3}
             />
-            <StatCard
-              title="锁座数量"
-              value={overview?.lockedSeats || 0}
-              icon={<Lock className="h-6 w-6 text-warning" />}
-              gradientFrom="#8B5CF6"
-              gradientTo="#A78BFA"
-              delay={0.4}
-            />
+            {shareInfo.role !== UserRole.finance && (
+              <StatCard
+                title="锁座数量"
+                value={overview?.lockedSeats || 0}
+                icon={<Lock className="h-6 w-6 text-purple-500" />}
+                gradientFrom="#8B5CF6"
+                gradientTo="#A78BFA"
+                delay={0.4}
+              />
+            )}
             <StatCard
               title="异常记录"
               value={overview?.anomalyCount || 0}
@@ -193,35 +247,38 @@ export default function SharePage({ params }: SharePageProps) {
             </div>
           )}
 
-          <div className="card p-5 animate-fade-in" style={{ animationDelay: '0.7s' }}>
-            <h2 className="mb-4 font-display text-lg font-semibold text-white">座位销售趋势</h2>
-            {seatTrend.length > 0 && <SeatTrendChart data={seatTrend} />}
-          </div>
+          {seatTrend.length > 0 && (
+            <div className="card p-5 animate-fade-in" style={{ animationDelay: '0.7s' }}>
+              <h2 className="mb-4 font-display text-lg font-semibold text-white">座位销售趋势</h2>
+              <SeatTrendChart data={seatTrend} />
+            </div>
+          )}
 
-          <div className="grid grid-cols-1 gap-6 lg:grid-cols-3 animate-fade-in" style={{ animationDelay: '0.8s' }}>
-            {orderComposition && (
-              <>
-                <CompositionPieChart
-                  data={orderComposition.bySource}
-                  title="订单来源分布"
-                  totalLabel="订单总数"
-                />
+          {orderComposition && orderComposition.bySource.length > 0 && (
+            <div className="grid grid-cols-1 gap-6 lg:grid-cols-3 animate-fade-in" style={{ animationDelay: '0.8s' }}>
+              <CompositionPieChart
+                data={orderComposition.bySource}
+                title="订单来源分布"
+                totalLabel="订单总数"
+              />
+              {shareInfo.role === UserRole.finance && (
                 <CompositionPieChart
                   data={orderComposition.byPaymentMethod}
                   title="支付方式构成"
                   totalLabel="订单总数"
                 />
-                <CompositionPieChart
-                  data={orderComposition.byTicketType}
-                  title="票种销量占比"
-                  totalLabel="订单总数"
-                />
-              </>
-            )}
-          </div>
+              )}
+              <CompositionPieChart
+                data={orderComposition.byTicketType}
+                title="票种销量占比"
+                totalLabel="订单总数"
+              />
+            </div>
+          )}
 
           <footer className="pt-6 pb-4 text-center text-xs text-neutral-600 animate-fade-in" style={{ animationDelay: '0.9s' }}>
             <p>本页面为分享视图，数据仅供参考 · 数据来源：报名表、支付流水、票务平台</p>
+            <p className="mt-1">链接有效期至：{formatDate(shareInfo.expiresAt)}</p>
           </footer>
         </div>
       </main>

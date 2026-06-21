@@ -105,6 +105,7 @@ export interface ExportOptions {
   format: 'xlsx' | 'csv' | 'pdf';
   includeOccupancySpec: boolean;
   sections: string[];
+  activityIds?: string[];
 }
 
 export const SeatStatusLabels: Record<SeatStatus, string> = {

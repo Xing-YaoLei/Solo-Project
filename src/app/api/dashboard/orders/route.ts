@@ -1,18 +1,19 @@
 import { NextResponse } from 'next/server';
-import { generateMockOrderComposition } from '@/lib/mockData';
+import { getOrderComposition } from '@/services/dashboardService';
 
 export async function GET(request: Request) {
   try {
     const { searchParams } = new URL(request.url);
-    const activityId = searchParams.get('activityId');
-    
-    const orderData = generateMockOrderComposition();
-    
+    const activityIdsParam = searchParams.get('activityIds');
+    const activityIds = activityIdsParam ? activityIdsParam.split(',') : undefined;
+
+    const orderData = await getOrderComposition(activityIds);
+
     return NextResponse.json({
       success: true,
       data: {
         ...orderData,
-        activityId,
+        activityIds,
         lastRefreshedAt: new Date().toISOString(),
       },
     });

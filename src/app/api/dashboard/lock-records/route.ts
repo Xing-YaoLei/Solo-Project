@@ -1,32 +1,31 @@
 import { NextResponse } from 'next/server';
-import { generateMockLockRecords } from '@/lib/mockData';
+import { getLockRecords } from '@/services/dashboardService';
 
 export async function GET(request: Request) {
   try {
     const { searchParams } = new URL(request.url);
-    const activityId = searchParams.get('activityId');
+    const activityIdsParam = searchParams.get('activityIds');
+    const activityIds = activityIdsParam ? activityIdsParam.split(',') : undefined;
     const anomalyOnly = searchParams.get('anomalyOnly') === 'true';
     const page = parseInt(searchParams.get('page') || '1');
     const pageSize = parseInt(searchParams.get('pageSize') || '20');
-    
-    let records = generateMockLockRecords();
-    
-    if (anomalyOnly) {
-      records = records.filter(r => r.isAnomaly);
-    }
-    
-    const startIndex = (page - 1) * pageSize;
-    const paginatedRecords = records.slice(startIndex, startIndex + pageSize);
-    
+
+    const result = await getLockRecords({
+      activityIds,
+      anomalyOnly,
+      page,
+      pageSize,
+    });
+
     return NextResponse.json({
       success: true,
       data: {
-        records: paginatedRecords,
-        total: records.length,
+        records: result.records,
+        total: result.total,
         page,
         pageSize,
-        anomalyCount: records.filter(r => r.isAnomaly).length,
-        activityId,
+        anomalyCount: result.anomalyCount,
+        activityIds,
         lastRefreshedAt: new Date().toISOString(),
       },
     });

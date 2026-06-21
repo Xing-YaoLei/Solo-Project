@@ -1,21 +1,30 @@
 import { NextResponse } from 'next/server';
-import { generateMockSeatTrend, generateMockAreaHeatmap } from '@/lib/mockData';
+import { getSeatTrendData, getAreaHeatmapData } from '@/services/dashboardService';
 
 export async function GET(request: Request) {
   try {
     const { searchParams } = new URL(request.url);
-    const activityId = searchParams.get('activityId');
-    
-    const trendData = generateMockSeatTrend();
-    const heatmapData = generateMockAreaHeatmap();
-    
+    const activityIdsParam = searchParams.get('activityIds');
+    const activityIds = activityIdsParam ? activityIdsParam.split(',') : undefined;
+    const daysParam = searchParams.get('days');
+    const days = daysParam ? parseInt(daysParam) : 30;
+
+    const [trendData, heatmapData] = await Promise.all([
+      getSeatTrendData(activityIds, days),
+      getAreaHeatmapData(activityIds),
+    ]);
+
+    const lastRefreshedAt = trendData.length > 0 
+      ? new Date(trendData[trendData.length - 1].timestamp)
+      : new Date();
+
     return NextResponse.json({
       success: true,
       data: {
         trend: trendData,
         heatmap: heatmapData,
-        activityId,
-        lastRefreshedAt: new Date().toISOString(),
+        activityIds,
+        lastRefreshedAt: lastRefreshedAt.toISOString(),
       },
     });
   } catch (error) {
