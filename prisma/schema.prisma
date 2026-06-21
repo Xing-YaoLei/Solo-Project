@@ -1,5 +1,6 @@
 // This is your Prisma schema file,
 // learn more about it in the docs: https://pris.ly/d/prisma-schema
+// Compatible with PostgreSQL (local) and Supabase
 
 generator client {
   provider = "prisma-client-js"
@@ -11,6 +12,14 @@ datasource db {
   directUrl = env("DIRECT_URL")
 }
 
+// ============ 数据来源枚举 ============
+enum DataSource {
+  registration_form  // 报名表
+  payment_flow       // 支付流水
+  ticketing_platform // 票务平台
+}
+
+// ============ 状态枚举 ============
 enum SeatStatus {
   available
   locked
@@ -54,6 +63,7 @@ enum AnomalyType {
   manual_override
 }
 
+// ============ 活动表 ============
 model Activity {
   id         String   @id @default(uuid())
   name       String
@@ -68,10 +78,13 @@ model Activity {
   ticketTypes     TicketType[]
   orders          Order[]
   lockRecords     LockRecord[]
+  registrations   Registration[]
+  paymentRecords  PaymentRecord[]
 
   @@map("activities")
 }
 
+// ============ 座位分配表 - 来源：票务平台 ============
 model SeatAllocation {
   id            String      @id @default(uuid())
   activityId    String
@@ -83,6 +96,8 @@ model SeatAllocation {
   orderId       String?
   lockedAt      DateTime?
   soldAt        DateTime?
+  dataSource    DataSource  @default(ticketing_platform) // 数据来源
+  platformRefId String?     // 票务平台原始记录ID
   createdAt     DateTime    @default(now())
   updatedAt     DateTime    @updatedAt
 
@@ -97,6 +112,7 @@ model SeatAllocation {
   @@map("seat_allocations")
 }
 
+// ============ 票种规则表 - 来源：票务平台 ============
 model TicketType {
   id             String   @id @default(uuid())
   activityId     String
@@ -111,16 +127,69 @@ model TicketType {
   saleEndTime    DateTime
   description    String?
   restrictions   String[]
-  createdAt      DateTime @default(now())
-  updatedAt      DateTime @updatedAt
+  dataSource     DataSource @default(ticketing_platform) // 数据来源
+  createdAt      DateTime   @default(now())
+  updatedAt      DateTime   @updatedAt
 
   activity        Activity         @relation(fields: [activityId], references: [id], onDelete: Cascade)
   seatAllocations SeatAllocation[]
   orders          Order[]
+  registrations   Registration[]
 
   @@map("ticket_types")
 }
 
+// ============ 报名表 - 来源：registration_form ============
+model Registration {
+  id            String   @id @default(uuid())
+  activityId    String
+  orderId       String?
+  name          String
+  phone         String
+  email         String?
+  idCard        String?
+  ticketTypeId  String
+  quantity      Int      @default(1)
+  dataSource    DataSource @default(registration_form)
+  platformRefId String?    // 票务平台报名记录ID
+  createdAt     DateTime @default(now())
+  updatedAt     DateTime @updatedAt
+
+  activity   Activity   @relation(fields: [activityId], references: [id], onDelete: Cascade)
+  order      Order?     @relation(fields: [orderId], references: [id])
+  ticketType TicketType @relation(fields: [ticketTypeId], references: [id])
+
+  @@index([activityId])
+  @@index([phone])
+  @@map("registrations") // 报名表
+}
+
+// ============ 支付流水表 - 来源：payment_flow ============
+model PaymentRecord {
+  id               String        @id @default(uuid())
+  activityId       String
+  orderId          String
+  transactionNo    String        @unique // 支付流水号
+  amount           Decimal       @db.Decimal(10, 2)
+  paymentMethod    PaymentMethod
+  status           OrderStatus   @default(pending)
+  paidAt           DateTime?
+  dataSource       DataSource    @default(payment_flow) // 数据来源
+  platformRefId    String?       // 票务平台支付记录ID
+  thirdPartyRefId  String?       // 第三方支付平台交易号
+  createdAt        DateTime      @default(now())
+  updatedAt        DateTime      @updatedAt
+
+  activity Activity @relation(fields: [activityId], references: [id], onDelete: Cascade)
+  order    Order    @relation(fields: [orderId], references: [id])
+
+  @@index([activityId])
+  @@index([transactionNo])
+  @@index([status])
+  @@map("payment_records") // 支付流水
+}
+
+// ============ 订单表 - 聚合：报名表 + 支付流水 ============
 model Order {
   id             String        @id @default(uuid())
   activityId     String
@@ -134,6 +203,7 @@ model Order {
   buyerName      String?
   buyerPhone     String?
   paidAt         DateTime?
+  dataSource     DataSource    @default(registration_form) // 主数据源
   createdAt      DateTime      @default(now())
   updatedAt      DateTime      @updatedAt
 
@@ -141,6 +211,8 @@ model Order {
   ticketType      TicketType       @relation(fields: [ticketTypeId], references: [id])
   seatAllocations SeatAllocation[]
   lockRecords     LockRecord[]
+  registrations   Registration[]
+  paymentRecords  PaymentRecord[]
 
   @@index([activityId])
   @@index([status])
@@ -148,6 +220,7 @@ model Order {
   @@map("orders")
 }
 
+// ============ 锁座记录表 - 来源：票务平台 ============
 model LockRecord {
   id                 String       @id @default(uuid())
   activityId         String
@@ -164,7 +237,9 @@ model LockRecord {
   isAnomaly          Boolean      @default(false)
   anomalyType        AnomalyType?
   anomalyDescription String?
-  originalRecordUrl  String?
+  originalRecordUrl  String?      // 票务平台原始记录链接
+  dataSource         DataSource   @default(ticketing_platform) // 数据来源
+  platformRefId      String?      // 票务平台原始记录ID
   createdAt          DateTime     @default(now())
 
   activity       Activity       @relation(fields: [activityId], references: [id], onDelete: Cascade)
@@ -177,6 +252,7 @@ model LockRecord {
   @@map("lock_records")
 }
 
+// ============ 用户表 ============
 model User {
   id        String   @id @default(uuid())
   email     String   @unique
@@ -189,6 +265,7 @@ model User {
   @@map("users")
 }
 
+// ============ 分享链接表 ============
 model ShareLink {
   id         String     @id @default(uuid())
   token      String     @unique
@@ -204,11 +281,14 @@ model ShareLink {
   @@map("share_links")
 }
 
+// ============ 数据快照表 - 统一所有API的刷新时间和口径 ============
 model DashboardSnapshot {
   id                    String   @id @default(uuid())
   activityIds           String[] @default([])
   lastRefreshedAt       DateTime
   occupancyRateSpec     Json
+  registrationCount     Int      @default(0) // 报名表数量
+  paymentCount          Int      @default(0) // 支付流水数量
   overviewData          Json
   seatTrendData         Json
   areaHeatmapData       Json
@@ -218,5 +298,6 @@ model DashboardSnapshot {
   createdAt             DateTime @default(now())
 
   @@index([createdAt])
+  @@index([activityIds])
   @@map("dashboard_snapshots")
 }

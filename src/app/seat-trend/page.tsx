@@ -25,7 +25,7 @@ export default function SeatTrendPage() {
     );
   }
 
-  const totalSold = areaHeatmap.reduce((sum, area) => sum + area.soldSeats, 0);
+  const totalSold = areaHeatmap.reduce((sum, area) => sum + (area.soldSeats ?? 0), 0);
   const totalSeats = areaHeatmap.reduce((sum, area) => sum + area.totalSeats, 0);
   const overallRate = totalSeats > 0 ? totalSold / totalSeats : 0;
 
@@ -62,17 +62,17 @@ export default function SeatTrendPage() {
               <h3 className="font-display font-semibold text-white">{area.area}</h3>
               <span
                 className={`text-sm font-medium ${
-                  area.occupancyRate >= 0.85 ? 'text-success' :
-                  area.occupancyRate >= 0.6 ? 'text-primary' :
-                  area.occupancyRate >= 0.4 ? 'text-warning' : 'text-danger'
+                  (area.occupancyRate ?? 0) >= 0.85 ? 'text-success' :
+                  (area.occupancyRate ?? 0) >= 0.6 ? 'text-primary' :
+                  (area.occupancyRate ?? 0) >= 0.4 ? 'text-warning' : 'text-danger'
                 }`}
               >
-                {formatPercent(area.occupancyRate)}
+                {formatPercent(area.occupancyRate ?? 0)}
               </span>
             </div>
             <div className="mt-3 flex items-baseline gap-2">
               <span className="font-mono text-2xl font-bold text-white">
-                {formatNumber(area.soldSeats)}
+                {formatNumber(area.soldSeats ?? 0)}
               </span>
               <span className="text-neutral-500">/ {formatNumber(area.totalSeats)}</span>
             </div>
@@ -80,16 +80,16 @@ export default function SeatTrendPage() {
               <div
                 className="progress-bar-fill"
                 style={{
-                  width: `${area.occupancyRate * 100}%`,
+                  width: `${(area.occupancyRate ?? 0) * 100}%`,
                   backgroundColor:
-                    area.occupancyRate >= 0.85 ? '#10B981' :
-                    area.occupancyRate >= 0.6 ? '#3B82F6' :
-                    area.occupancyRate >= 0.4 ? '#F59E0B' : '#EF4444',
+                    (area.occupancyRate ?? 0) >= 0.85 ? '#10B981' :
+                    (area.occupancyRate ?? 0) >= 0.6 ? '#3B82F6' :
+                      (area.occupancyRate ?? 0) >= 0.4 ? '#F59E0B' : '#EF4444',
                 }}
               />
             </div>
             <div className="mt-2 text-xs text-neutral-500">
-              剩余 {formatNumber(area.totalSeats - area.soldSeats)} 座可售
+              剩余 {formatNumber(area.totalSeats - (area.soldSeats ?? 0))} 座可售
             </div>
           </div>
         ))}
@@ -120,27 +120,27 @@ export default function SeatTrendPage() {
                 <div className="flex items-center justify-between text-sm">
                   <span className="text-neutral-300">{area.area}</span>
                   <span className="font-mono text-white">
-                    {formatPercent(area.occupancyRate)}
+                    {formatPercent(area.occupancyRate ?? 0)}
                   </span>
                 </div>
                 <div className="h-8 overflow-hidden rounded-lg bg-neutral-800/50">
                   <div
                     className="h-full rounded-lg transition-all duration-700 ease-out flex items-center justify-end pr-2"
                     style={{
-                      width: `${area.occupancyRate * 100}%`,
+                      width: `${(area.occupancyRate ?? 0) * 100}%`,
                       background: `linear-gradient(90deg, 
-                        ${area.occupancyRate >= 0.85 ? '#059669' :
-                          area.occupancyRate >= 0.6 ? '#2563EB' :
-                          area.occupancyRate >= 0.4 ? '#D97706' : '#DC2626'}, 
-                        ${area.occupancyRate >= 0.85 ? '#10B981' :
-                          area.occupancyRate >= 0.6 ? '#3B82F6' :
-                          area.occupancyRate >= 0.4 ? '#F59E0B' : '#EF4444'}
+                        ${(area.occupancyRate ?? 0) >= 0.85 ? '#059669' :
+                          (area.occupancyRate ?? 0) >= 0.6 ? '#2563EB' :
+                          (area.occupancyRate ?? 0) >= 0.4 ? '#D97706' : '#DC2626'}, 
+                        ${(area.occupancyRate ?? 0) >= 0.85 ? '#10B981' :
+                          (area.occupancyRate ?? 0) >= 0.6 ? '#3B82F6' :
+                          (area.occupancyRate ?? 0) >= 0.4 ? '#F59E0B' : '#EF4444'}
                       )`,
                     }}
                   >
-                    {area.occupancyRate > 0.15 && (
+                    {(area.occupancyRate ?? 0) > 0.15 && (
                       <span className="text-xs font-medium text-white/90">
-                        {formatNumber(area.soldSeats)}/{formatNumber(area.totalSeats)}
+                        {formatNumber(area.soldSeats ?? 0)}/{formatNumber(area.totalSeats)}
                       </span>
                     )}
                   </div>

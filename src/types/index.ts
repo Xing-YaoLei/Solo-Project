@@ -31,12 +31,12 @@ export interface SeatTrendDataPoint {
 export interface AreaHeatmapData {
   area: string;
   totalSeats: number;
-  soldSeats: number;
-  occupancyRate: number;
+  soldSeats?: number;
+  occupancyRate?: number;
   rows: {
     row: string;
     total: number;
-    sold: number;
+    sold?: number;
     rate: number;
   }[];
 }

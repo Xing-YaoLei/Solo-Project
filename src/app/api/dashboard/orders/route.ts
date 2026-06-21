@@ -19,6 +19,8 @@ export async function GET(request: Request) {
         totalAmount: snapshot.orderComposition.totalAmount,
         totalOrders: snapshot.orderComposition.totalOrders,
         activityIds,
+        registrationCount: snapshot.registrationCount,
+        paymentCount: snapshot.paymentCount,
         lastRefreshedAt: snapshot.lastRefreshedAt,
         occupancyRateSpec: snapshot.occupancyRateSpec,
       },

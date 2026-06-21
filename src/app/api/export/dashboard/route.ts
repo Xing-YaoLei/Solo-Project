@@ -12,7 +12,7 @@ export async function POST(request: Request) {
     const ids = activityIds && activityIds.length > 0 ? activityIds : undefined;
     const snapshot = await getDashboardSnapshot(ids);
 
-    const { overview, seatTrend, orderComposition, ticketTypes, lockRecords, lastRefreshedAt, occupancyRateSpec } = snapshot;
+    const { overview, seatTrend, orderComposition, ticketTypes, lockRecords, lastRefreshedAt, occupancyRateSpec, registrationCount, paymentCount } = snapshot;
 
     const wb = XLSX.utils.book_new();
 
@@ -21,6 +21,10 @@ export async function POST(request: Request) {
         ['活动票务座位分配看板 - 概览数据'],
         ['导出时间', formatDate(new Date())],
         ['数据更新时间', formatDate(lastRefreshedAt)],
+        [],
+        ['数据来源统计'],
+        ['报名表单数量', registrationCount],
+        ['支付流水数量', paymentCount],
         [],
         ['核心指标'],
         ['总座位数', overview.totalSeats],

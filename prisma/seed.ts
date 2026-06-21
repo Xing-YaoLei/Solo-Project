@@ -1,4 +1,4 @@
-import { PrismaClient, SeatStatus, OrderSource, PaymentMethod, OrderStatus, UserRole, AnomalyType } from '@prisma/client';
+import { PrismaClient, SeatStatus, OrderSource, PaymentMethod, OrderStatus, UserRole, AnomalyType, DataSource } from '@prisma/client';
 
 const prisma = new PrismaClient();
 
@@ -7,6 +7,8 @@ async function main() {
 
   await prisma.shareLink.deleteMany();
   await prisma.lockRecord.deleteMany();
+  await prisma.paymentRecord.deleteMany();
+  await prisma.registration.deleteMany();
   await prisma.order.deleteMany();
   await prisma.seatAllocation.deleteMany();
   await prisma.ticketType.deleteMany();
@@ -219,6 +221,54 @@ async function main() {
 
     const allOrders = await prisma.order.findMany({ where: { activityId: activity.id } });
     const allSeats = await prisma.seatAllocation.findMany({ where: { activityId: activity.id } });
+
+    // ============ 报名表 (registrations) ============
+    const registrations: any[] = [];
+    for (const order of allOrders) {
+      if (order.buyerName && order.buyerPhone) {
+        registrations.push({
+          activityId: activity.id,
+          orderId: order.id,
+          name: order.buyerName,
+          phone: order.buyerPhone,
+          email: order.buyerPhone + '@example.com',
+          idCard: Math.random() > 0.5 ? `110101${String(Math.floor(Math.random() * 1000000000000)).padStart(12, '0')}` : null,
+          ticketTypeId: order.ticketTypeId,
+          quantity: order.quantity,
+          dataSource: DataSource.registration_form,
+          platformRefId: `REG-${order.orderNo}`,
+          createdAt: order.createdAt,
+        });
+      }
+    }
+    await prisma.registration.createMany({ data: registrations });
+    console.log(`Created ${registrations.length} registrations for ${activity.name}`);
+
+    // ============ 支付流水 (payment_records) ============
+    const paymentRecords: any[] = [];
+    for (const order of allOrders) {
+      if (order.status === OrderStatus.paid && order.paidAt) {
+        paymentRecords.push({
+          activityId: activity.id,
+          orderId: order.id,
+          transactionNo: `PAY${order.orderNo}${String(Math.floor(Math.random() * 1000)).padStart(3, '0')}`,
+          amount: order.amount,
+          paymentMethod: order.paymentMethod,
+          status: OrderStatus.paid,
+          paidAt: order.paidAt,
+          dataSource: DataSource.payment_flow,
+          platformRefId: `PLAT-${order.orderNo}`,
+          thirdPartyRefId: order.paymentMethod === PaymentMethod.alipay 
+            ? `ALIPAY${Date.now()}${Math.floor(Math.random() * 1000000)}`
+            : order.paymentMethod === PaymentMethod.wechat
+            ? `WXPAY${Date.now()}${Math.floor(Math.random() * 1000000)}`
+            : null,
+          createdAt: order.createdAt,
+        });
+      }
+    }
+    await prisma.paymentRecord.createMany({ data: paymentRecords });
+    console.log(`Created ${paymentRecords.length} payment records for ${activity.name}`);
 
     const lockRecords: any[] = [];
     const anomalyTypes = [AnomalyType.timeout, AnomalyType.duplicate, AnomalyType.amount_mismatch, AnomalyType.manual_override];

@@ -15,6 +15,8 @@ export async function GET(request: Request) {
         trend: snapshot.seatTrend,
         heatmap: snapshot.areaHeatmap,
         activityIds,
+        registrationCount: snapshot.registrationCount,
+        paymentCount: snapshot.paymentCount,
         lastRefreshedAt: snapshot.lastRefreshedAt,
         occupancyRateSpec: snapshot.occupancyRateSpec,
       },

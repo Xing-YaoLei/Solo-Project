@@ -55,30 +55,35 @@ export function AreaHeatmap({ data, className }: AreaHeatmapProps) {
               <div>
                 <h4 className="font-display font-semibold text-white">{area.area}</h4>
                 <p className="text-sm text-neutral-400">
-                  共 {area.totalSeats} 座，已售 {area.soldSeats} 座，上座率 {formatPercent(area.occupancyRate)}
+                  共 {area.totalSeats} 座
+                  {area.soldSeats !== undefined && `，已售 ${area.soldSeats} 座`}
+                  {area.occupancyRate !== undefined && `，上座率 ${formatPercent(area.occupancyRate)}`}
                 </p>
               </div>
               <div className="progress-bar w-32">
                 <div
                   className="progress-bar-fill"
                   style={{
-                    width: `${area.occupancyRate * 100}%`,
-                    backgroundColor: area.occupancyRate >= 0.75 ? '#10B981' : area.occupancyRate >= 0.5 ? '#3B82F6' : '#F59E0B',
+                    width: `${(area.occupancyRate ?? 0) * 100}%`,
+                    backgroundColor: (area.occupancyRate ?? 0) >= 0.75 ? '#10B981' : (area.occupancyRate ?? 0) >= 0.5 ? '#3B82F6' : '#F59E0B',
                   }}
                 />
               </div>
             </div>
 
             <div className="space-y-1">
-              {area.rows.map((row) => (
+              {area.rows.map((row) => {
+                const seatSold = row.sold ?? 0;
+                const seatRate = row.total > 0 ? seatSold / row.total : 0;
+                return (
                 <div key={row.row} className="flex items-center gap-2">
                   <span className="w-8 text-right text-xs text-neutral-500">
                     {row.row}排
                   </span>
                   <div className="flex flex-1 gap-0.5">
                     {Array.from({ length: row.total }).map((_, i) => {
-                      const seatRate = row.sold / row.total;
-                      const isSold = i < row.sold;
+                      const seatRate = (row.sold ?? 0) / row.total;
+                      const isSold = i < (row.sold ?? 0);
                       return (
                         <div
                           key={i}
@@ -104,7 +109,8 @@ export function AreaHeatmap({ data, className }: AreaHeatmapProps) {
                     {formatPercent(row.rate)}
                   </span>
                 </div>
-              ))}
+              );
+              })}
             </div>
           </div>
         ))}

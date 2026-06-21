@@ -73,6 +73,8 @@ export async function GET(
         },
         lastRefreshedAt: snapshot.lastRefreshedAt,
         occupancyRateSpec: snapshot.occupancyRateSpec,
+        registrationCount: snapshot.registrationCount,
+        paymentCount: snapshot.paymentCount,
         overview: filteredOverview,
         seatTrend: filteredSeatTrend,
         orderComposition: filteredOrderComposition,

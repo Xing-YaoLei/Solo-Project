@@ -14,6 +14,8 @@ export async function GET(request: Request) {
       data: {
         ticketTypes: snapshot.ticketTypes,
         activityIds,
+        registrationCount: snapshot.registrationCount,
+        paymentCount: snapshot.paymentCount,
         lastRefreshedAt: snapshot.lastRefreshedAt,
         occupancyRateSpec: snapshot.occupancyRateSpec,
       },

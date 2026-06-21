@@ -17,6 +17,8 @@ export async function GET(request: Request) {
         occupancyRate: snapshot.overview.occupancyRate,
         lockedSeats: snapshot.overview.lockedSeats,
         anomalyCount: snapshot.overview.anomalyCount,
+        registrationCount: snapshot.registrationCount,
+        paymentCount: snapshot.paymentCount,
         lastRefreshedAt: snapshot.lastRefreshedAt,
         occupancyRateSpec: snapshot.occupancyRateSpec,
       },

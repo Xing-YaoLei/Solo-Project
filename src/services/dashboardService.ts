@@ -12,13 +12,15 @@ import {
   PaymentMethodLabels,
 } from '@/types';
 import { calculateOccupancyRate } from '@/lib/utils';
-import { SeatStatus, OrderStatus, UserRole, AnomalyType } from '@prisma/client';
+import { SeatStatus, OrderStatus, UserRole, AnomalyType, DataSource } from '@prisma/client';
 
 const SNAPSHOT_CACHE_TTL_MS = 5 * 60 * 1000;
 
 interface DashboardSnapshotData {
   lastRefreshedAt: Date;
   occupancyRateSpec: OccupancyRateSpec;
+  registrationCount: number;  // 报名表数量
+  paymentCount: number;       // 支付流水数量
   overview: DashboardOverview;
   seatTrend: SeatTrendDataPoint[];
   areaHeatmap: AreaHeatmapData[];
@@ -28,6 +30,34 @@ interface DashboardSnapshotData {
     records: LockRecordDetail[];
     total: number;
     anomalyCount: number;
+  };
+}
+
+// ============ 数据来源查询统计 ============
+interface DataSourceCounts {
+  registrationCount: number;  // 报名表
+  paymentCount: number;       // 支付流水
+  platformCount: number;      // 票务平台锁座记录
+}
+
+async function getDataSourceCounts(activityIds?: string[]): Promise<DataSourceCounts> {
+  const where = activityIds && activityIds.length > 0
+    ? { activityId: { in: activityIds } }
+    : {};
+
+  const [regCount, payCount, lockCount] = await Promise.all([
+    // 报名表 - 来源 registration_form
+    prisma.registration.count({ where }),
+    // 支付流水 - 来源 payment_flow
+    prisma.paymentRecord.count({ where: { ...where, status: OrderStatus.paid } }),
+    // 票务平台 - 来源 ticketing_platform
+    prisma.lockRecord.count({ where }),
+  ]);
+
+  return {
+    registrationCount: regCount || 0,
+    paymentCount: payCount || 0,
+    platformCount: lockCount || 0,
   };
 }
 
@@ -49,26 +79,46 @@ async function getLastDataUpdateTime(activityIds?: string[]): Promise<Date> {
       ? { activityId: { in: activityIds } }
       : {};
 
-    const [seatUpdate, orderUpdate, lockUpdate] = await Promise.all([
+    const [seatUpdate, orderUpdate, lockUpdate, regUpdate, payUpdate] = await Promise.all([
+      // 票务平台 - 座位分配
       prisma.seatAllocation.findFirst({
         where,
         orderBy: { updatedAt: 'desc' },
         select: { updatedAt: true },
       }),
+      // 报名表 - 订单
       prisma.order.findFirst({
         where,
         orderBy: { updatedAt: 'desc' },
         select: { updatedAt: true },
       }),
+      // 票务平台 - 锁座记录
       prisma.lockRecord.findFirst({
         where,
         orderBy: { createdAt: 'desc' },
         select: { createdAt: true },
       }),
+      // 报名表
+      prisma.registration.findFirst({
+        where,
+        orderBy: { createdAt: 'desc' },
+        select: { createdAt: true },
+      }),
+      // 支付流水
+      prisma.paymentRecord.findFirst({
+        where,
+        orderBy: { paidAt: 'desc' },
+        select: { paidAt: true },
+      }),
     ]);
 
-    const updates = [seatUpdate?.updatedAt, orderUpdate?.updatedAt, lockUpdate?.createdAt]
-      .filter(Boolean) as Date[];
+    const updates = [
+      seatUpdate?.updatedAt,
+      orderUpdate?.updatedAt,
+      lockUpdate?.createdAt,
+      regUpdate?.createdAt,
+      payUpdate?.paidAt,
+    ].filter(Boolean) as Date[];
 
     if (updates.length === 0) return new Date();
 
@@ -249,10 +299,18 @@ async function computeOrderComposition(activityIds?: string[]): Promise<OrderCom
     : {};
 
   try {
-    const orders = await prisma.order.findMany({
-      where: { ...where, status: { in: [OrderStatus.paid, OrderStatus.pending] } },
-      include: { ticketType: true },
-    });
+    // ============ 数据来源 ============
+    // 1. 报名表 - Registration 表 (dataSource: registration_form)
+    // 2. 支付流水 - PaymentRecord 表 (dataSource: payment_flow)
+    // 3. 订单聚合 - Order 表
+    const [registrations, paymentRecords, orders] = await Promise.all([
+      prisma.registration.findMany({ where }),
+      prisma.paymentRecord.findMany({ where: { ...where, status: OrderStatus.paid } }),
+      prisma.order.findMany({
+        where: { ...where, status: { in: [OrderStatus.paid, OrderStatus.pending] } },
+        include: { ticketType: true },
+      }),
+    ]);
 
     const bySourceMap = new Map<string, number>();
     const byPaymentMap = new Map<string, number>();
@@ -262,9 +320,9 @@ async function computeOrderComposition(activityIds?: string[]): Promise<OrderCom
     let totalAmount = 0;
     const totalOrders = orders.length;
 
+    // ============ 从报名表计算订单来源分布 ============
     for (const order of orders) {
       bySourceMap.set(order.source, (bySourceMap.get(order.source) || 0) + 1);
-      byPaymentMap.set(order.paymentMethod, (byPaymentMap.get(order.paymentMethod) || 0) + 1);
 
       const ticketTypeName = order.ticketType?.name || '未知票种';
       if (!byTicketTypeMap.has(order.ticketTypeId)) {
@@ -281,6 +339,11 @@ async function computeOrderComposition(activityIds?: string[]): Promise<OrderCom
       dateData.count += 1;
       dateData.amount += Number(order.amount);
       totalAmount += Number(order.amount);
+    }
+
+    // ============ 从支付流水计算支付方式分布 ============
+    for (const payment of paymentRecords) {
+      byPaymentMap.set(payment.paymentMethod, (byPaymentMap.get(payment.paymentMethod) || 0) + 1);
     }
 
     const bySource = Array.from(bySourceMap.entries()).map(([name, value]) => ({
@@ -414,6 +477,11 @@ async function computeLockRecords({
 async function computeFullSnapshot(activityIds?: string[]): Promise<DashboardSnapshotData> {
   const normIds = normalizeActivityIds(activityIds);
 
+  // ============ 数据来源统计 ============
+  const dataSourceCounts = await getDataSourceCounts(
+    normIds.length > 0 ? normIds : undefined
+  );
+
   const [
     overview,
     seatTrend,
@@ -433,6 +501,8 @@ async function computeFullSnapshot(activityIds?: string[]): Promise<DashboardSna
   return {
     lastRefreshedAt: overview.lastRefreshedAt,
     occupancyRateSpec: overview.occupancyRateSpec,
+    registrationCount: dataSourceCounts.registrationCount,  // 报名表
+    paymentCount: dataSourceCounts.paymentCount,            // 支付流水
     overview,
     seatTrend,
     areaHeatmap,
@@ -460,6 +530,8 @@ async function findLatestValidSnapshot(activityIds?: string[]): Promise<Dashboar
         return {
           lastRefreshedAt: snap.lastRefreshedAt,
           occupancyRateSpec: JSON.parse(JSON.stringify(snap.occupancyRateSpec)) as OccupancyRateSpec,
+          registrationCount: snap.registrationCount || 0,  // 报名表
+          paymentCount: snap.paymentCount || 0,            // 支付流水
           overview: JSON.parse(JSON.stringify(snap.overviewData)) as DashboardOverview,
           seatTrend: JSON.parse(JSON.stringify(snap.seatTrendData)) as SeatTrendDataPoint[],
           areaHeatmap: JSON.parse(JSON.stringify(snap.areaHeatmapData)) as AreaHeatmapData[],
@@ -483,6 +555,8 @@ async function persistSnapshot(activityIds: string[], data: DashboardSnapshotDat
         activityIds,
         lastRefreshedAt: data.lastRefreshedAt,
         occupancyRateSpec: JSON.parse(JSON.stringify(data.occupancyRateSpec)),
+        registrationCount: data.registrationCount,  // 报名表
+        paymentCount: data.paymentCount,            // 支付流水
         overviewData: JSON.parse(JSON.stringify(data.overview)),
         seatTrendData: JSON.parse(JSON.stringify(data.seatTrend)),
         areaHeatmapData: JSON.parse(JSON.stringify(data.areaHeatmap)),
@@ -577,13 +651,19 @@ export function filterAreaHeatmapByRole(
   }
 
   if (role === UserRole.finance) {
-    return data.map(area => ({
-      ...area,
-      rows: area.rows.map(row => ({
-        ...row,
-        rate: 0,
-      })),
-    }));
+    return data.map(area => {
+      const { soldSeats, occupancyRate, rows, ...rest } = area;
+      return {
+        ...rest,
+        rows: rows.map(row => {
+          const { sold, rate, ...rowRest } = row;
+          return {
+            ...rowRest,
+            rate: 0,
+          };
+        }),
+      };
+    });
   }
 
   if (role === UserRole.operator) {

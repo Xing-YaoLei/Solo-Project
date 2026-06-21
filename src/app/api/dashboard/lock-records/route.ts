@@ -35,6 +35,8 @@ export async function GET(request: Request) {
         pageSize,
         anomalyCount: filteredAnomalyCount,
         activityIds,
+        registrationCount: snapshot.registrationCount,
+        paymentCount: snapshot.paymentCount,
         lastRefreshedAt: snapshot.lastRefreshedAt,
         occupancyRateSpec: snapshot.occupancyRateSpec,
       },
