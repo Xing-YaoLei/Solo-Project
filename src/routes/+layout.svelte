@@ -13,7 +13,7 @@
 	});
 
 	const navItems = [
-		{ href: '/', label: '排期管理', icon: '📋' },
+		{ href: '/performances', label: '排期管理', icon: '📋' },
 		{ href: '/exceptions', label: '异常处理', icon: '⚠️' },
 		{ href: '/reports', label: '统计报表', icon: '📊' },
 		{ href: '/closed', label: '已关闭记录', icon: '🗄️' }
@@ -21,7 +21,7 @@
 
 	function isActive(href: string): boolean {
 		if (href === '/') return currentPath === '/';
-		return currentPath.startsWith(href);
+		return currentPath === href || currentPath.startsWith(href + '/');
 	}
 </script>
 

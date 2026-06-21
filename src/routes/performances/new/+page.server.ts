@@ -1,8 +1,9 @@
 import { fail, redirect } from '@sveltejs/kit';
+import type { PageServerLoad, Actions } from './$types';
 import { db } from '$lib/server/db';
 import { performance, user } from '$lib/server/db/schema';
 
-export const load = async () => {
+export const load: PageServerLoad = async () => {
 	const users = await db
 		.select({
 			id: user.id,
@@ -14,7 +15,7 @@ export const load = async () => {
 	return { users };
 };
 
-export const actions = {
+export const actions: Actions = {
 	default: async ({ request }) => {
 		const formData = await request.formData();
 		const title = formData.get('title') as string;

@@ -1,16 +1,17 @@
 import { fail, redirect } from '@sveltejs/kit';
+import type { PageServerLoad, Actions } from './$types';
 import { eq } from 'drizzle-orm';
 import { db } from '$lib/server/db';
 import { user } from '$lib/server/db/schema';
 import { auth } from '$lib/server/auth';
 
-export const load = async ({ locals }) => {
+export const load: PageServerLoad = async ({ locals }) => {
 	if (locals.user) {
-		throw redirect(302, '/');
+		throw redirect(302, '/performances');
 	}
 };
 
-export const actions = {
+export const actions: Actions = {
 	default: async ({ request, cookies }) => {
 		const formData = await request.formData();
 		const username = formData.get('username') as string;
@@ -37,6 +38,6 @@ export const actions = {
 			...sessionCookie.attributes
 		});
 
-		throw redirect(302, '/');
+		throw redirect(302, '/performances');
 	}
 };

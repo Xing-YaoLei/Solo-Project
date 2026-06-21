@@ -1,8 +1,9 @@
 import { fail, redirect } from '@sveltejs/kit';
+import type { PageServerLoad, Actions } from './$types';
 import { db } from '$lib/server/db';
 import { exceptionRecord, performance, user } from '$lib/server/db/schema';
 
-export const load = async ({ url }) => {
+export const load: PageServerLoad = async ({ url }) => {
 	const performances = await db
 		.select({
 			id: performance.id,
@@ -23,7 +24,7 @@ export const load = async ({ url }) => {
 	return { performances, users, preselectedPerformanceId };
 };
 
-export const actions = {
+export const actions: Actions = {
 	default: async ({ request }) => {
 		const formData = await request.formData();
 		const performance_id = formData.get('performance_id') as string;

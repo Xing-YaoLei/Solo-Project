@@ -102,43 +102,52 @@
 	</div>
 
 	<div class="table-section">
-		<div class="table-wrapper">
-			<table class="data-table">
-				<thead>
-					<tr>
-						<th>演出名称</th>
-						<th>场馆</th>
-						<th>演出时间</th>
-						<th>时长(分钟)</th>
-						<th>状态</th>
-						<th>负责人</th>
-						<th>操作</th>
-					</tr>
-				</thead>
-				<tbody>
-					{#each data.performances as perf}
-						{@const badge = getStatusBadge(perf.status)}
+		{#if data.performances.length === 0}
+			<div class="empty-state-card">
+				<div class="empty-state-icon">🎬</div>
+				<h3 class="empty-state-title">还没有演出排期</h3>
+				<p class="empty-state-desc">创建第一条演出排期记录，开始管理座位图、签到码和赞助清单</p>
+				<a href="/performances/new" class="btn-primary btn-large">新建演出排期 →</a>
+			</div>
+		{:else}
+			<div class="table-wrapper">
+				<table class="data-table">
+					<thead>
 						<tr>
-							<td>
-								<a href="/performance/{perf.id}" class="perf-link">{perf.title}</a>
-							</td>
-							<td>{perf.venue}</td>
-							<td>{formatDate(perf.show_date)}</td>
-							<td>{perf.duration_minutes}</td>
-							<td>
-								<span class="status-badge" style="color: {badge.color}; background: {badge.bg};">
-									{badge.label}
-								</span>
-							</td>
-							<td>{perf.assignee_name ?? '—'}</td>
-							<td>
-								<a href="/performance/{perf.id}" class="action-link">查看</a>
-							</td>
+							<th>演出名称</th>
+							<th>场馆</th>
+							<th>演出时间</th>
+							<th>时长(分钟)</th>
+							<th>状态</th>
+							<th>负责人</th>
+							<th>操作</th>
 						</tr>
-					{/each}
-				</tbody>
-			</table>
-		</div>
+					</thead>
+					<tbody>
+						{#each data.performances as perf}
+							{@const badge = getStatusBadge(perf.status)}
+							<tr>
+								<td>
+									<a href="/performance/{perf.id}" class="perf-link">{perf.title}</a>
+								</td>
+								<td>{perf.venue}</td>
+								<td>{formatDate(perf.show_date)}</td>
+								<td>{perf.duration_minutes}</td>
+								<td>
+									<span class="status-badge" style="color: {badge.color}; background: {badge.bg};">
+										{badge.label}
+									</span>
+								</td>
+								<td>{perf.assignee_name ?? '—'}</td>
+								<td>
+									<a href="/performance/{perf.id}" class="action-link">处理详情</a>
+								</td>
+							</tr>
+						{/each}
+					</tbody>
+				</table>
+			</div>
+		{/if}
 	</div>
 </div>
 
@@ -286,5 +295,33 @@
 
 	.action-link:hover {
 		text-decoration: underline;
+	}
+
+	.empty-state-card {
+		padding: 60px 40px;
+		text-align: center;
+	}
+
+	.empty-state-icon {
+		font-size: 56px;
+		margin-bottom: 16px;
+	}
+
+	.empty-state-title {
+		font-size: 20px;
+		font-weight: 600;
+		color: #1e293b;
+		margin: 0 0 8px;
+	}
+
+	.empty-state-desc {
+		font-size: 14px;
+		color: #64748b;
+		margin: 0 0 24px;
+	}
+
+	.btn-large {
+		padding: 12px 28px;
+		font-size: 15px;
 	}
 </style>
