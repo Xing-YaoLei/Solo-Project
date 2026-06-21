@@ -62,3 +62,12 @@ export async function addSyncDetail(
     },
   });
 }
+
+export async function getLastSyncTime(sourceType: SyncSourceType): Promise<Date | null> {
+  const lastLog = await prisma.syncLog.findFirst({
+    where: { sourceType, status: "success" },
+    orderBy: { endTime: "desc" },
+    select: { endTime: true },
+  });
+  return lastLog?.endTime || null;
+}

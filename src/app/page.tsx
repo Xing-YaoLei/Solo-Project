@@ -15,6 +15,9 @@ import {
   Filter,
   BarChart3,
   Loader2,
+  Camera,
+  FileText,
+  Theater,
 } from "lucide-react";
 import { subDays, format } from "date-fns";
 
@@ -62,6 +65,11 @@ export default function DashboardPage() {
     activeRoutes: 0,
     performanceCount: 0,
     performanceGrowth: 0,
+    cameraVisitorCount: 0,
+    avgSeatOccupancy: 0,
+    avgSeatOccupancyGrowth: 0,
+    contractCount: 0,
+    caliberNotes: [] as string[],
   });
   const [dateRange, setDateRange] = useState({
     start: subDays(new Date(), 13),
@@ -90,6 +98,8 @@ export default function DashboardPage() {
             secondaryConsumptionTotal: 0, secondaryConversionRate: 0,
             secondaryConsumptionGrowth: 0, secondaryConversionGrowth: 0,
             activeRoutes: 0, performanceCount: 0, performanceGrowth: 0,
+            cameraVisitorCount: 0, avgSeatOccupancy: 0, avgSeatOccupancyGrowth: 0,
+            contractCount: 0, caliberNotes: [],
           });
         }
 
@@ -164,9 +174,9 @@ export default function DashboardPage() {
           </div>
         </div>
 
-        <div className="grid grid-cols-6 gap-4">
+        <div className="grid grid-cols-9 gap-4">
           {loading ? (
-            Array.from({ length: 6 }).map((_, i) => (
+            Array.from({ length: 9 }).map((_, i) => (
               <div key={i} className="glass-card p-4 flex items-center justify-center h-24">
                 <Loader2 size={20} className="animate-spin text-slate-500" />
               </div>
@@ -220,6 +230,30 @@ export default function DashboardPage() {
                 icon={<Filter size={22} />}
                 color="accent"
                 delay={0.5}
+              />
+              <StatCard
+                title="摄像头客流"
+                value={summary.cameraVisitorCount.toLocaleString()}
+                change={0}
+                icon={<Camera size={22} />}
+                color="emerald"
+                delay={0.6}
+              />
+              <StatCard
+                title="平均上座率"
+                value={`${summary.avgSeatOccupancy.toFixed(1)}%`}
+                change={summary.avgSeatOccupancyGrowth}
+                icon={<Theater size={22} />}
+                color="violet"
+                delay={0.7}
+              />
+              <StatCard
+                title="有效合同"
+                value={`${summary.contractCount} 份`}
+                change={0}
+                icon={<FileText size={22} />}
+                color="accent"
+                delay={0.8}
               />
             </>
           )}
@@ -346,6 +380,22 @@ export default function DashboardPage() {
             </div>
           </div>
         </div>
+
+        {!loading && summary.caliberNotes.length > 0 && (
+          <div className="glass-card p-5">
+            <h3 className="section-title mb-4">
+              <FileText size={18} className="text-primary-400" />
+              数据统计口径说明（来自合同约定）
+            </h3>
+            <div className="grid grid-cols-1 gap-3">
+              {summary.caliberNotes.map((note, i) => (
+                <div key={i} className="p-3 bg-primary-500/10 border border-primary-500/20 rounded-lg">
+                  <p className="text-sm text-slate-300">{note}</p>
+                </div>
+              ))}
+            </div>
+          </div>
+        )}
       </div>
     </DashboardLayout>
   );

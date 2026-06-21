@@ -40,6 +40,11 @@ export interface TrendResponse {
     activeRoutes: number;
     performanceCount: number;
     performanceGrowth: number;
+    cameraVisitorCount: number;
+    avgSeatOccupancy: number;
+    avgSeatOccupancyGrowth: number;
+    contractCount: number;
+    caliberNotes: string[];
   };
 }
 
@@ -124,6 +129,49 @@ export async function getRouteTrend(query: TrendQuery): Promise<TrendResponse> {
     where: { startTime: { gte: perfStart, lte: perfEnd } },
   });
 
+  const [cameraStats, contracts, seatGroups, performances] = await Promise.all([
+    prisma.cameraStat.findMany({
+      where: { statDate: { gte: startOfDay(startDate), lte: endOfDay(endDate) } },
+      select: { visitorCount: true },
+    }),
+    prisma.contract.findMany({
+      where: { endDate: { gte: startOfDay(startDate) } },
+      select: { caliberNote: true },
+    }),
+    prisma.seat.groupBy({
+      by: ["performanceId", "status"],
+      where: { performance: { startTime: { gte: perfStart, lte: perfEnd } } },
+      _count: { status: true },
+    }),
+    prisma.performance.findMany({
+      where: { startTime: { gte: perfStart, lte: perfEnd } },
+      select: { id: true, totalSeats: true },
+    }),
+  ]);
+
+  const cameraVisitorCount = cameraStats.reduce((s, c) => s + c.visitorCount, 0);
+  const contractCount = contracts.length;
+  const caliberNotes = contracts.map(c => c.caliberNote).filter(Boolean).slice(0, 3);
+
+  const perfSeatMap = new Map<string, { sold: number; total: number }>();
+  for (const p of performances) {
+    perfSeatMap.set(p.id, { sold: 0, total: p.totalSeats });
+  }
+  for (const g of seatGroups) {
+    if (g.status === "sold") {
+      const entry = perfSeatMap.get(g.performanceId);
+      if (entry) entry.sold = g._count.status;
+    }
+  }
+  let avgSeatOccupancy = 0;
+  if (perfSeatMap.size > 0) {
+    let totalOccupancy = 0;
+    for (const entry of perfSeatMap.values()) {
+      totalOccupancy += entry.total > 0 ? (entry.sold / entry.total) * 100 : 0;
+    }
+    avgSeatOccupancy = totalOccupancy / perfSeatMap.size;
+  }
+
   const orderFilter = { orderTime: { gte: startOfDay(startDate), lte: endOfDay(endDate) }, status: "paid" };
   const [merchantOrders, miniappOrders] = await Promise.all([
     prisma.merchantOrder.findMany({ where: orderFilter, select: { amount: true } }),
@@ -140,18 +188,49 @@ export async function getRouteTrend(query: TrendQuery): Promise<TrendResponse> {
   let secondaryConsumptionGrowth = 0;
   let secondaryConversionGrowth = 0;
   let performanceGrowth = 0;
+  let avgSeatOccupancyGrowth = 0;
 
   if (compareType !== "none") {
     const compareDays = days;
     const compareStart = subDays(startDate, compareDays);
     const compareEnd = subDays(endDate, compareDays);
     const compareOrderFilter = { orderTime: { gte: startOfDay(compareStart), lte: endOfDay(compareEnd) }, status: "paid" };
+    const comparePerfStart = startOfDay(compareStart);
+    const comparePerfEnd = endOfDay(compareEnd);
 
-    const [prevMerchant, prevMiniapp, prevPerfCount] = await Promise.all([
+    const [prevMerchant, prevMiniapp, prevPerfCount, prevSeatGroups, prevPerformances] = await Promise.all([
       prisma.merchantOrder.findMany({ where: compareOrderFilter, select: { amount: true } }),
       prisma.miniappOrder.findMany({ where: compareOrderFilter, select: { amount: true } }),
-      prisma.performance.count({ where: { startTime: { gte: startOfDay(compareStart), lte: endOfDay(compareEnd) } } }),
+      prisma.performance.count({ where: { startTime: { gte: comparePerfStart, lte: comparePerfEnd } } }),
+      prisma.seat.groupBy({
+        by: ["performanceId", "status"],
+        where: { performance: { startTime: { gte: comparePerfStart, lte: comparePerfEnd } } },
+        _count: { status: true },
+      }),
+      prisma.performance.findMany({
+        where: { startTime: { gte: comparePerfStart, lte: comparePerfEnd } },
+        select: { id: true, totalSeats: true },
+      }),
     ]);
+
+    const prevPerfSeatMap = new Map<string, { sold: number; total: number }>();
+    for (const p of prevPerformances) {
+      prevPerfSeatMap.set(p.id, { sold: 0, total: p.totalSeats });
+    }
+    for (const g of prevSeatGroups) {
+      if (g.status === "sold") {
+        const entry = prevPerfSeatMap.get(g.performanceId);
+        if (entry) entry.sold = g._count.status;
+      }
+    }
+    let prevAvgSeatOccupancy = 0;
+    if (prevPerfSeatMap.size > 0) {
+      let totalOcc = 0;
+      for (const entry of prevPerfSeatMap.values()) {
+        totalOcc += entry.total > 0 ? (entry.sold / entry.total) * 100 : 0;
+      }
+      prevAvgSeatOccupancy = totalOcc / prevPerfSeatMap.size;
+    }
 
     const prevTotal = prevMerchant.reduce((s, o) => s + o.amount, 0) + prevMiniapp.reduce((s, o) => s + o.amount, 0);
     const prevOrderCount = prevMerchant.length + prevMiniapp.length;
@@ -169,6 +248,9 @@ export async function getRouteTrend(query: TrendQuery): Promise<TrendResponse> {
     }
     if (prevPerfCount > 0) {
       performanceGrowth = ((performanceCount - prevPerfCount) / prevPerfCount) * 100;
+    }
+    if (prevAvgSeatOccupancy > 0) {
+      avgSeatOccupancyGrowth = ((avgSeatOccupancy - prevAvgSeatOccupancy) / prevAvgSeatOccupancy) * 100;
     }
   }
 
@@ -197,6 +279,11 @@ export async function getRouteTrend(query: TrendQuery): Promise<TrendResponse> {
       activeRoutes: routeData.length,
       performanceCount,
       performanceGrowth: Math.round(performanceGrowth * 10) / 10,
+      cameraVisitorCount,
+      avgSeatOccupancy: Math.round(avgSeatOccupancy * 10) / 10,
+      avgSeatOccupancyGrowth: Math.round(avgSeatOccupancyGrowth * 10) / 10,
+      contractCount,
+      caliberNotes,
     },
   };
 }

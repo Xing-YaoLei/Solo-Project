@@ -16,7 +16,7 @@ import {
   ComposedChart,
   Line,
 } from "recharts";
-import { ShoppingCart, TrendingUp, DollarSign, Users, Calendar, BarChart3, Loader2 } from "lucide-react";
+import { ShoppingCart, TrendingUp, DollarSign, Users, Calendar, BarChart3, Loader2, Camera, Theater, MapPin } from "lucide-react";
 import { subDays, format } from "date-fns";
 
 interface FunnelItem {
@@ -43,6 +43,12 @@ interface KpiData {
   orderCountGrowth: number;
   conversionRateGrowth: number;
   avgPriceGrowth: number;
+  cameraVisitorCount: number;
+  routeVisitorCount: number;
+  avgSeatOccupancy: number;
+  totalPerformances: number;
+  soldSeats: number;
+  totalSeats: number;
 }
 
 export default function SecondaryConsumptionPage() {
@@ -132,9 +138,9 @@ export default function SecondaryConsumptionPage() {
           </div>
         </div>
 
-        <div className="grid grid-cols-4 gap-4">
+        <div className="grid grid-cols-8 gap-4">
           {loading ? (
-            Array.from({ length: 4 }).map((_, i) => (
+            Array.from({ length: 8 }).map((_, i) => (
               <div key={i} className="glass-card p-4 flex items-center justify-center h-24">
                 <Loader2 size={20} className="animate-spin text-slate-500" />
               </div>
@@ -172,6 +178,38 @@ export default function SecondaryConsumptionPage() {
                 icon={<Users size={22} />}
                 color="violet"
                 delay={0.3}
+              />
+              <StatCard
+                title="摄像头客流"
+                value={kpi?.cameraVisitorCount?.toLocaleString() || "0"}
+                change={0}
+                icon={<Camera size={22} />}
+                color="emerald"
+                delay={0.4}
+              />
+              <StatCard
+                title="导览客流"
+                value={kpi?.routeVisitorCount?.toLocaleString() || "0"}
+                change={0}
+                icon={<MapPin size={22} />}
+                color="primary"
+                delay={0.5}
+              />
+              <StatCard
+                title="演出上座率"
+                value={`${kpi?.avgSeatOccupancy?.toFixed(1) || "0"}%`}
+                change={0}
+                icon={<Theater size={22} />}
+                color="violet"
+                delay={0.6}
+              />
+              <StatCard
+                title="演出/座位"
+                value={`${kpi?.totalPerformances || 0}场/${kpi?.soldSeats || 0}/${kpi?.totalSeats || 0}`}
+                change={0}
+                icon={<Theater size={22} />}
+                color="accent"
+                delay={0.7}
               />
             </>
           )}

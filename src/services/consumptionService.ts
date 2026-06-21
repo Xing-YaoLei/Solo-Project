@@ -36,6 +36,12 @@ export interface ConsumptionResponse {
     orderCountGrowth: number;
     conversionRateGrowth: number;
     avgPriceGrowth: number;
+    cameraVisitorCount: number;
+    routeVisitorCount: number;
+    avgSeatOccupancy: number;
+    totalPerformances: number;
+    soldSeats: number;
+    totalSeats: number;
   };
 }
 
@@ -44,21 +50,65 @@ export async function getSecondaryConsumption(
 ): Promise<ConsumptionResponse> {
   const { startDate, endDate, areaIds, compareType } = query;
 
-  const merchantOrders = await prisma.merchantOrder.findMany({
-    where: {
-      orderTime: { gte: startOfDay(startDate), lte: endOfDay(endDate) },
-      status: "paid",
-      merchant: areaIds ? { areaId: { in: areaIds } } : undefined,
-    },
-    include: { merchant: true },
-  });
+  const [
+    merchantOrders,
+    miniappOrders,
+    cameraStats,
+    seatGroups,
+    performances,
+  ] = await Promise.all([
+    prisma.merchantOrder.findMany({
+      where: {
+        orderTime: { gte: startOfDay(startDate), lte: endOfDay(endDate) },
+        status: "paid",
+        merchant: areaIds ? { areaId: { in: areaIds } } : undefined,
+      },
+      include: { merchant: true },
+    }),
+    prisma.miniappOrder.findMany({
+      where: {
+        orderTime: { gte: startOfDay(startDate), lte: endOfDay(endDate) },
+        status: "paid",
+      },
+    }),
+    prisma.cameraStat.aggregate({
+      _sum: { visitorCount: true },
+      where: { statDate: { gte: startOfDay(startDate), lte: endOfDay(endDate) } },
+    }),
+    prisma.seat.groupBy({
+      by: ["performanceId", "status"],
+      where: { performance: { startTime: { gte: startOfDay(startDate), lte: endOfDay(endDate) } } },
+      _count: { status: true },
+    }),
+    prisma.performance.findMany({
+      where: { startTime: { gte: startOfDay(startDate), lte: endOfDay(endDate) } },
+      select: { id: true, totalSeats: true },
+    }),
+  ]);
 
-  const miniappOrders = await prisma.miniappOrder.findMany({
-    where: {
-      orderTime: { gte: startOfDay(startDate), lte: endOfDay(endDate) },
-      status: "paid",
-    },
-  });
+  const cameraVisitorCount = cameraStats._sum.visitorCount ?? 0;
+  const perfSeatMap = new Map<string, { sold: number; total: number }>();
+  for (const p of performances) {
+    perfSeatMap.set(p.id, { sold: 0, total: p.totalSeats });
+  }
+  for (const g of seatGroups) {
+    if (g.status === "sold") {
+      const entry = perfSeatMap.get(g.performanceId);
+      if (entry) entry.sold = g._count.status;
+    }
+  }
+  let totalSoldSeats = 0;
+  let totalAllSeats = 0;
+  let avgSeatOccupancy = 0;
+  if (perfSeatMap.size > 0) {
+    let totalOcc = 0;
+    for (const entry of perfSeatMap.values()) {
+      totalSoldSeats += entry.sold;
+      totalAllSeats += entry.total;
+      totalOcc += entry.total > 0 ? (entry.sold / entry.total) * 100 : 0;
+    }
+    avgSeatOccupancy = totalOcc / perfSeatMap.size;
+  }
 
   const totalPaidAmount = merchantOrders.reduce(
     (sum, o) => sum + Number(o.amount),
@@ -303,6 +353,12 @@ export async function getSecondaryConsumption(
       orderCountGrowth: Math.round(orderCountGrowth * 10) / 10,
       conversionRateGrowth: Math.round(conversionRateGrowth * 10) / 10,
       avgPriceGrowth: Math.round(avgPriceGrowth * 10) / 10,
+      cameraVisitorCount,
+      routeVisitorCount: totalVisitors,
+      avgSeatOccupancy: Math.round(avgSeatOccupancy * 10) / 10,
+      totalPerformances: performances.length,
+      soldSeats: totalSoldSeats,
+      totalSeats: totalAllSeats,
     },
   };
 }
