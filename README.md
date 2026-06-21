@@ -160,7 +160,7 @@ npm run dev
 
 ## 数据层架构
 
-系统采用三层数据服务架构，确保高可用性：
+系统采用三级降级数据服务架构，PostgreSQL 优先，DuckDB 作为本地备选：
 
 ```
 API 请求
@@ -168,18 +168,18 @@ API 请求
 data_service.py (统一入口)
     ↓
 ┌─────────────┬──────────────┬──────────────┐
-│  DuckDB     │  PostgreSQL  │  Mock Data   │
-│  (优先)     │  (可选配置)  │  (保底)      │
+│ PostgreSQL  │   DuckDB     │  Mock Data   │
+│  (优先)     │  (本地备选)  │  (保底)      │
 └─────────────┴──────────────┴──────────────┘
 ```
 
-- **DuckDB**（默认）: 嵌入式分析数据库，零配置，开箱即用，适合看板查询场景
-- **PostgreSQL**（可选）: 配置环境变量后自动启用，适合生产环境
+- **PostgreSQL**（优先）: 配置存在且可连接时，所有查询从 PG 表读取，适合生产环境
+- **DuckDB**（本地备选）: PG 不可用时自动启用，嵌入式分析数据库，零配置开箱即用
 - **Mock Data**: 前两者均不可用时的兜底方案
 
-### PostgreSQL 配置（可选）
+### PostgreSQL 配置
 
-如需使用 PostgreSQL，设置以下环境变量或修改 `backend/app/core/config.py`：
+配置 PostgreSQL 后，`/api/v1/settlement/dashboard/summary` 等接口将从 PG 表读取数据：
 
 ```bash
 export POSTGRES_SERVER=localhost
@@ -188,6 +188,8 @@ export POSTGRES_PASSWORD=your_password
 export POSTGRES_DB=merchant_settlement
 export POSTGRES_PORT=5432
 ```
+
+> **无需手动建表**: 后端启动时 `postgres_init.py` 会自动创建表结构并填充演示数据。
 
 ## 核心模型
 
