@@ -1,0 +1,256 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+  directUrl = env("DIRECT_URL")
+}
+
+enum SyncStatus {
+  PENDING
+  RUNNING
+  SUCCESS
+  FAILED
+  PARTIAL
+}
+
+enum SyncSource {
+  PAYMENT_SYSTEM
+  ORDER_SYSTEM
+  MAP_API
+}
+
+enum OrderStatus {
+  PENDING
+  ASSIGNED
+  PICKED_UP
+  DELIVERED
+  CANCELLED
+  DAMAGED
+}
+
+enum DamageSeverity {
+  MINOR
+  MODERATE
+  SEVERE
+  TOTAL_LOSS
+}
+
+enum AppealStatus {
+  PENDING
+  APPROVED
+  REJECTED
+}
+
+enum SettlementStatus {
+  PENDING
+  SETTLED
+  ADJUSTED
+}
+
+model Region {
+  id        String   @id @default(uuid())
+  name      String
+  code      String   @unique
+  city      String
+  province  String
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  orders   Order[]
+  subsidies SubsidyRecord[]
+}
+
+model SyncBatch {
+  id          String     @id @default(uuid())
+  batchNumber String     @unique
+  source      SyncSource
+  status      SyncStatus @default(PENDING)
+  totalCount  Int        @default(0)
+  successCount Int       @default(0)
+  failedCount  Int       @default(0)
+  errorMessage String?
+  startedAt   DateTime?
+  completedAt DateTime?
+  createdAt   DateTime   @default(now())
+  updatedAt   DateTime   @updatedAt
+
+  paymentTransactions PaymentTransaction[]
+  orders              Order[]
+  mapRecords          MapRecord[]
+}
+
+model Order {
+  id            String      @id @default(uuid())
+  orderNo       String      @unique
+  regionId      String
+  riderId       String?
+  riderName     String?
+  pickupAddress String
+  deliveryAddress String
+  itemType      String
+  itemValue     Decimal     @db.Decimal(10, 2)
+  distance      Decimal     @db.Decimal(10, 2)
+  status        OrderStatus @default(PENDING)
+  dispatchDuration Int?
+  deliveryDuration Int?
+  totalDuration  Int?
+  orderedAt     DateTime
+  assignedAt    DateTime?
+  pickedUpAt    DateTime?
+  deliveredAt   DateTime?
+  syncBatchId   String?
+  createdAt     DateTime    @default(now())
+  updatedAt     DateTime    @updatedAt
+
+  region      Region             @relation(fields: [regionId], references: [id])
+  syncBatch   SyncBatch?         @relation(fields: [syncBatchId], references: [id])
+  payment     PaymentTransaction?
+  mapRecord   MapRecord?
+  subsidy     SubsidyRecord?
+  damage      DamageRecord?
+  settlement  SettlementDetail?
+}
+
+model PaymentTransaction {
+  id            String  @id @default(uuid())
+  transactionNo String  @unique
+  orderId       String  @unique
+  amount        Decimal @db.Decimal(10, 2)
+  subsidyAmount Decimal @db.Decimal(10, 2) @default(0)
+  baseFee       Decimal @db.Decimal(10, 2)
+  paymentMethod String
+  paidAt        DateTime
+  syncBatchId   String?
+  createdAt     DateTime @default(now())
+  updatedAt     DateTime @updatedAt
+
+  order     Order     @relation(fields: [orderId], references: [id])
+  syncBatch SyncBatch? @relation(fields: [syncBatchId], references: [id])
+}
+
+model MapRecord {
+  id           String  @id @default(uuid())
+  orderId      String  @unique
+  routeDistance Decimal @db.Decimal(10, 2)
+  estimatedDuration Int
+  actualDuration Int?
+  trafficLevel  String
+  weatherCondition String?
+  mapProvider   String
+  syncedAt      DateTime
+  syncBatchId   String?
+  createdAt     DateTime @default(now())
+  updatedAt     DateTime @updatedAt
+
+  order     Order     @relation(fields: [orderId], references: [id])
+  syncBatch SyncBatch? @relation(fields: [syncBatchId], references: [id])
+}
+
+model SubsidyRule {
+  id             String  @id @default(uuid())
+  ruleName       String
+  ruleCode       String  @unique
+  description    String?
+  subsidyType    String
+  baseAmount     Decimal @db.Decimal(10, 2)
+  distanceMultiplier Decimal? @db.Decimal(5, 2)
+  timeMultiplier Decimal? @db.Decimal(5, 2)
+  minAmount      Decimal? @db.Decimal(10, 2)
+  maxAmount      Decimal? @db.Decimal(10, 2)
+  effectiveFrom  DateTime
+  effectiveTo    DateTime?
+  isActive       Boolean @default(true)
+  createdAt      DateTime @default(now())
+  updatedAt      DateTime @updatedAt
+
+  subsidies SubsidyRecord[]
+}
+
+model SubsidyRecord {
+  id         String  @id @default(uuid())
+  orderId    String  @unique
+  ruleId     String
+  regionId   String
+  amount     Decimal @db.Decimal(10, 2)
+  baseAmount Decimal @db.Decimal(10, 2)
+  distanceBonus Decimal @db.Decimal(10, 2) @default(0)
+  timeBonus  Decimal @db.Decimal(10, 2) @default(0)
+  otherBonus Decimal @db.Decimal(10, 2) @default(0)
+  subsidyDate DateTime
+  createdAt  DateTime @default(now())
+  updatedAt  DateTime @updatedAt
+
+  order  Order       @relation(fields: [orderId], references: [id])
+  rule   SubsidyRule @relation(fields: [ruleId], references: [id])
+  region Region      @relation(fields: [regionId], references: [id])
+  appeal AppealEvidence?
+}
+
+model DamageRecord {
+  id            String          @id @default(uuid())
+  orderId       String          @unique
+  severity      DamageSeverity
+  description   String
+  damageItems   String
+  estimatedLoss Decimal         @db.Decimal(10, 2)
+  photoUrls     String[]
+  reportedAt    DateTime
+  reportedBy    String
+  createdAt     DateTime        @default(now())
+  updatedAt     DateTime        @updatedAt
+
+  order         Order           @relation(fields: [orderId], references: [id])
+  compensation  CompensationRecord?
+}
+
+model AppealEvidence {
+  id           String       @id @default(uuid())
+  subsidyId    String       @unique
+  status       AppealStatus @default(PENDING)
+  reason       String
+  evidenceUrls String[]
+  submittedAt  DateTime
+  reviewedAt   DateTime?
+  reviewedBy   String?
+  reviewNote   String?
+  createdAt    DateTime     @default(now())
+  updatedAt    DateTime     @updatedAt
+
+  subsidy SubsidyRecord @relation(fields: [subsidyId], references: [id])
+}
+
+model SettlementDetail {
+  id             String           @id @default(uuid())
+  settlementNo   String           @unique
+  orderId        String           @unique
+  status         SettlementStatus @default(PENDING)
+  baseFee        Decimal          @db.Decimal(10, 2)
+  subsidyAmount  Decimal          @db.Decimal(10, 2)
+  deductionAmount Decimal         @db.Decimal(10, 2) @default(0)
+  totalAmount    Decimal          @db.Decimal(10, 2)
+  settlementDate DateTime
+  settledAt      DateTime?
+  remark         String?
+  createdAt      DateTime         @default(now())
+  updatedAt      DateTime         @updatedAt
+
+  order Order @relation(fields: [orderId], references: [id])
+}
+
+model CompensationRecord {
+  id            String  @id @default(uuid())
+  damageId      String  @unique
+  orderId       String
+  amount        Decimal @db.Decimal(10, 2)
+  compensationType String
+  description   String
+  paidAt        DateTime?
+  caliberNote   String
+  createdAt     DateTime @default(now())
+  updatedAt     DateTime @updatedAt
+
+  damage DamageRecord @relation(fields: [damageId], references: [id])
+}
