@@ -347,6 +347,17 @@ export class AddressInputController extends Component {
             label.lineHeight = 20;
             label.horizontalAlign = Label.HorizontalAlign.LEFT;
             label.overflow = Label.Overflow.CLAMP;
+            label.color = index === this.selectedIndex ?
+                new Color(255, 200, 0) : new Color(255, 255, 255);
+
+            node.on(Node.EventType.TOUCH_END, () => {
+                if (!this.currentOrder) return;
+                this.selectedIndex = index;
+                this.highlightSelectedLocation();
+                this.confirmSelection();
+            }, this);
+
+            node.setPosition(0, -(index * 24), 0);
             this.addressList!.addChild(node);
         });
     }

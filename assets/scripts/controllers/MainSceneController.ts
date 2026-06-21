@@ -286,6 +286,9 @@ export class MainSceneController extends Component {
     private buildStatisticsPanel() {
         const panel = this.makePanel('StatisticsPanel', this.root!, 0, 0, 1000, 600, new Color(15, 20, 40, 245));
         this.statisticsPanel = panel.addComponent(StatisticsPanel);
+        if (this.gameController) {
+            this.statisticsPanel.setGameController(this.gameController);
+        }
 
         this.makeLabel('StatsTitle', panel, '训练统计 — 赔付成本分析', 26, new Color(255, 200, 100), 0, 260);
         this.makeLabel('StatsInfo', panel, '', 16, Color.WHITE, 0, 0);
@@ -316,6 +319,7 @@ export class MainSceneController extends Component {
         this.eventDispatcher.on('rider-rejection', this.onRiderRejection.bind(this), this);
         this.eventDispatcher.on('order-assigned', this.onOrderAssigned.bind(this), this);
         this.eventDispatcher.on('order-completed', this.onOrderCompleted.bind(this), this);
+        this.eventDispatcher.on('replay-jump-snapshot', this.onReplayJumpSnapshot.bind(this), this);
     }
 
     private onLevelStarted(event: any) {
@@ -389,15 +393,35 @@ export class MainSceneController extends Component {
     }
 
     private onWrongStep(ws: Omit<WrongStep, 'time'>) {
-        const gs = this.gameController?.getGameState();
-        if (gs) {
-            gs.wrongSteps.push({ ...ws, time: Date.now() });
-            if (this.warningLabel) {
-                this.warningLabel.string = `⚠ 操作错误: ${ws.description}`;
-                this.warningLabel.color = new Color(255, 120, 120);
-            }
-        }
         this.eventDispatcher.emit('wrong-step', { ...ws, time: Date.now() });
+        if (this.warningLabel) {
+            this.warningLabel.string = `⚠ 操作错误: ${ws.description}`;
+            this.warningLabel.color = new Color(255, 120, 120);
+        }
+    }
+
+    private onReplayJumpSnapshot(event: any) {
+        if (!this.trajectoryRenderer || !this.trajectoryGraphics) return;
+        const snapshot = event.snapshot;
+        if (!snapshot || !snapshot.riders) return;
+
+        this.trajectoryRenderer.clearAllTrajectories();
+
+        snapshot.riders.forEach((rider: any) => {
+            if (rider.trajectory && rider.trajectory.length > 0) {
+                this.trajectoryRenderer.addTrajectory(rider.id, rider.trajectory);
+            } else if (rider.position) {
+                const g = this.trajectoryGraphics;
+                g.fillColor = rider.status === 'busy' ?
+                    new Color(255, 200, 0, 220) : new Color(80, 200, 255, 220);
+                g.circle(rider.position.x, rider.position.y, 10);
+                g.fill();
+                g.strokeColor = new Color(255, 255, 255, 180);
+                g.lineWidth = 2;
+                g.circle(rider.position.x, rider.position.y, 10);
+                g.stroke();
+            }
+        });
     }
 
     private updateHUD() {
@@ -511,7 +535,9 @@ export class MainSceneController extends Component {
                 cost,
                 wrongSteps,
                 snapshots,
-                lv?.name || ''
+                lv?.name || '',
+                lv?.targetScore ?? 0,
+                lv?.maxCompensation ?? 0
             );
         }
     }

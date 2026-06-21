@@ -144,18 +144,67 @@ export class ReplaySystem extends Component {
     }
 
     private highlightWrongStep(index: number) {
-        if (this.currentReplay) {
-            const wrongStep = this.currentReplay.wrongSteps[index];
-            if (wrongStep && this.onWrongStepHighlightCallback) {
-                const snapshotIndex = this.findSnapshotForWrongStep(wrongStep);
-                if (snapshotIndex >= 0) {
-                    this.currentSnapshotIndex = snapshotIndex;
-                    this.currentPlaybackTime = this.currentReplay.gameStateSnapshots[snapshotIndex].time;
-                    this.onWrongStepHighlightCallback(wrongStep, index);
-                    this.jumpToSnapshot(snapshotIndex);
-                }
+        if (!this.currentReplay) return;
+
+        const wrongStep = this.currentReplay.wrongSteps[index];
+        if (!wrongStep) return;
+
+        const snapshotIndex = this.findSnapshotForWrongStep(wrongStep);
+        if (snapshotIndex >= 0) {
+            this.currentSnapshotIndex = snapshotIndex;
+            this.currentPlaybackTime = this.currentReplay.gameStateSnapshots[snapshotIndex].time;
+
+            if (this.onWrongStepHighlightCallback) {
+                this.onWrongStepHighlightCallback(wrongStep, index);
+            }
+
+            this.jumpToSnapshot(snapshotIndex);
+
+            this.renderSnapshotDetail(snapshotIndex, wrongStep);
+
+            this.eventDispatcher.emit('replay-jump-snapshot', {
+                snapshot: this.currentReplay.gameStateSnapshots[snapshotIndex],
+                wrongStep,
+                snapshotIndex,
+            });
+        }
+    }
+
+    private renderSnapshotDetail(snapshotIndex: number, wrongStep: WrongStep) {
+        if (!this.currentReplay) return;
+
+        const snapshot = this.currentReplay.gameStateSnapshots[snapshotIndex];
+        const container = this.wrongStepsContainer || this.node.getChildByName('ReplayInfo');
+        if (!container || !snapshot) return;
+
+        this.setLabelOnNode(this.node, 'ReplayTitle',
+            `复盘: 关卡${this.currentReplay.levelId} — 快照@${Math.floor(snapshot.time)}s — 错步[${wrongStep.type}]`,
+            new Color(255, 100, 100), 22);
+
+        const lastChild = container.children[container.children.length - 1];
+        if (lastChild) {
+            const lbl = lastChild.getComponent(Label);
+            if (lbl && lbl.string === wrongStep.description) {
+                lbl.color = new Color(255, 50, 50);
+                lbl.fontSize = 16;
             }
         }
+
+        const ordersActive = snapshot.orders.filter(o => o.status === 'assigned' || o.status === 'picked').length;
+        const ridersBusy = snapshot.riders.filter(r => r.status === 'busy').length;
+        this.makeChildLabel(container,
+            `--- 快照 ${snapshotIndex + 1}/${this.currentReplay.gameStateSnapshots.length} @${Math.floor(snapshot.time)}s | 分数${snapshot.score} 赔付¥${snapshot.totalCompensation} | 配送${ordersActive}单 忙骑手${ridersBusy} ---`,
+            12, new Color(180, 220, 255));
+    }
+
+    private setLabelOnNode(root: Node, name: string, text: string, color: Color, fontSize: number) {
+        const child = root.getChildByName(name);
+        if (!child) return;
+        const label = child.getComponent(Label);
+        if (!label) return;
+        label.string = text;
+        label.color = color;
+        label.fontSize = fontSize;
     }
 
     private findSnapshotForWrongStep(wrongStep: WrongStep): number {

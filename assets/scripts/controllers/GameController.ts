@@ -99,6 +99,18 @@ export class GameController extends Component {
         this.mapController = c;
     }
 
+    getSubsidyManager(): SubsidyManager | null {
+        return this.subsidyManager;
+    }
+
+    getOrderManager(): OrderManager | null {
+        return this.orderManager;
+    }
+
+    getRiderManager(): RiderManager | null {
+        return this.riderManager;
+    }
+
     private makeChild(name: string): Node {
         const n = new Node(name);
         this.node.addChild(n);

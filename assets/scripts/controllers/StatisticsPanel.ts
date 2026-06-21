@@ -1,6 +1,7 @@
 import { _decorator, Component, Node, Label, Button, Sprite, Color, Graphics, ProgressBar, UITransform } from 'cc';
 import { Statistics } from '../types/GameTypes';
 import { StorageManager } from '../managers/StorageManager';
+import { GameController } from './GameController';
 import { SUBSIDY_RULES } from '../config/GameConfig';
 
 const { ccclass, property } = _decorator;
@@ -54,6 +55,7 @@ export class StatisticsPanel extends Component {
 
     private storageManager: StorageManager = StorageManager.getInstance();
     private statistics: Statistics | null = null;
+    private gameController: GameController | null = null;
 
     onLoad() {
         if (this.clearStatsButton) {
@@ -62,6 +64,10 @@ export class StatisticsPanel extends Component {
         if (this.closeButton) {
             this.closeButton.node.on(Button.EventType.CLICK, this.hide, this);
         }
+    }
+
+    setGameController(controller: GameController) {
+        this.gameController = controller;
     }
 
     show() {
@@ -85,30 +91,46 @@ export class StatisticsPanel extends Component {
     private renderOverallStats() {
         if (!this.statistics) return;
 
+        let totalComp = this.statistics.totalCompensationPaid;
+        let totalGames = this.statistics.totalGames;
+        let totalVictories = this.statistics.totalVictories;
+        let totalScore = this.statistics.avgScore * totalGames;
+
+        if (this.gameController) {
+            const gs = this.gameController.getGameState();
+            if (gs) {
+                totalComp += gs.totalCompensation;
+                totalGames += 1;
+                totalScore += gs.score;
+                if (gs.isVictory) totalVictories += 1;
+            }
+        }
+
         if (this.totalGamesLabel) {
-            this.totalGamesLabel.string = `总游戏次数: ${this.statistics.totalGames}`;
+            this.totalGamesLabel.string = `总游戏次数: ${totalGames}`;
         }
 
         if (this.winRateLabel) {
-            const winRate = this.statistics.totalGames > 0 ?
-                Math.round((this.statistics.totalVictories / this.statistics.totalGames) * 100) : 0;
+            const winRate = totalGames > 0 ?
+                Math.round((totalVictories / totalGames) * 100) : 0;
             this.winRateLabel.string = `胜率: ${winRate}%`;
             this.winRateLabel.color = winRate >= 60 ? new Color(0, 255, 100) : new Color(255, 200, 0);
         }
 
         if (this.avgScoreLabel) {
-            this.avgScoreLabel.string = `平均得分: ${this.statistics.avgScore}`;
+            const avg = totalGames > 0 ? Math.round(totalScore / totalGames) : 0;
+            this.avgScoreLabel.string = `平均得分: ${avg}`;
         }
 
         if (this.totalCompensationLabel) {
-            this.totalCompensationLabel.string = `累计赔付: ¥${this.statistics.totalCompensationPaid}`;
-            this.totalCompensationLabel.color = this.statistics.totalCompensationPaid > 500 ?
+            this.totalCompensationLabel.string = `累计赔付: ¥${totalComp}`;
+            this.totalCompensationLabel.color = totalComp > 500 ?
                 new Color(255, 100, 100) : new Color(255, 255, 255);
         }
 
         if (this.avgCompensationLabel) {
-            const compStats = this.storageManager.getCompensationStats();
-            this.avgCompensationLabel.string = `场均赔付: ¥${compStats.avgPerGame}`;
+            const avgPerGame = totalGames > 0 ? Math.round(totalComp / totalGames) : 0;
+            this.avgCompensationLabel.string = `场均赔付: ¥${avgPerGame}`;
         }
     }
 
@@ -148,7 +170,29 @@ export class StatisticsPanel extends Component {
         const container = this.subsidyStatsContainer || this.node.getChildByName('StatsInfo');
         if (!container) return;
 
-        const entries = Object.entries(this.statistics.subsidyEffectiveness);
+        const mergedStats: Record<string, { used: number; saved: number }> = {};
+
+        if (this.statistics.subsidyEffectiveness) {
+            Object.entries(this.statistics.subsidyEffectiveness).forEach(([id, data]) => {
+                mergedStats[id] = { used: data.used, saved: data.saved };
+            });
+        }
+
+        if (this.gameController) {
+            const subsidyManager = this.gameController.getSubsidyManager();
+            if (subsidyManager) {
+                const sessionStats = subsidyManager.getSubsidyStats();
+                Object.entries(sessionStats).forEach(([id, data]) => {
+                    if (!mergedStats[id]) {
+                        mergedStats[id] = { used: 0, saved: 0 };
+                    }
+                    mergedStats[id].used += data.used;
+                    mergedStats[id].saved += data.saved;
+                });
+            }
+        }
+
+        const entries = Object.entries(mergedStats);
 
         if (entries.length === 0) {
             this.makeChildLabel(container, '暂无补贴使用记录', 14, new Color(150, 150, 150));
