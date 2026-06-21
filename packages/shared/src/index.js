@@ -1,0 +1,103 @@
+"use strict";
+Object.defineProperty(exports, "__esModule", { value: true });
+exports.CaseStage = exports.MaterialStatus = exports.MaterialType = exports.TimelineEventType = exports.PaymentStatus = exports.FeeType = exports.CaseType = exports.CaseStatus = void 0;
+var CaseStatus;
+(function (CaseStatus) {
+    CaseStatus["MATERIAL_SUBMITTED"] = "MATERIAL_SUBMITTED";
+    CaseStatus["ASSISTANT_REVIEWING"] = "ASSISTANT_REVIEWING";
+    CaseStatus["IDENTITY_VERIFIED"] = "IDENTITY_VERIFIED";
+    CaseStatus["CONFLICT_CHECKING"] = "CONFLICT_CHECKING";
+    CaseStatus["CONFLICT_PASSED"] = "CONFLICT_PASSED";
+    CaseStatus["CONFLICT_FAILED"] = "CONFLICT_FAILED";
+    CaseStatus["EVIDENCE_REVIEWING"] = "EVIDENCE_REVIEWING";
+    CaseStatus["MATERIAL_INCOMPLETE"] = "MATERIAL_INCOMPLETE";
+    CaseStatus["LAWYER_ASSIGNING"] = "LAWYER_ASSIGNING";
+    CaseStatus["LAWYER_SUPPLEMENTING"] = "LAWYER_SUPPLEMENTING";
+    CaseStatus["CASE_ACTIVE"] = "CASE_ACTIVE";
+    CaseStatus["CASE_CLOSED"] = "CASE_CLOSED";
+    CaseStatus["CASE_ARCHIVED"] = "CASE_ARCHIVED";
+})(CaseStatus || (exports.CaseStatus = CaseStatus = {}));
+var CaseType;
+(function (CaseType) {
+    CaseType["CIVIL"] = "CIVIL";
+    CaseType["CRIMINAL"] = "CRIMINAL";
+    CaseType["ADMINISTRATIVE"] = "ADMINISTRATIVE";
+    CaseType["ARBITRATION"] = "ARBITRATION";
+    CaseType["LABOR"] = "LABOR";
+    CaseType["INTELLECTUAL_PROPERTY"] = "INTELLECTUAL_PROPERTY";
+    CaseType["CONTRACT"] = "CONTRACT";
+    CaseType["TORT"] = "TORT";
+    CaseType["FAMILY"] = "FAMILY";
+    CaseType["REAL_ESTATE"] = "REAL_ESTATE";
+    CaseType["CORPORATE"] = "CORPORATE";
+    CaseType["OTHER"] = "OTHER";
+})(CaseType || (exports.CaseType = CaseType = {}));
+var FeeType;
+(function (FeeType) {
+    FeeType["HOURLY"] = "HOURLY";
+    FeeType["FIXED"] = "FIXED";
+    FeeType["CONTINGENCY"] = "CONTINGENCY";
+    FeeType["RETAINER"] = "RETAINER";
+    FeeType["MIXED"] = "MIXED";
+})(FeeType || (exports.FeeType = FeeType = {}));
+var PaymentStatus;
+(function (PaymentStatus) {
+    PaymentStatus["UNPAID"] = "UNPAID";
+    PaymentStatus["PARTIAL"] = "PARTIAL";
+    PaymentStatus["PAID"] = "PAID";
+    PaymentStatus["OVERDUE"] = "OVERDUE";
+    PaymentStatus["REFUNDED"] = "REFUNDED";
+})(PaymentStatus || (exports.PaymentStatus = PaymentStatus = {}));
+var TimelineEventType;
+(function (TimelineEventType) {
+    TimelineEventType["CASE_CREATED"] = "CASE_CREATED";
+    TimelineEventType["MATERIAL_UPLOADED"] = "MATERIAL_UPLOADED";
+    TimelineEventType["IDENTITY_VERIFIED"] = "IDENTITY_VERIFIED";
+    TimelineEventType["CONFLICT_CHECK_PASSED"] = "CONFLICT_CHECK_PASSED";
+    TimelineEventType["CONFLICT_CHECK_FAILED"] = "CONFLICT_CHECK_FAILED";
+    TimelineEventType["EVIDENCE_REVIEWED"] = "EVIDENCE_REVIEWED";
+    TimelineEventType["MATERIAL_INCOMPLETE_NOTICE"] = "MATERIAL_INCOMPLETE_NOTICE";
+    TimelineEventType["MATERIAL_RESUBMITTED"] = "MATERIAL_RESUBMITTED";
+    TimelineEventType["LAWYER_ASSIGNED"] = "LAWYER_ASSIGNED";
+    TimelineEventType["CASE_STAGE_SET"] = "CASE_STAGE_SET";
+    TimelineEventType["TRIAL_SCHEDULED"] = "TRIAL_SCHEDULED";
+    TimelineEventType["FEE_AGREED"] = "FEE_AGREED";
+    TimelineEventType["RISK_WARNING"] = "RISK_WARNING";
+    TimelineEventType["COMMUNICATION"] = "COMMUNICATION";
+    TimelineEventType["VERSION_UPDATE"] = "VERSION_UPDATE";
+    TimelineEventType["CASE_CLOSED"] = "CASE_CLOSED";
+})(TimelineEventType || (exports.TimelineEventType = TimelineEventType = {}));
+var MaterialType;
+(function (MaterialType) {
+    MaterialType["ID_CARD"] = "ID_CARD";
+    MaterialType["POWER_OF_ATTORNEY"] = "POWER_OF_ATTORNEY";
+    MaterialType["EVIDENCE_DOC"] = "EVIDENCE_DOC";
+    MaterialType["CONTRACT"] = "CONTRACT";
+    MaterialType["COURT_DOCUMENT"] = "COURT_DOCUMENT";
+    MaterialType["FINANCIAL_RECORD"] = "FINANCIAL_RECORD";
+    MaterialType["CORRESPONDENCE"] = "CORRESPONDENCE";
+    MaterialType["PHOTO"] = "PHOTO";
+    MaterialType["VIDEO"] = "VIDEO";
+    MaterialType["AUDIO"] = "AUDIO";
+    MaterialType["OTHER"] = "OTHER";
+})(MaterialType || (exports.MaterialType = MaterialType = {}));
+var MaterialStatus;
+(function (MaterialStatus) {
+    MaterialStatus["PENDING"] = "PENDING";
+    MaterialStatus["APPROVED"] = "APPROVED";
+    MaterialStatus["REJECTED"] = "REJECTED";
+    MaterialStatus["MISSING"] = "MISSING";
+    MaterialStatus["RESUBMITTED"] = "RESUBMITTED";
+})(MaterialStatus || (exports.MaterialStatus = MaterialStatus = {}));
+var CaseStage;
+(function (CaseStage) {
+    CaseStage["PRE_TRIAL"] = "PRE_TRIAL";
+    CaseStage["FILING"] = "FILING";
+    CaseStage["DISCOVERY"] = "DISCOVERY";
+    CaseStage["MEDIATION"] = "MEDIATION";
+    CaseStage["TRIAL"] = "TRIAL";
+    CaseStage["APPEAL"] = "APPEAL";
+    CaseStage["ENFORCEMENT"] = "ENFORCEMENT";
+    CaseStage["SETTLEMENT"] = "SETTLEMENT";
+})(CaseStage || (exports.CaseStage = CaseStage = {}));
+//# sourceMappingURL=index.js.map

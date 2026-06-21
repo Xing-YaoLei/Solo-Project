@@ -1,0 +1,269 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+enum UserRole {
+  ADMIN
+  LAWYER
+  ASSISTANT
+  CLIENT
+}
+
+enum CaseStatus {
+  MATERIAL_SUBMITTED
+  ASSISTANT_REVIEWING
+  IDENTITY_VERIFIED
+  CONFLICT_CHECKING
+  CONFLICT_PASSED
+  CONFLICT_FAILED
+  EVIDENCE_REVIEWING
+  MATERIAL_INCOMPLETE
+  LAWYER_ASSIGNING
+  LAWYER_SUPPLEMENTING
+  CASE_ACTIVE
+  CASE_CLOSED
+  CASE_ARCHIVED
+}
+
+enum CaseType {
+  CIVIL
+  CRIMINAL
+  ADMINISTRATIVE
+  ARBITRATION
+  LABOR
+  INTELLECTUAL_PROPERTY
+  CONTRACT
+  TORT
+  FAMILY
+  REAL_ESTATE
+  CORPORATE
+  OTHER
+}
+
+enum FeeType {
+  HOURLY
+  FIXED
+  CONTINGENCY
+  RETAINER
+  MIXED
+}
+
+enum PaymentStatus {
+  UNPAID
+  PARTIAL
+  PAID
+  OVERDUE
+  REFUNDED
+}
+
+enum TimelineEventType {
+  CASE_CREATED
+  MATERIAL_UPLOADED
+  IDENTITY_VERIFIED
+  CONFLICT_CHECK_PASSED
+  CONFLICT_CHECK_FAILED
+  EVIDENCE_REVIEWED
+  MATERIAL_INCOMPLETE_NOTICE
+  MATERIAL_RESUBMITTED
+  LAWYER_ASSIGNED
+  CASE_STAGE_SET
+  TRIAL_SCHEDULED
+  FEE_AGREED
+  RISK_WARNING
+  COMMUNICATION
+  VERSION_UPDATE
+  CASE_CLOSED
+}
+
+enum MaterialType {
+  ID_CARD
+  POWER_OF_ATTORNEY
+  EVIDENCE_DOC
+  CONTRACT
+  COURT_DOCUMENT
+  FINANCIAL_RECORD
+  CORRESPONDENCE
+  PHOTO
+  VIDEO
+  AUDIO
+  OTHER
+}
+
+enum MaterialStatus {
+  PENDING
+  APPROVED
+  REJECTED
+  MISSING
+  RESUBMITTED
+}
+
+enum CaseStage {
+  PRE_TRIAL
+  FILING
+  DISCOVERY
+  MEDIATION
+  TRIAL
+  APPEAL
+  ENFORCEMENT
+  SETTLEMENT
+}
+
+model User {
+  id           String   @id @default(cuid())
+  name         String
+  email        String   @unique
+  phone        String
+  role         UserRole
+  passwordHash String
+  barNumber    String?
+  createdAt    DateTime @default(now())
+  updatedAt    DateTime @updatedAt
+
+  casesAsLawyer     Case[]     @relation("CaseLawyer")
+  casesAsAssistant  Case[]     @relation("CaseAssistant")
+  uploadedMaterials CaseMaterial[]
+  conflictChecks    ConflictCheck[]
+  timelineEvents    TimelineEvent[]
+  generatedReports  MonthlyReport[]
+  client            Client?
+}
+
+model Client {
+  id          String   @id @default(cuid())
+  userId      String   @unique
+  idNumber    String
+  companyName String?
+  address     String?
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  user  User  @relation(fields: [userId], references: [id], onDelete: Cascade)
+  cases Case[]
+}
+
+model Case {
+  id                   String          @id @default(cuid())
+  title                String
+  caseType             CaseType
+  status               CaseStatus      @default(MATERIAL_SUBMITTED)
+  description          String
+  clientId             String
+  opposingPartyName    String
+  opposingPartyIdNumber String?
+  lawyerId             String?
+  assistantId          String?
+  caseStage            CaseStage?
+  trialDate            DateTime?
+  trialLocation        String?
+  feeType              FeeType?
+  feeAmount            Decimal?
+  feeNote              String?
+  riskWarnings         String[]
+  createdAt            DateTime        @default(now())
+  updatedAt            DateTime        @updatedAt
+
+  client         Client           @relation(fields: [clientId], references: [id])
+  lawyer         User?            @relation("CaseLawyer", fields: [lawyerId], references: [id])
+  assistant      User?            @relation("CaseAssistant", fields: [assistantId], references: [id])
+  materials      CaseMaterial[]
+  conflictChecks ConflictCheck[]
+  timelineEvents TimelineEvent[]
+  invoices       Invoice[]
+
+  @@index([status])
+  @@index([caseType])
+  @@index([lawyerId])
+  @@index([clientId])
+}
+
+model CaseMaterial {
+  id             String         @id @default(cuid())
+  caseId         String
+  name           String
+  materialType   MaterialType
+  status         MaterialStatus @default(PENDING)
+  fileUrl        String
+  fileSize       Int
+  pageTotal      Int?
+  missingPages   Int[]
+  version        Int            @default(1)
+  reviewedAt     DateTime?
+  reviewNote     String?
+  uploadedBy     String
+  createdAt      DateTime       @default(now())
+  updatedAt      DateTime       @updatedAt
+
+  case      Case @relation(fields: [caseId], references: [id], onDelete: Cascade)
+  uploader  User @relation(fields: [uploadedBy], references: [id])
+}
+
+model ConflictCheck {
+  id                String   @id @default(cuid())
+  caseId            String
+  checkedBy         String
+  hasConflict       Boolean
+  conflictDetails   String?
+  conflictingCaseIds String[]
+  checkedAt         DateTime @default(now())
+  archivedAt        DateTime?
+  archivePath       String?
+  createdAt         DateTime @default(now())
+  updatedAt         DateTime @updatedAt
+
+  case    Case @relation(fields: [caseId], references: [id], onDelete: Cascade)
+  checker User @relation(fields: [checkedBy], references: [id])
+
+  @@unique([caseId, checkedAt])
+  @@index([caseId])
+}
+
+model TimelineEvent {
+  id           String              @id @default(cuid())
+  caseId       String
+  eventType    TimelineEventType
+  title        String
+  content      String
+  operatorId   String
+  operatorName String
+  metadata     Json?
+  createdAt    DateTime            @default(now())
+
+  case     Case @relation(fields: [caseId], references: [id], onDelete: Cascade)
+  operator User @relation(fields: [operatorId], references: [id])
+
+  @@index([caseId])
+}
+
+model Invoice {
+  id            String        @id @default(cuid())
+  caseId        String
+  amount        Decimal
+  paymentStatus PaymentStatus @default(UNPAID)
+  dueDate       DateTime?
+  paidDate      DateTime?
+  paymentMethod String?
+  note          String?
+  createdAt     DateTime      @default(now())
+  updatedAt     DateTime      @updatedAt
+
+  case Case @relation(fields: [caseId], references: [id], onDelete: Cascade)
+}
+
+model MonthlyReport {
+  id          String   @id @default(cuid())
+  year        Int
+  month       Int
+  reportData  Json
+  generatedBy String
+  generatedAt DateTime @default(now())
+  createdAt   DateTime @default(now())
+
+  generator User @relation(fields: [generatedBy], references: [id])
+
+  @@unique([year, month])
+}
