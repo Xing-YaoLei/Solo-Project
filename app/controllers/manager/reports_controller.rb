@@ -30,11 +30,11 @@ module Manager
       end_date = start_date.end_of_month
 
       @q = policy_scope(Settlement).by_period(@period).ransack(params[:q])
-      @settlements = @q.result.includes(:merchant, :handler, :discrepancies)
-                       .order(payment_date: :asc).page(params[:page])
+      scope = @q.result.includes(:merchant, :handler, :discrepancies).order(payment_date: :asc)
+      @pagy, @settlements = pagy(scope)
 
-      @total_amount = @settlements.total_pages == 1 ? @settlements.sum(:merchant_amount) : policy_scope(Settlement).by_period(@period).sum(:merchant_amount)
-      @settlement_count = @settlements.total_count
+      @total_amount = policy_scope(Settlement).by_period(@period).sum(:merchant_amount)
+      @settlement_count = @pagy.count
       @with_difference_count = policy_scope(Settlement).by_period(@period).with_difference.count
 
       @by_status = policy_scope(Settlement).by_period(@period).group(:status).count
@@ -63,11 +63,11 @@ module Manager
                                    .sum(:merchant_amount)
 
       @q = policy_scope(Settlement).by_payment_date(@start_date, @end_date).ransack(params[:q])
-      @settlements = @q.result.includes(:merchant, :handler)
-                       .order(payment_date: :desc).page(params[:page])
+      scope = @q.result.includes(:merchant, :handler).order(payment_date: :desc)
+      @pagy, @settlements = pagy(scope)
 
       @total_amount = policy_scope(Settlement).by_payment_date(@start_date, @end_date).sum(:merchant_amount)
-      @settlement_count = policy_scope(Settlement).by_payment_date(@start_date, @end_date).count
+      @settlement_count = @pagy.count
 
       @sensitive_fields = sensitive_fields_for(:city_manager)
     end
@@ -96,9 +96,8 @@ module Manager
 
       @handlers = User.cs.includes(:assigned_todo_items)
       @q = policy_scope(Settlement).by_period(@period).ransack(params[:q])
-      @settlements = @q.result.includes(:merchant, :handler)
-                       .order(handler_id: :asc, period: :desc)
-                       .page(params[:page])
+      scope = @q.result.includes(:merchant, :handler).order(handler_id: :asc, period: :desc)
+      @pagy, @settlements = pagy(scope)
 
       @sensitive_fields = sensitive_fields_for(:city_manager)
     end

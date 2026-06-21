@@ -4,19 +4,19 @@
   <div class="grid grid-cols-1 md:grid-cols-4 gap-4">
     <div class="bg-white rounded-xl p-5 shadow-card border-l-4 border-[#1e3a5f]">
       <p class="text-sm text-gray-500">全部待办</p>
-      <p class="text-2xl font-bold text-[#1e3a5f] mt-2 font-serif">32</p>
+      <p class="text-2xl font-bold text-[#1e3a5f] mt-2 font-serif"><%= @pending_count + @in_progress_count + @completed_count %></p>
     </div>
     <div class="bg-white rounded-xl p-5 shadow-card border-l-4 border-[#ef4444]">
       <p class="text-sm text-gray-500">紧急</p>
-      <p class="text-2xl font-bold text-[#ef4444] mt-2 font-serif">5</p>
+      <p class="text-2xl font-bold text-[#ef4444] mt-2 font-serif"><%= @overdue_count %></p>
     </div>
     <div class="bg-white rounded-xl p-5 shadow-card border-l-4 border-[#f59e0b]">
       <p class="text-sm text-gray-500">处理中</p>
-      <p class="text-2xl font-bold text-[#f59e0b] mt-2 font-serif">12</p>
+      <p class="text-2xl font-bold text-[#f59e0b] mt-2 font-serif"><%= @in_progress_count %></p>
     </div>
     <div class="bg-white rounded-xl p-5 shadow-card border-l-4 border-[#10b981]">
-      <p class="text-sm text-gray-500">今日完成</p>
-      <p class="text-2xl font-bold text-[#10b981] mt-2 font-serif">8</p>
+      <p class="text-sm text-gray-500">已完成</p>
+      <p class="text-2xl font-bold text-[#10b981] mt-2 font-serif"><%= @completed_count %></p>
     </div>
   </div>
 
@@ -43,33 +43,12 @@
   </div>
 
   <div class="space-y-4">
-    <% 8.times do |i| %>
-      <%= render TodoItemComponent.new(todo_item: OpenStruct.new(
-        id: 1001 + i,
-        title: ['核对结算单金额差异', '联系商户确认结算信息', '上传结算凭证', '处理退款申请', '生成周结算报表', '审核商户合同', '更新系统配置', '培训新客服人员'][i],
-        description: '需要仔细核对系统与商户之间的金额差异，确保数据准确性。如有问题及时与相关人员沟通。',
-        priority: %w[urgent high medium low].sample,
-        status: %w[pending in_progress completed].sample,
-        due_date: Date.today + (i - 2).days,
-        assignee: OpenStruct.new(name: '李四'),
-        settlement: i < 4 ? OpenStruct.new(id: 10023 + i) : nil,
-        completed?: i > 5
-      )) %>
+    <% @todo_items.each do |todo_item| %>
+      <%= render TodoItemComponent.new(todo_item: todo_item) %>
     <% end %>
   </div>
 
-  <div class="flex justify-center">
-    <nav class="flex items-center gap-1">
-      <button class="px-3 py-2 rounded-lg text-gray-600 hover:bg-gray-100">
-        <i data-lucide="chevron-left" class="w-4 h-4"></i>
-      </button>
-      <span class="px-4 py-2 rounded-lg bg-[#1e3a5f] text-white font-medium">1</span>
-      <button class="px-4 py-2 rounded-lg text-gray-600 hover:bg-gray-100 font-medium">2</button>
-      <button class="px-4 py-2 rounded-lg text-gray-600 hover:bg-gray-100 font-medium">3</button>
-      <button class="px-4 py-2 rounded-lg text-gray-600 hover:bg-gray-100 font-medium">4</button>
-      <button class="px-3 py-2 rounded-lg text-gray-600 hover:bg-gray-100">
-        <i data-lucide="chevron-right" class="w-4 h-4"></i>
-      </button>
-    </nav>
-  </div>
+  <% if @pagy.pages > 1 %>
+    <%= render PaginationComponent.new(pagy: @pagy) %>
+  <% end %>
 </div>

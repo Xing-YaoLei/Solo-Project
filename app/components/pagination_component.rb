@@ -1,23 +1,36 @@
 class PaginationComponent < ViewComponent::Base
-  def initialize(collection:, param_name: :page)
+  def initialize(pagy:, collection: nil, param_name: :page)
+    @pagy = pagy
     @collection = collection
     @param_name = param_name
   end
 
   def total_pages
-    @collection.total_pages
+    @pagy.pages
   end
 
   def current_page
-    @collection.current_page
+    @pagy.page
   end
 
   def previous_page
-    current_page - 1 if current_page > 1
+    @pagy.prev
   end
 
   def next_page
-    current_page + 1 if current_page < total_pages
+    @pagy.next
+  end
+
+  def total_count
+    @pagy.count
+  end
+
+  def from
+    @pagy.from
+  end
+
+  def to
+    @pagy.to
   end
 
   def visible_pages

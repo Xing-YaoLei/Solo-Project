@@ -3,6 +3,7 @@ class Settlement < ApplicationRecord
   belongs_to :handler, class_name: 'User', optional: true
   has_many :settlement_items, dependent: :destroy
   has_many :discrepancies, dependent: :destroy
+  has_many :supplement_materials, through: :discrepancies
   has_many :approval_records, dependent: :destroy
   has_many :todo_items, dependent: :destroy
   has_many :amount_audit_logs, dependent: :destroy

@@ -6,8 +6,8 @@ module Cs
       authorize TodoItem, :index?
 
       @q = policy_scope(TodoItem).ransack(params[:q])
-      @todo_items = @q.result.includes(:assignee, :assigner, :settlement, :discrepancy)
-                       .ordered_by_priority.page(params[:page])
+      scope = @q.result.includes(:assignee, :assigner, :settlement, :discrepancy).ordered_by_priority
+      @pagy, @todo_items = pagy(scope)
 
       @pending_count = policy_scope(TodoItem).pending.count
       @in_progress_count = policy_scope(TodoItem).in_progress.count

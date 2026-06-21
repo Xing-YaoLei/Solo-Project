@@ -6,8 +6,8 @@ module Merchants
       authorize Settlement, :index?
 
       @q = policy_scope(Settlement).ransack(params[:q])
-      @settlements = @q.result.includes(:discrepancies, :approval_records)
-                       .recent.page(params[:page])
+      scope = @q.result.includes(:discrepancies, :approval_records).recent
+      @pagy, @settlements = pagy(scope)
 
       @sensitive_fields = sensitive_fields_for(:merchant)
     end

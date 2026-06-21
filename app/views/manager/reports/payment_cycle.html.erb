@@ -98,49 +98,45 @@
           </tr>
         </thead>
         <tbody class="divide-y divide-gray-100">
-          <% 12.times do |i| %>
+          <% @settlements.each do |settlement| %>
             <tr class="hover:bg-gray-50 transition-colors">
               <td class="px-6 py-4">
-                <span class="font-semibold text-[#1e3a5f]">#<%= 10001 + i %></span>
+                <span class="font-semibold text-[#1e3a5f]">#<%= settlement.period %></span>
               </td>
               <td class="px-6 py-4">
                 <div class="flex items-center gap-2">
                   <div class="w-8 h-8 rounded-lg bg-gradient-to-br from-[#1e3a5f] to-[#2d4a6f] flex items-center justify-center text-white text-xs font-bold">
-                    商<%= i + 1 %>
+                    <%= settlement.merchant&.name&.first(2) %>
                   </div>
-                  <span class="text-gray-900">商户<%= i + 1 %></span>
+                  <span class="text-gray-900"><%= settlement.merchant&.name %></span>
                 </div>
               </td>
               <td class="px-6 py-4 text-right">
-                <span class="font-bold text-gray-900 font-serif">¥<%= number_with_delimiter(sprintf('%.2f', 25000 + i * 12345)) %></span>
+                <span class="font-bold text-gray-900 font-serif">¥<%= number_with_delimiter(sprintf('%.2f', settlement.merchant_amount)) %></span>
               </td>
-              <td class="px-6 py-4 text-center text-gray-600">2024-06-<%= 20 + (i % 10) %></td>
+              <td class="px-6 py-4 text-center text-gray-600"><%= settlement.payment_date&.strftime('%Y-%m-%d') %></td>
               <td class="px-6 py-4 text-center">
-                <% days = 2 + (i % 4) %>
-                <span class="px-2 py-1 rounded-full text-xs font-medium
-                             <%= days <= 3 ? 'bg-green-100 text-green-600' : days <= 5 ? 'bg-yellow-100 text-yellow-600' : 'bg-red-100 text-red-600' %>">
-                  <%= days %> 天
-                </span>
+                <% if settlement.payment_date %>
+                  <% days = (settlement.payment_date - Date.parse("#{settlement.period}-01")).to_i %>
+                  <span class="px-2 py-1 rounded-full text-xs font-medium
+                               <%= days <= 3 ? 'bg-green-100 text-green-600' : days <= 5 ? 'bg-yellow-100 text-yellow-600' : 'bg-red-100 text-red-600' %>">
+                    <%= days %> 天
+                  </span>
+                <% end %>
               </td>
               <td class="px-6 py-4 text-center">
-                <% status = i < 3 ? 'overdue' : i < 8 ? 'pending' : 'paid' %>
-                <span class="px-3 py-1 rounded-full text-xs font-medium
-                             <%= status == 'pending' ? 'bg-orange-100 text-orange-600' : '' %>
-                             <%= status == 'paid' ? 'bg-green-100 text-green-600' : '' %>
-                             <%= status == 'overdue' ? 'bg-red-100 text-red-600' : '' %>">
-                  <%= { pending: '待付款', paid: '已付款', overdue: '已逾期' }[status.to_sym] %>
+                <span class="status-badge status-<%= settlement.status %>">
+                  <%= { pending: '待处理', processing: '处理中', approved: '已批准', rejected: '已驳回', completed: '已付款', paid: '已付款', overdue: '已逾期' }[settlement.status.to_sym] %>
                 </span>
               </td>
               <td class="px-6 py-4 text-center">
                 <div class="flex items-center justify-center gap-2">
-                  <% if status == 'pending' || status == 'overdue' %>
-                    <button class="px-3 py-1.5 text-sm bg-[#1e3a5f] text-white rounded-lg hover:bg-[#2d4a6f] transition-colors">
-                      安排付款
-                    </button>
+                  <% if settlement.pending? || settlement.processing? %>
+                    <%= link_to "查看", manager_reports_path(settlement), class: "px-3 py-1.5 text-sm bg-[#1e3a5f] text-white rounded-lg hover:bg-[#2d4a6f] transition-colors" %>
                   <% end %>
-                  <button class="p-2 rounded-lg hover:bg-gray-100 transition-colors">
+                  <%= link_to cs_settlement_path(settlement), class: "p-2 rounded-lg hover:bg-gray-100 transition-colors" do %>
                     <i data-lucide="eye" class="w-4 h-4 text-gray-500"></i>
-                  </button>
+                  <% end %>
                 </div>
               </td>
             </tr>
@@ -148,12 +144,6 @@
         </tbody>
       </table>
     </div>
-    <%= render PaginationComponent.new(collection: OpenStruct.new(
-      total_pages: 3,
-      current_page: 1,
-      offset_value: 0,
-      limit_value: 10,
-      total_count: 28
-    )) %>
+    <%= render PaginationComponent.new(pagy: @pagy) %>
   </div>
 </div>

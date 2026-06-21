@@ -10,7 +10,7 @@
 #
 # It's strongly recommended that you check this file into your version control system.
 
-ActiveRecord::Schema[8.1].define(version: 2026_06_21_011535) do
+ActiveRecord::Schema[8.1].define(version: 2026_06_22_000003) do
   # These are extensions that must be enabled in order to support this database
   enable_extension "pg_catalog.plpgsql"
 
@@ -91,14 +91,20 @@ ActiveRecord::Schema[8.1].define(version: 2026_06_21_011535) do
   end
 
   create_table "discrepancies", id: :uuid, default: -> { "gen_random_uuid()" }, force: :cascade do |t|
+    t.text "comment"
     t.jsonb "comparison_data", default: {}
     t.datetime "created_at", null: false
+    t.text "description"
     t.decimal "difference_amount", precision: 12, scale: 2, default: "0.0"
     t.text "reason"
+    t.string "resolution_type"
+    t.datetime "resolved_at"
+    t.uuid "resolved_by"
     t.uuid "settlement_id", null: false
     t.integer "status", default: 0, null: false
     t.datetime "updated_at", null: false
     t.index ["created_at"], name: "index_discrepancies_on_created_at"
+    t.index ["resolved_by"], name: "index_discrepancies_on_resolved_by"
     t.index ["settlement_id"], name: "index_discrepancies_on_settlement_id"
     t.index ["status"], name: "index_discrepancies_on_status"
   end
@@ -132,6 +138,7 @@ ActiveRecord::Schema[8.1].define(version: 2026_06_21_011535) do
     t.decimal "amount", precision: 12, scale: 2, default: "0.0"
     t.datetime "created_at", null: false
     t.uuid "delivery_order_id"
+    t.text "description"
     t.jsonb "details", default: {}
     t.string "item_type"
     t.uuid "settlement_id", null: false
@@ -164,6 +171,7 @@ ActiveRecord::Schema[8.1].define(version: 2026_06_21_011535) do
     t.datetime "created_at", null: false
     t.text "description"
     t.uuid "discrepancy_id", null: false
+    t.string "file_url"
     t.jsonb "metadata", default: {}
     t.datetime "updated_at", null: false
     t.uuid "uploader_id", null: false
@@ -223,6 +231,7 @@ ActiveRecord::Schema[8.1].define(version: 2026_06_21_011535) do
   add_foreign_key "delivery_orders", "merchants"
   add_foreign_key "delivery_orders", "users", column: "rider_id"
   add_foreign_key "discrepancies", "settlements"
+  add_foreign_key "discrepancies", "users", column: "resolved_by"
   add_foreign_key "filter_configs", "users"
   add_foreign_key "settlement_items", "settlements"
   add_foreign_key "settlements", "merchants"

@@ -25,6 +25,7 @@ Rails.application.routes.draw do
       member do
         post 'submit_for_approval'
         post 'reject'
+        post 'resubmit'
         post 'reassign'
         post 'supplement_material'
       end
@@ -35,7 +36,10 @@ Rails.application.routes.draw do
         post 'resolve'
         post 'escalate'
       end
+      resources :supplement_materials, only: [:create, :destroy]
     end
+
+    resources :supplement_materials, only: [:index, :show, :destroy]
 
     resources :contract_attachments, only: [:index, :show, :create, :destroy]
     resources :documents, only: [:index, :show] do
@@ -68,7 +72,7 @@ Rails.application.routes.draw do
     get 'dashboard', to: 'dashboard#index'
     get '/', to: 'dashboard#index'
 
-    resources :delivery_orders, only: [:index, :show]
+    resources :delivery_orders, only: [:index, :show, :update]
     resources :settlements, only: [:index, :show]
   end
 

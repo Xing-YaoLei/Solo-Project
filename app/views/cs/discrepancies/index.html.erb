@@ -4,21 +4,21 @@
   <div class="grid grid-cols-1 md:grid-cols-4 gap-4">
     <div class="bg-white rounded-xl p-5 shadow-card">
       <p class="text-sm text-gray-500">待处理</p>
-      <p class="text-2xl font-bold text-orange-600 mt-2 font-serif">15</p>
+      <p class="text-2xl font-bold text-orange-600 mt-2 font-serif"><%= @pending_count %></p>
       <div class="w-full h-1 bg-orange-100 rounded-full mt-3">
         <div class="h-full w-3/4 bg-orange-500 rounded-full"></div>
       </div>
     </div>
     <div class="bg-white rounded-xl p-5 shadow-card">
       <p class="text-sm text-gray-500">调查中</p>
-      <p class="text-2xl font-bold text-blue-600 mt-2 font-serif">8</p>
+      <p class="text-2xl font-bold text-blue-600 mt-2 font-serif"><%= @investigating_count %></p>
       <div class="w-full h-1 bg-blue-100 rounded-full mt-3">
         <div class="h-full w-1/2 bg-blue-500 rounded-full"></div>
       </div>
     </div>
     <div class="bg-white rounded-xl p-5 shadow-card">
       <p class="text-sm text-gray-500">已解决</p>
-      <p class="text-2xl font-bold text-green-600 mt-2 font-serif">42</p>
+      <p class="text-2xl font-bold text-green-600 mt-2 font-serif"><%= @resolved_count %></p>
       <div class="w-full h-1 bg-green-100 rounded-full mt-3">
         <div class="h-full w-full bg-green-500 rounded-full"></div>
       </div>
@@ -52,37 +52,12 @@
   </div>
 
   <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
-    <% 6.times do |i| %>
-      <%= render DiscrepancyComponent.new(discrepancy: OpenStruct.new(
-        id: 1001 + i,
-        status: %w[pending investigating resolved rejected].sample,
-        reason: ['订单金额统计差异', '配送费计算错误', '优惠活动抵扣差异', '退款金额不一致'][i % 4],
-        difference_amount: (i + 1) * 1234.56,
-        created_at: (i + 1).days.ago,
-        settlement: OpenStruct.new(
-          period: "2024年第#{24 - i}周",
-          merchant: OpenStruct.new(name: "商户#{i + 1}"),
-          system_amount: 528642.50,
-          merchant_amount: 512345.00
-        ),
-        supplement_materials: []
-      )) %>
+    <% @discrepancies.each do |discrepancy| %>
+      <%= render DiscrepancyComponent.new(discrepancy: discrepancy) %>
     <% end %>
   </div>
 
-  <div class="flex justify-center">
-    <nav class="flex items-center gap-1">
-      <button class="px-3 py-2 rounded-lg text-gray-400 cursor-not-allowed">
-        <i data-lucide="chevron-left" class="w-4 h-4"></i>
-      </button>
-      <span class="px-4 py-2 rounded-lg bg-[#1e3a5f] text-white font-medium">1</span>
-      <button class="px-4 py-2 rounded-lg text-gray-600 hover:bg-gray-100 font-medium">2</button>
-      <button class="px-4 py-2 rounded-lg text-gray-600 hover:bg-gray-100 font-medium">3</button>
-      <span class="px-3 py-2 text-gray-400">...</span>
-      <button class="px-4 py-2 rounded-lg text-gray-600 hover:bg-gray-100 font-medium">10</button>
-      <button class="px-3 py-2 rounded-lg text-gray-600 hover:bg-gray-100">
-        <i data-lucide="chevron-right" class="w-4 h-4"></i>
-      </button>
-    </nav>
-  </div>
+  <% if @pagy.pages > 1 %>
+    <%= render PaginationComponent.new(pagy: @pagy) %>
+  <% end %>
 </div>

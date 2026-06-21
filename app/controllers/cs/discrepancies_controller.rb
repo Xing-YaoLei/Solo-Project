@@ -6,8 +6,8 @@ module Cs
       authorize Discrepancy, :index?
 
       @q = policy_scope(Discrepancy).ransack(params[:q])
-      @discrepancies = @q.result.includes(:settlement, :supplement_materials, :todo_items)
-                          .recent.page(params[:page])
+      scope = @q.result.includes(:settlement, :supplement_materials, :todo_items).recent
+      @pagy, @discrepancies = pagy(scope)
 
       @pending_count = policy_scope(Discrepancy).pending.count
       @investigating_count = policy_scope(Discrepancy).investigating.count

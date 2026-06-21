@@ -1,0 +1,194 @@
+<% content_for :page_title, '按负责人统计' %>
+<% content_for :breadcrumb do %>
+  <span class="text-gray-500">数据报表</span>
+  <span class="mx-2">/</span>
+  <span class="text-[#1e3a5f] font-medium">按负责人统计</span>
+<% end %>
+
+<div class="p-6 space-y-6">
+  <div class="flex items-center justify-between">
+    <h2 class="text-xl font-bold text-[#1e3a5f] font-serif">按负责人统计报表</h2>
+    <div class="flex items-center gap-4">
+      <%= form_tag by_owner_manager_reports_path, method: :get, class: "flex items-center gap-2" do %>
+        <%= select_tag :period, options_for_select(['2024-01', '2024-02', '2024-03', '2024-04', '2024-05', '2024-06', '2024-07', '2024-08', '2024-09', '2024-10', '2024-11', '2024-12'], @period), class: "px-3 py-2 border border-gray-200 rounded-lg text-sm focus:border-[#1e3a5f] focus:ring-2 focus:ring-[#1e3a5f]/10 outline-none" %>
+        <%= submit_tag "查询", class: "px-4 py-2 bg-[#1e3a5f] text-white rounded-lg text-sm font-medium hover:bg-[#2d4a6f] transition-colors" %>
+      <% end %>
+    </div>
+  </div>
+
+  <div class="grid grid-cols-1 md:grid-cols-4 gap-6">
+    <div class="bg-white rounded-2xl p-6 shadow-card">
+      <p class="text-sm text-gray-500">客服人数</p>
+      <p class="text-3xl font-bold text-[#1e3a5f] mt-2 font-serif"><%= @handlers.size %></p>
+      <p class="text-xs text-gray-400 mt-2">活跃客服</p>
+    </div>
+    <div class="bg-white rounded-2xl p-6 shadow-card">
+      <p class="text-sm text-gray-500">结算单数</p>
+      <p class="text-3xl font-bold text-[#10b981] mt-2 font-serif"><%= @by_handler.values.sum %></p>
+      <p class="text-xs text-gray-400 mt-2">周期: <%= @period %></p>
+    </div>
+    <div class="bg-white rounded-2xl p-6 shadow-card">
+      <p class="text-sm text-gray-500">结算总金额</p>
+      <p class="text-3xl font-bold text-[#f59e0b] mt-2 font-serif">¥<%= number_with_delimiter(sprintf('%.2f', @amount_by_handler.values.sum)) %></p>
+      <p class="text-xs text-gray-400 mt-2">已完成结算</p>
+    </div>
+    <div class="bg-white rounded-2xl p-6 shadow-card">
+      <p class="text-sm text-gray-500">差异单数</p>
+      <p class="text-3xl font-bold text-[#ef4444] mt-2 font-serif"><%= @discrepancies_by_handler.values.sum %></p>
+      <p class="text-xs text-gray-400 mt-2">需要处理的差异</p>
+    </div>
+  </div>
+
+  <div class="grid grid-cols-1 lg:grid-cols-3 gap-6">
+    <div class="lg:col-span-2 bg-white rounded-2xl p-6 shadow-card animate-fade-in">
+      <div class="flex items-center justify-between mb-6">
+        <h3 class="text-lg font-bold text-[#1e3a5f] font-serif">各负责人处理量</h3>
+      </div>
+      <div data-controller="chart"
+           data-chart-type-value="bar"
+           data-chart-data-value="<%= {
+             labels: @handlers.map { |h| h.name },
+             series: [
+               { name: '处理单数', data: @handlers.map { |h| @by_handler[h.id] || 0 } },
+               { name: '差异单数', data: @handlers.map { |h| @discrepancies_by_handler[h.id] || 0 } }
+             ]
+           }.to_json %>"
+           style="height: 300px;">
+      </div>
+    </div>
+
+    <div class="bg-white rounded-2xl p-6 shadow-card animate-fade-in" style="animation-delay: 100ms">
+      <h3 class="text-lg font-bold text-[#1e3a5f] mb-6 font-serif">处理金额分布</h3>
+      <div data-controller="chart"
+           data-chart-type-value="pie"
+           data-chart-data-value="<%= {
+             data: @amount_by_handler.map do |handler_id, amount|
+               handler = @handlers.find { |h| h.id == handler_id }
+               { value: amount, name: handler&.name || '未知' }
+             end
+           }.to_json %>"
+           style="height: 280px;">
+      </div>
+    </div>
+  </div>
+
+  <div class="bg-white rounded-2xl shadow-card overflow-hidden animate-fade-in" style="animation-delay: 200ms">
+    <div class="p-6 border-b border-gray-100">
+      <div class="flex items-center justify-between">
+        <h3 class="text-lg font-bold text-[#1e3a5f] font-serif">负责人处理明细</h3>
+        <button class="text-sm text-[#1e3a5f] hover:underline flex items-center gap-1">
+          <i data-lucide="download" class="w-4 h-4"></i>
+          导出明细
+        </button>
+      </div>
+    </div>
+    <div class="overflow-x-auto">
+      <table class="w-full">
+        <thead class="bg-gray-50">
+          <tr>
+            <th class="px-6 py-4 text-left text-xs font-semibold text-gray-500 uppercase">处理人</th>
+            <th class="px-6 py-4 text-center text-xs font-semibold text-gray-500 uppercase">处理单数</th>
+            <th class="px-6 py-4 text-right text-xs font-semibold text-gray-500 uppercase">处理金额</th>
+            <th class="px-6 py-4 text-center text-xs font-semibold text-gray-500 uppercase">差异单数</th>
+            <th class="px-6 py-4 text-center text-xs font-semibold text-gray-500 uppercase">待办事项</th>
+            <th class="px-6 py-4 text-center text-xs font-semibold text-gray-500 uppercase">操作</th>
+          </tr>
+        </thead>
+        <tbody class="divide-y divide-gray-100">
+          <% @handlers.each do |handler| %>
+            <tr class="hover:bg-gray-50 transition-colors">
+              <td class="px-6 py-4">
+                <div class="flex items-center gap-3">
+                  <div class="w-10 h-10 rounded-full bg-gradient-to-br from-[#1e3a5f] to-[#2d4a6f] flex items-center justify-center text-white text-sm font-bold">
+                    <%= handler.name.first(2) %>
+                  </div>
+                  <div>
+                    <p class="font-medium text-gray-900"><%= handler.name %></p>
+                    <p class="text-xs text-gray-500">客服</p>
+                  </div>
+                </div>
+              </td>
+              <td class="px-6 py-4 text-center">
+                <span class="font-semibold text-[#1e3a5f]"><%= @by_handler[handler.id] || 0 %></span>
+              </td>
+              <td class="px-6 py-4 text-right">
+                <span class="font-bold text-gray-900 font-serif">¥<%= number_with_delimiter(sprintf('%.2f', @amount_by_handler[handler.id] || 0)) %></span>
+              </td>
+              <td class="px-6 py-4 text-center">
+                <span class="font-semibold <%= (@discrepancies_by_handler[handler.id] || 0) > 0 ? 'text-red-600' : 'text-gray-600' %>">
+                  <%= @discrepancies_by_handler[handler.id] || 0 %>
+                </span>
+              </td>
+              <td class="px-6 py-4 text-center">
+                <span class="font-semibold text-orange-600">
+                  <%= handler.assigned_todo_items.incomplete.count %>
+                </span>
+              </td>
+              <td class="px-6 py-4 text-center">
+                <%= link_to "查看详情", cs_todo_items_path(assignee_id_eq: handler.id), class: "px-3 py-1.5 text-sm bg-[#1e3a5f] text-white rounded-lg hover:bg-[#2d4a6f] transition-colors" %>
+              </td>
+            </tr>
+          <% end %>
+        </tbody>
+      </table>
+    </div>
+  </div>
+
+  <div class="bg-white rounded-2xl shadow-card overflow-hidden animate-fade-in" style="animation-delay: 300ms">
+    <div class="p-6 border-b border-gray-100">
+      <h3 class="text-lg font-bold text-[#1e3a5f] font-serif">结算单列表</h3>
+    </div>
+    <div class="overflow-x-auto">
+      <table class="w-full">
+        <thead class="bg-gray-50">
+          <tr>
+            <th class="px-6 py-4 text-left text-xs font-semibold text-gray-500 uppercase">结算周期</th>
+            <th class="px-6 py-4 text-left text-xs font-semibold text-gray-500 uppercase">商户名称</th>
+            <th class="px-6 py-4 text-right text-xs font-semibold text-gray-500 uppercase">应付金额</th>
+            <th class="px-6 py-4 text-center text-xs font-semibold text-gray-500 uppercase">处理人</th>
+            <th class="px-6 py-4 text-center text-xs font-semibold text-gray-500 uppercase">状态</th>
+            <th class="px-6 py-4 text-center text-xs font-semibold text-gray-500 uppercase">操作</th>
+          </tr>
+        </thead>
+        <tbody class="divide-y divide-gray-100">
+          <% @settlements.each do |settlement| %>
+            <tr class="hover:bg-gray-50 transition-colors">
+              <td class="px-6 py-4">
+                <span class="font-semibold text-[#1e3a5f]"><%= settlement.period %></span>
+              </td>
+              <td class="px-6 py-4">
+                <div class="flex items-center gap-2">
+                  <div class="w-8 h-8 rounded-lg bg-gradient-to-br from-[#1e3a5f] to-[#2d4a6f] flex items-center justify-center text-white text-xs font-bold">
+                    <%= settlement.merchant&.name&.first(2) %>
+                  </div>
+                  <span class="text-gray-900"><%= settlement.merchant&.name %></span>
+                </div>
+              </td>
+              <td class="px-6 py-4 text-right">
+                <span class="font-bold text-gray-900 font-serif">¥<%= number_with_delimiter(sprintf('%.2f', settlement.merchant_amount)) %></span>
+              </td>
+              <td class="px-6 py-4 text-center">
+                <% if settlement.handler %>
+                  <span class="text-gray-700"><%= settlement.handler.name %></span>
+                <% else %>
+                  <span class="text-gray-400">未分配</span>
+                <% end %>
+              </td>
+              <td class="px-6 py-4 text-center">
+                <span class="status-badge status-<%= settlement.status %>">
+                  <%= { pending: '待处理', processing: '处理中', approved: '已批准', rejected: '已驳回', completed: '已付款' }[settlement.status.to_sym] %>
+                </span>
+              </td>
+              <td class="px-6 py-4 text-center">
+                <%= link_to cs_settlement_path(settlement), class: "p-2 rounded-lg hover:bg-gray-100 transition-colors" do %>
+                  <i data-lucide="eye" class="w-4 h-4 text-gray-500"></i>
+                <% end %>
+              </td>
+            </tr>
+          <% end %>
+        </tbody>
+      </table>
+    </div>
+    <%= render PaginationComponent.new(pagy: @pagy) %>
+  </div>
+</div>

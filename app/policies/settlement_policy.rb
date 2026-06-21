@@ -12,6 +12,10 @@ class SettlementPolicy < ApplicationPolicy
   end
 
   def reject?
+    cs? || city_manager?
+  end
+
+  def resubmit?
     cs?
   end
 

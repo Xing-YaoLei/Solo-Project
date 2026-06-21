@@ -38,53 +38,47 @@
           </tr>
         </thead>
         <tbody class="divide-y divide-gray-100">
-          <% 12.times do |i| %>
+          <% @settlements.each do |settlement| %>
             <tr class="hover:bg-gray-50 transition-colors">
               <td class="px-6 py-4 whitespace-nowrap">
-                <span class="font-semibold text-[#1e3a5f]">#<%= 10001 + i %></span>
+                <span class="font-semibold text-[#1e3a5f]">#<%= settlement.id %></span>
               </td>
-              <td class="px-6 py-4 whitespace-nowrap text-gray-600">2024年第<%= 24 - (i % 24) %>周</td>
+              <td class="px-6 py-4 whitespace-nowrap text-gray-600"><%= settlement.period %></td>
               <td class="px-6 py-4 whitespace-nowrap text-right">
-                <span class="font-bold text-gray-900 font-serif">¥<%= number_with_delimiter(sprintf('%.2f', 25000 + i * 12345)) %></span>
-              </td>
-              <td class="px-6 py-4 whitespace-nowrap text-right">
-                <span class="font-bold text-[#f59e0b] font-serif">¥<%= number_with_delimiter(sprintf('%.2f', 25000 + i * 12345 - (i % 3 == 0 ? i * 123 : 0))) %></span>
+                <span class="font-bold text-gray-900 font-serif">¥<%= number_with_delimiter(sprintf('%.2f', settlement.system_amount)) %></span>
               </td>
               <td class="px-6 py-4 whitespace-nowrap text-right">
-                <% if i % 3 == 0 %>
-                  <span class="font-bold text-red-600 font-serif">+¥<%= number_with_delimiter(sprintf('%.2f', i * 123)) %></span>
+                <span class="font-bold text-[#f59e0b] font-serif">¥<%= number_with_delimiter(sprintf('%.2f', settlement.merchant_amount)) %></span>
+              </td>
+              <td class="px-6 py-4 whitespace-nowrap text-right">
+                <% if settlement.difference_amount != 0 %>
+                  <span class="font-bold <%= settlement.difference_amount > 0 ? 'text-red-600' : 'text-blue-600' %> font-serif">
+                    <%= settlement.difference_amount > 0 ? '+' : '' %>¥<%= number_with_delimiter(sprintf('%.2f', settlement.difference_amount)) %>
+                  </span>
                 <% else %>
                   <span class="text-gray-400">-</span>
                 <% end %>
               </td>
               <td class="px-6 py-4 whitespace-nowrap text-center">
-                <% status = %w[pending processing completed].sample %>
-                <span class="px-3 py-1 rounded-full text-xs font-medium
-                             <%= status == 'pending' ? 'bg-orange-100 text-orange-600' : '' %>
-                             <%= status == 'processing' ? 'bg-blue-100 text-blue-600' : '' %>
-                             <%= status == 'completed' ? 'bg-green-100 text-green-600' : '' %>">
-                  <%= { pending: '待确认', processing: '处理中', completed: '已完成' }[status.to_sym] %>
+                <span class="status-badge status-<%= settlement.status %>">
+                  <%= { pending: '待确认', processing: '处理中', approved: '已批准', rejected: '已拒绝', completed: '已完成' }[settlement.status.to_sym] || settlement.status %>
                 </span>
               </td>
               <td class="px-6 py-4 whitespace-nowrap text-center text-gray-600">
-                2024-06-<%= 20 + (i % 10) %>
+                <%= settlement.payment_date&.strftime('%Y-%m-%d') || '-' %>
               </td>
               <td class="px-6 py-4 whitespace-nowrap text-center">
-                <a href="/merchants/settlements/<%= 10001 + i %>" class="p-2 rounded-lg hover:bg-gray-100 transition-colors inline-block">
+                <%= link_to merchants_settlement_path(settlement), class: 'p-2 rounded-lg hover:bg-gray-100 transition-colors inline-block' do %>
                   <i data-lucide="eye" class="w-4 h-4 text-gray-500"></i>
-                </a>
+                <% end %>
               </td>
             </tr>
           <% end %>
         </tbody>
       </table>
     </div>
-    <%= render PaginationComponent.new(collection: OpenStruct.new(
-      total_pages: 3,
-      current_page: 1,
-      offset_value: 0,
-      limit_value: 10,
-      total_count: 28
-    )) %>
+    <% if @pagy.pages > 1 %>
+      <%= render PaginationComponent.new(pagy: @pagy) %>
+    <% end %>
   </div>
 </div>
