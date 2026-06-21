@@ -1,0 +1,132 @@
+[
+  {
+    "id": "pv_001",
+    "type": "photo",
+    "description": "奶茶一杯，包装完好",
+    "image_path": "",
+    "correct_answer": "intact",
+    "damage_reason": ""
+  },
+  {
+    "id": "pv_002",
+    "type": "photo",
+    "description": "玻璃瓶装饮料，瓶身有裂痕",
+    "image_path": "",
+    "correct_answer": "damaged",
+    "damage_reason": "运输过程中颠簸导致瓶身出现裂纹，可能存在液体渗漏风险。"
+  },
+  {
+    "id": "pv_003",
+    "type": "photo",
+    "description": "蛋糕盒完好无损，封条完整",
+    "image_path": "",
+    "correct_answer": "intact",
+    "damage_reason": ""
+  },
+  {
+    "id": "pv_004",
+    "type": "photo",
+    "description": "生鲜水果，外包装有明显压痕，部分水果外露",
+    "image_path": "",
+    "correct_answer": "damaged",
+    "damage_reason": "外包装受挤压变形，可能造成内部水果损坏，影响品质。"
+  },
+  {
+    "id": "pv_005",
+    "type": "photo",
+    "description": "文件快递，信封角部略有折痕",
+    "image_path": "",
+    "correct_answer": "damaged",
+    "damage_reason": "文件信封有折痕，内部文件可能受损，需检查文件完整性。"
+  },
+  {
+    "id": "lbl_001",
+    "type": "label",
+    "item_name": "奶茶订单",
+    "description": "客户点了一杯珍珠奶茶，加冰，少糖，备注不要吸管",
+    "available_labels": ["包装完好", "温度正确", "配料正确", "少糖错误", "缺少吸管", "包装破损", "温度过高", "多余配料"],
+    "correct_labels": ["包装完好", "温度正确", "配料正确", "缺少吸管"]
+  },
+  {
+    "id": "lbl_002",
+    "type": "label",
+    "item_name": "生鲜配送",
+    "description": "客户订购了生鲜蔬菜，到货时冰袋已融化，部分菜叶发黄",
+    "available_labels": ["冷链正常", "冷链失效", "外观完好", "外观损坏", "配送及时", "配送超时", "重量正确", "重量不足"],
+    "correct_labels": ["冷链失效", "外观损坏", "配送超时"]
+  },
+  {
+    "id": "lbl_003",
+    "type": "label",
+    "item_name": "电子产品",
+    "description": "手机一台，原包装完好，配件齐全，开机测试正常",
+    "available_labels": ["包装完好", "包装破损", "配件齐全", "配件缺失", "功能正常", "功能异常", "型号正确", "型号错误"],
+    "correct_labels": ["包装完好", "配件齐全", "功能正常", "型号正确"]
+  },
+  {
+    "id": "addr_001",
+    "type": "address",
+    "order_name": "午餐外卖配送",
+    "addresses": [
+      {"id": "A", "name": "阳光花园3号楼", "priority": 1, "time_window": "11:30-12:00", "distance": 2.1},
+      {"id": "B", "name": "科技大厦B座", "priority": 2, "time_window": "11:45-12:15", "distance": 1.5},
+      {"id": "C", "name": "中央公园南门", "priority": 3, "time_window": "12:00-12:30", "distance": 0.8},
+      {"id": "D", "name": "幸福里小区5栋", "priority": 1, "time_window": "11:20-11:50", "distance": 3.2}
+    ],
+    "correct_order": ["D", "A", "B", "C"]
+  },
+  {
+    "id": "addr_002",
+    "type": "address",
+    "order_name": "生鲜即时配送",
+    "addresses": [
+      {"id": "W", "name": "西区菜市场1号摊", "priority": 1, "time_window": "08:00-08:30", "distance": 1.0},
+      {"id": "X", "name": "南区超市", "priority": 2, "time_window": "08:30-09:00", "distance": 2.5},
+      {"id": "Y", "name": "北区便利店", "priority": 3, "time_window": "09:00-09:30", "distance": 1.8},
+      {"id": "Z", "name": "东区水果店", "priority": 1, "time_window": "08:15-08:45", "distance": 0.5}
+    ],
+    "correct_order": ["Z", "W", "X", "Y"]
+  },
+  {
+    "id": "traj_001",
+    "type": "trajectory",
+    "rider_name": "骑手小王",
+    "order_id": "ORD20240101001",
+    "start_time": "14:00",
+    "planned_duration": 30,
+    "actual_duration": 45,
+    "trajectory_points": [
+      {"x": 50, "y": 300, "label": "取餐点"},
+      {"x": 150, "y": 280, "label": ""},
+      {"x": 200, "y": 200, "label": ""},
+      {"x": 180, "y": 120, "label": "偏离区域"},
+      {"x": 250, "y": 100, "label": ""},
+      {"x": 350, "y": 150, "label": ""},
+      {"x": 450, "y": 200, "label": ""},
+      {"x": 500, "y": 280, "label": "送达点"}
+    ],
+    "has_anomaly": true,
+    "anomaly_reason": "骑手在配送中途偏离规划路线，在非规划区域停留约10分钟，导致配送超时。",
+    "correct_judgment": "abnormal"
+  },
+  {
+    "id": "traj_002",
+    "type": "trajectory",
+    "rider_name": "骑手小李",
+    "order_id": "ORD20240101002",
+    "start_time": "15:30",
+    "planned_duration": 25,
+    "actual_duration": 23,
+    "trajectory_points": [
+      {"x": 50, "y": 280, "label": "取餐点"},
+      {"x": 150, "y": 260, "label": ""},
+      {"x": 250, "y": 240, "label": ""},
+      {"x": 350, "y": 220, "label": ""},
+      {"x": 450, "y": 240, "label": ""},
+      {"x": 500, "y": 280, "label": "送达点"}
+    ],
+    "has_anomaly": false,
+    "anomaly_reason": "",
+    "correct_judgment": "normal"
+  }
+]

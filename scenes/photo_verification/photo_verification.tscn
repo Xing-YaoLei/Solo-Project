@@ -1,0 +1,184 @@
+[gd_scene load_steps=2 format=3 uid="uid://bphoto_verification_scene"]
+
+[ext_resource type="Script" path="res://scripts/scenes/photo_verification.gd" id="1_script"]
+
+[node name="PhotoVerification" type="Control"]
+layout_mode = 3
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+grow_horizontal = 2
+grow_vertical = 2
+script = ExtResource("1_script")
+
+[node name="Background" type="ColorRect" parent="."]
+layout_mode = 1
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+grow_horizontal = 2
+grow_vertical = 2
+color = Color(0.10196, 0.10196, 0.18039, 1)
+
+[node name="MainVBox" type="VBoxContainer" parent="."]
+layout_mode = 1
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+grow_horizontal = 2
+grow_vertical = 2
+theme_override_constants/separation = 8
+
+[node name="TimerBar" type="ProgressBar" parent="MainVBox"]
+unique_name_in_owner = true
+custom_minimum_size = Vector2(0, 8)
+layout_mode = 2
+max_value = 100.0
+value = 100.0
+show_percentage = false
+
+[node name="TopBar" type="HBoxContainer" parent="MainVBox"]
+layout_mode = 2
+theme_override_constants/separation = 20
+
+[node name="ScoreLabel" type="Label" parent="MainVBox/TopBar"]
+unique_name_in_owner = true
+layout_mode = 2
+theme_override_colors/font_color = Color(0.93333, 0.93333, 0.93333, 1)
+theme_override_font_sizes/font_size = 20
+text = "得分: 0"
+
+[node name="QuestionLabel" type="Label" parent="MainVBox/TopBar"]
+unique_name_in_owner = true
+layout_mode = 2
+theme_override_colors/font_color = Color(0.93333, 0.93333, 0.93333, 1)
+theme_override_font_sizes/font_size = 20
+text = "题目: 1 / 1"
+
+[node name="SpacerTop" type="Control" parent="MainVBox/TopBar"]
+layout_mode = 2
+size_flags_horizontal = 3
+
+[node name="PhotoContainer" type="CenterContainer" parent="MainVBox"]
+layout_mode = 2
+size_flags_vertical = 3
+
+[node name="PhotoRect" type="TextureRect" parent="MainVBox/PhotoContainer"]
+unique_name_in_owner = true
+custom_minimum_size = Vector2(400, 300)
+layout_mode = 2
+stretch_mode = 5
+
+[node name="FallbackRect" type="ColorRect" parent="MainVBox/PhotoContainer/PhotoRect"]
+unique_name_in_owner = true
+layout_mode = 1
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+grow_horizontal = 2
+grow_vertical = 2
+color = Color(0.14902, 0.14902, 0.2549, 1)
+
+[node name="FallbackDesc" type="Label" parent="MainVBox/PhotoContainer/PhotoRect/FallbackRect"]
+unique_name_in_owner = true
+layout_mode = 1
+anchors_preset = 8
+anchor_left = 0.5
+anchor_top = 0.5
+anchor_right = 0.5
+anchor_bottom = 0.5
+grow_horizontal = 2
+grow_vertical = 2
+theme_override_colors/font_color = Color(0.93333, 0.93333, 0.93333, 1)
+theme_override_font_sizes/font_size = 24
+horizontal_alignment = 1
+vertical_alignment = 1
+text = "物品照片"
+
+[node name="FeedbackLabel" type="Label" parent="MainVBox/PhotoContainer"]
+unique_name_in_owner = true
+visible = false
+layout_mode = 2
+theme_override_font_sizes/font_size = 36
+horizontal_alignment = 1
+vertical_alignment = 1
+
+[node name="BottomBar" type="HBoxContainer" parent="MainVBox"]
+layout_mode = 2
+theme_override_constants/separation = 40
+alignment = 1
+
+[node name="IntactBtn" type="Button" parent="MainVBox/BottomBar"]
+unique_name_in_owner = true
+custom_minimum_size = Vector2(160, 56)
+layout_mode = 2
+theme_override_colors/font_color = Color(0.93333, 0.93333, 0.93333, 1)
+theme_override_colors/font_hover_color = Color(1, 1, 1, 1)
+theme_override_font_sizes/font_size = 24
+text = "完好"
+
+[node name="DamagedBtn" type="Button" parent="MainVBox/BottomBar"]
+unique_name_in_owner = true
+custom_minimum_size = Vector2(160, 56)
+layout_mode = 2
+theme_override_colors/font_color = Color(0.93333, 0.93333, 0.93333, 1)
+theme_override_colors/font_hover_color = Color(1, 1, 1, 1)
+theme_override_font_sizes/font_size = 24
+text = "损坏"
+
+[node name="DamagePopup" type="Panel" parent="."]
+unique_name_in_owner = true
+visible = false
+layout_mode = 1
+anchors_preset = 8
+anchor_left = 0.5
+anchor_top = 0.5
+anchor_right = 0.5
+anchor_bottom = 0.5
+offset_left = -180.0
+offset_top = -100.0
+offset_right = 180.0
+offset_bottom = 100.0
+grow_horizontal = 2
+grow_vertical = 2
+
+[node name="PopupVBox" type="VBoxContainer" parent="DamagePopup"]
+layout_mode = 1
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+offset_left = 16.0
+offset_top = 16.0
+offset_right = -16.0
+offset_bottom = -16.0
+grow_horizontal = 2
+grow_vertical = 2
+theme_override_constants/separation = 12
+alignment = 1
+
+[node name="PopupTitle" type="Label" parent="DamagePopup/PopupVBox"]
+layout_mode = 2
+theme_override_colors/font_color = Color(0.91373, 0.27059, 0.37647, 1)
+theme_override_font_sizes/font_size = 22
+horizontal_alignment = 1
+text = "损坏原因"
+
+[node name="DamageReasonLabel" type="Label" parent="DamagePopup/PopupVBox"]
+unique_name_in_owner = true
+layout_mode = 2
+size_flags_vertical = 3
+theme_override_colors/font_color = Color(0.93333, 0.93333, 0.93333, 1)
+theme_override_font_sizes/font_size = 18
+horizontal_alignment = 1
+vertical_alignment = 1
+autowrap_mode = 2
+text = ""
+
+[node name="PopupOkBtn" type="Button" parent="DamagePopup/PopupVBox"]
+unique_name_in_owner = true
+custom_minimum_size = Vector2(100, 40)
+layout_mode = 2
+size_flags_horizontal = 4
+theme_override_colors/font_color = Color(0.93333, 0.93333, 0.93333, 1)
+theme_override_font_sizes/font_size = 18
+text = "确定"

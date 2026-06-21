@@ -1,0 +1,56 @@
+[
+  {
+    "id": "rw_001",
+    "name": "初级核验员",
+    "type": "badge",
+    "condition": "total_score",
+    "threshold": 60,
+    "description": "累计得分达到60分",
+    "icon": ""
+  },
+  {
+    "id": "rw_002",
+    "name": "中级核验员",
+    "type": "badge",
+    "condition": "total_score",
+    "threshold": 150,
+    "description": "累计得分达到150分",
+    "icon": ""
+  },
+  {
+    "id": "rw_003",
+    "name": "高级核验员",
+    "type": "badge",
+    "condition": "total_score",
+    "threshold": 300,
+    "description": "累计得分达到300分",
+    "icon": ""
+  },
+  {
+    "id": "rw_004",
+    "name": "火眼金睛",
+    "type": "achievement",
+    "condition": "photo_perfect",
+    "threshold": 5,
+    "description": "连续5次照片核验全部正确",
+    "icon": ""
+  },
+  {
+    "id": "rw_005",
+    "name": "调度专家",
+    "type": "achievement",
+    "condition": "address_perfect",
+    "threshold": 3,
+    "description": "连续3次地址排序全部正确",
+    "icon": ""
+  },
+  {
+    "id": "rw_006",
+    "name": "轨迹分析师",
+    "type": "achievement",
+    "condition": "trajectory_perfect",
+    "threshold": 3,
+    "description": "连续3次轨迹判断全部正确",
+    "icon": ""
+  }
+]

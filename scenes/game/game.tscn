@@ -1,0 +1,142 @@
+[gd_scene load_steps=2 format=3]
+
+[ext_resource type="Script" path="res://scripts/scenes/game.gd" id="1_script"]
+
+[node name="Game" type="Control"]
+layout_mode = 3
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+grow_horizontal = 2
+grow_vertical = 2
+script = ExtResource("1_script")
+
+[node name="Background" type="ColorRect" parent="."]
+layout_mode = 1
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+grow_horizontal = 2
+grow_vertical = 2
+color = Color(0.10196, 0.10196, 0.18039, 1)
+
+[node name="TopBar" type="HBoxContainer" parent="."]
+layout_mode = 1
+anchors_preset = 10
+anchor_right = 1.0
+offset_left = 20.0
+offset_top = 12.0
+offset_right = -20.0
+offset_bottom = 52.0
+grow_horizontal = 2
+theme_override_constants/separation = 40
+
+[node name="TopBarScore" type="Label" parent="TopBar"]
+unique_name_in_owner = true
+layout_mode = 2
+theme_override_colors/font_color = Color(0.93333, 0.93333, 0.93333, 1)
+theme_override_font_sizes/font_size = 18
+text = "总分: 0"
+
+[node name="TopBarPhase" type="Label" parent="TopBar"]
+unique_name_in_owner = true
+layout_mode = 2
+theme_override_colors/font_color = Color(0.93333, 0.93333, 0.93333, 1)
+theme_override_font_sizes/font_size = 18
+text = "当前阶段: 照片核验"
+
+[node name="Spacer" type="Control" parent="TopBar"]
+layout_mode = 2
+size_flags_horizontal = 3
+
+[node name="TopBarProgress" type="Label" parent="TopBar"]
+unique_name_in_owner = true
+layout_mode = 2
+theme_override_colors/font_color = Color(0.93333, 0.93333, 0.93333, 1)
+theme_override_font_sizes/font_size = 18
+text = "阶段进度: 1 / 4"
+
+[node name="HSeparator" type="HSeparator" parent="."]
+layout_mode = 1
+anchors_preset = 10
+anchor_right = 1.0
+offset_top = 56.0
+offset_bottom = 60.0
+grow_horizontal = 2
+
+[node name="PhaseContainer" type="Control" parent="."]
+unique_name_in_owner = true
+visible = false
+layout_mode = 1
+anchors_preset = 15
+anchor_right = 1.0
+offset_top = 64.0
+anchor_bottom = 1.0
+grow_horizontal = 2
+grow_vertical = 2
+
+[node name="ModeSelector" type="Control" parent="."]
+unique_name_in_owner = true
+layout_mode = 1
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+grow_horizontal = 2
+grow_vertical = 2
+
+[node name="VBoxContainer" type="VBoxContainer" parent="ModeSelector"]
+layout_mode = 1
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+offset_left = 390.0
+offset_top = 100.0
+offset_right = -390.0
+offset_bottom = -100.0
+grow_horizontal = 2
+grow_vertical = 2
+alignment = 1
+
+[node name="Title" type="Label" parent="ModeSelector/VBoxContainer"]
+layout_mode = 2
+theme_override_font_sizes/font_size = 36
+text = "选择训练模式"
+horizontal_alignment = 1
+
+[node name="Subtitle" type="Label" parent="ModeSelector/VBoxContainer"]
+layout_mode = 2
+theme_override_font_sizes/font_size = 18
+text = "请选择适合您的训练模式开始训练"
+horizontal_alignment = 1
+
+[node name="HSeparator" type="HSeparator" parent="ModeSelector/VBoxContainer"]
+layout_mode = 2
+custom_minimum_size = Vector2(0, 20)
+
+[node name="BtnPractice" type="Button" parent="ModeSelector/VBoxContainer"]
+layout_mode = 2
+custom_minimum_size = Vector2(300, 55)
+size_flags_horizontal = 4
+text = "练习模式 - 全部题目"
+
+[node name="BtnAssessment" type="Button" parent="ModeSelector/VBoxContainer"]
+layout_mode = 2
+custom_minimum_size = Vector2(300, 55)
+size_flags_horizontal = 4
+text = "考核模式 - 随机顺序"
+
+[node name="BtnChallenge" type="Button" parent="ModeSelector/VBoxContainer"]
+layout_mode = 2
+custom_minimum_size = Vector2(300, 55)
+size_flags_horizontal = 4
+text = "挑战模式 - 限时10题"
+
+[node name="HSeparator2" type="HSeparator" parent="ModeSelector/VBoxContainer"]
+layout_mode = 2
+custom_minimum_size = Vector2(0, 20)
+
+[node name="BtnBack" type="Button" parent="ModeSelector/VBoxContainer"]
+layout_mode = 2
+custom_minimum_size = Vector2(300, 55)
+size_flags_horizontal = 4
+text = "返回主菜单"

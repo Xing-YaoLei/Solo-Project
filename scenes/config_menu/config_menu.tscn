@@ -1,0 +1,414 @@
+[gd_scene load_steps=2 format=3]
+
+[ext_resource type="Script" path="res://scripts/scenes/config_menu.gd" id="1_script"]
+
+[node name="ConfigMenu" type="Control"]
+layout_mode = 3
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+grow_horizontal = 2
+grow_vertical = 2
+script = ExtResource("1_script")
+
+[node name="Background" type="ColorRect" parent="."]
+layout_mode = 1
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+grow_horizontal = 2
+grow_vertical = 2
+color = Color(0.10196, 0.10196, 0.18039, 1)
+
+[node name="MarginContainer" type="MarginContainer" parent="."]
+layout_mode = 1
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+grow_horizontal = 2
+grow_vertical = 2
+theme_override_constants/margin_left = 32
+theme_override_constants/margin_top = 24
+theme_override_constants/margin_right = 32
+theme_override_constants/margin_bottom = 24
+
+[node name="MainVBox" type="VBoxContainer" parent="MarginContainer"]
+layout_mode = 2
+theme_override_constants/separation = 16
+
+[node name="HeaderHBox" type="HBoxContainer" parent="MarginContainer/MainVBox"]
+layout_mode = 2
+theme_override_constants/separation = 16
+
+[node name="Title" type="Label" parent="MarginContainer/MainVBox/HeaderHBox"]
+layout_mode = 2
+theme_override_font_sizes/font_size = 32
+text = "系统配置"
+
+[node name="SpacerHeader" type="Control" parent="MarginContainer/MainVBox/HeaderHBox"]
+layout_mode = 2
+size_flags_horizontal = 3
+
+[node name="SaveStatus" type="Label" parent="MarginContainer/MainVBox/HeaderHBox"]
+unique_name_in_owner = true
+layout_mode = 2
+theme_override_colors/font_color = Color(0.30588, 0.8, 0.63922, 1)
+theme_override_font_sizes/font_size = 14
+text = ""
+
+[node name="SaveBtn" type="Button" parent="MarginContainer/MainVBox/HeaderHBox"]
+unique_name_in_owner = true
+layout_mode = 2
+custom_minimum_size = Vector2(120, 44)
+theme_override_colors/font_color = Color(0.93333, 0.93333, 0.93333, 1)
+theme_override_font_sizes/font_size = 16
+text = "保存配置"
+
+[node name="ResetBtn" type="Button" parent="MarginContainer/MainVBox/HeaderHBox"]
+unique_name_in_owner = true
+layout_mode = 2
+custom_minimum_size = Vector2(120, 44)
+theme_override_colors/font_color = Color(0.93333, 0.93333, 0.93333, 1)
+theme_override_font_sizes/font_size = 16
+text = "重置"
+
+[node name="ClearDataBtn" type="Button" parent="MarginContainer/MainVBox/HeaderHBox"]
+unique_name_in_owner = true
+layout_mode = 2
+custom_minimum_size = Vector2(140, 44)
+theme_override_colors/font_color = Color(0.93333, 0.93333, 0.93333, 1)
+theme_override_font_sizes/font_size = 16
+text = "清除训练数据"
+
+[node name="BackBtn" type="Button" parent="MarginContainer/MainVBox/HeaderHBox"]
+unique_name_in_owner = true
+layout_mode = 2
+custom_minimum_size = Vector2(120, 44)
+theme_override_colors/font_color = Color(0.93333, 0.93333, 0.93333, 1)
+theme_override_font_sizes/font_size = 16
+text = "← 返回"
+
+[node name="TabBar" type="HBoxContainer" parent="MarginContainer/MainVBox"]
+layout_mode = 2
+theme_override_constants/separation = 4
+
+[node name="TabBasic" type="Button" parent="MarginContainer/MainVBox/TabBar"]
+unique_name_in_owner = true
+toggle_mode = true
+layout_mode = 2
+custom_minimum_size = Vector2(140, 40)
+theme_override_colors/font_color = Color(0.93333, 0.93333, 0.93333, 1)
+theme_override_font_sizes/font_size = 16
+text = "基础配置"
+
+[node name="TabQuestions" type="Button" parent="MarginContainer/MainVBox/TabBar"]
+unique_name_in_owner = true
+toggle_mode = true
+layout_mode = 2
+custom_minimum_size = Vector2(140, 40)
+theme_override_colors/font_color = Color(0.93333, 0.93333, 0.93333, 1)
+theme_override_font_sizes/font_size = 16
+text = "题目管理"
+
+[node name="TabMaterials" type="Button" parent="MarginContainer/MainVBox/TabBar"]
+unique_name_in_owner = true
+toggle_mode = true
+layout_mode = 2
+custom_minimum_size = Vector2(140, 40)
+theme_override_colors/font_color = Color(0.93333, 0.93333, 0.93333, 1)
+theme_override_font_sizes/font_size = 16
+text = "素材管理"
+
+[node name="TabRewards" type="Button" parent="MarginContainer/MainVBox/TabBar"]
+unique_name_in_owner = true
+toggle_mode = true
+layout_mode = 2
+custom_minimum_size = Vector2(140, 40)
+theme_override_colors/font_color = Color(0.93333, 0.93333, 0.93333, 1)
+theme_override_font_sizes/font_size = 16
+text = "奖励管理"
+
+[node name="TabContent" type="Control" parent="MarginContainer/MainVBox"]
+layout_mode = 2
+size_flags_vertical = 3
+
+[node name="PanelBasic" type="Control" parent="MarginContainer/MainVBox/TabContent"]
+unique_name_in_owner = true
+visible = false
+layout_mode = 1
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+grow_horizontal = 2
+grow_vertical = 2
+
+[node name="ScrollBasic" type="ScrollContainer" parent="MarginContainer/MainVBox/TabContent/PanelBasic"]
+layout_mode = 1
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+grow_horizontal = 2
+grow_vertical = 2
+horizontal_scroll_mode = 0
+
+[node name="BasicVBox" type="VBoxContainer" parent="MarginContainer/MainVBox/TabContent/PanelBasic/ScrollBasic"]
+layout_mode = 2
+size_flags_horizontal = 3
+theme_override_constants/separation = 16
+
+[node name="SectionTime" type="Label" parent="MarginContainer/MainVBox/TabContent/PanelBasic/ScrollBasic/BasicVBox"]
+layout_mode = 2
+theme_override_colors/font_color = Color(0.91373, 0.27059, 0.37647, 1)
+theme_override_font_sizes/font_size = 20
+text = "开放时间配置"
+
+[node name="TimeGrid" type="GridContainer" parent="MarginContainer/MainVBox/TabContent/PanelBasic/ScrollBasic/BasicVBox"]
+layout_mode = 2
+columns = 2
+theme_override_constants/h_separation = 24
+theme_override_constants/v_separation = 12
+
+[node name="LabelStartTime" type="Label" parent="MarginContainer/MainVBox/TabContent/PanelBasic/ScrollBasic/BasicVBox/TimeGrid"]
+layout_mode = 2
+theme_override_colors/font_color = Color(0.93333, 0.93333, 0.93333, 1)
+theme_override_font_sizes/font_size = 16
+text = "开始时间 (HH:MM)"
+
+[node name="StartTimeEdit" type="LineEdit" parent="MarginContainer/MainVBox/TabContent/PanelBasic/ScrollBasic/BasicVBox/TimeGrid"]
+unique_name_in_owner = true
+layout_mode = 2
+custom_minimum_size = Vector2(200, 36)
+theme_override_font_sizes/font_size = 16
+placeholder_text = "06:00"
+
+[node name="LabelEndTime" type="Label" parent="MarginContainer/MainVBox/TabContent/PanelBasic/ScrollBasic/BasicVBox/TimeGrid"]
+layout_mode = 2
+theme_override_colors/font_color = Color(0.93333, 0.93333, 0.93333, 1)
+theme_override_font_sizes/font_size = 16
+text = "结束时间 (HH:MM)"
+
+[node name="EndTimeEdit" type="LineEdit" parent="MarginContainer/MainVBox/TabContent/PanelBasic/ScrollBasic/BasicVBox/TimeGrid"]
+unique_name_in_owner = true
+layout_mode = 2
+custom_minimum_size = Vector2(200, 36)
+theme_override_font_sizes/font_size = 16
+placeholder_text = "23:00"
+
+[node name="SectionMode" type="Label" parent="MarginContainer/MainVBox/TabContent/PanelBasic/ScrollBasic/BasicVBox"]
+layout_mode = 2
+theme_override_colors/font_color = Color(0.91373, 0.27059, 0.37647, 1)
+theme_override_font_sizes/font_size = 20
+text = "训练模式配置"
+
+[node name="ModeGrid" type="GridContainer" parent="MarginContainer/MainVBox/TabContent/PanelBasic/ScrollBasic/BasicVBox"]
+layout_mode = 2
+columns = 2
+theme_override_constants/h_separation = 24
+theme_override_constants/v_separation = 12
+
+[node name="LabelDefaultMode" type="Label" parent="MarginContainer/MainVBox/TabContent/PanelBasic/ScrollBasic/BasicVBox/ModeGrid"]
+layout_mode = 2
+theme_override_colors/font_color = Color(0.93333, 0.93333, 0.93333, 1)
+theme_override_font_sizes/font_size = 16
+text = "默认训练模式"
+
+[node name="DefaultModeOption" type="OptionButton" parent="MarginContainer/MainVBox/TabContent/PanelBasic/ScrollBasic/BasicVBox/ModeGrid"]
+unique_name_in_owner = true
+layout_mode = 2
+custom_minimum_size = Vector2(200, 36)
+theme_override_font_sizes/font_size = 16
+
+[node name="LabelMaxRetries" type="Label" parent="MarginContainer/MainVBox/TabContent/PanelBasic/ScrollBasic/BasicVBox/ModeGrid"]
+layout_mode = 2
+theme_override_colors/font_color = Color(0.93333, 0.93333, 0.93333, 1)
+theme_override_font_sizes/font_size = 16
+text = "地址排序最大重试次数"
+
+[node name="MaxRetriesSpin" type="SpinBox" parent="MarginContainer/MainVBox/TabContent/PanelBasic/ScrollBasic/BasicVBox/ModeGrid"]
+unique_name_in_owner = true
+layout_mode = 2
+custom_minimum_size = Vector2(200, 36)
+theme_override_font_sizes/font_size = 16
+
+[node name="SectionTimeLimit" type="Label" parent="MarginContainer/MainVBox/TabContent/PanelBasic/ScrollBasic/BasicVBox"]
+layout_mode = 2
+theme_override_colors/font_color = Color(0.91373, 0.27059, 0.37647, 1)
+theme_override_font_sizes/font_size = 20
+text = "各阶段时限配置 (秒)"
+
+[node name="TimeLimitGrid" type="GridContainer" parent="MarginContainer/MainVBox/TabContent/PanelBasic/ScrollBasic/BasicVBox"]
+layout_mode = 2
+columns = 2
+theme_override_constants/h_separation = 24
+theme_override_constants/v_separation = 12
+
+[node name="LabelPhotoTime" type="Label" parent="MarginContainer/MainVBox/TabContent/PanelBasic/ScrollBasic/BasicVBox/TimeLimitGrid"]
+layout_mode = 2
+theme_override_colors/font_color = Color(0.93333, 0.93333, 0.93333, 1)
+theme_override_font_sizes/font_size = 16
+text = "照片核验时限"
+
+[node name="PhotoTimeSpin" type="SpinBox" parent="MarginContainer/MainVBox/TabContent/PanelBasic/ScrollBasic/BasicVBox/TimeLimitGrid"]
+unique_name_in_owner = true
+layout_mode = 2
+custom_minimum_size = Vector2(200, 36)
+theme_override_font_sizes/font_size = 16
+
+[node name="LabelLabelTime" type="Label" parent="MarginContainer/MainVBox/TabContent/PanelBasic/ScrollBasic/BasicVBox/TimeLimitGrid"]
+layout_mode = 2
+theme_override_colors/font_color = Color(0.93333, 0.93333, 0.93333, 1)
+theme_override_font_sizes/font_size = 16
+text = "评价标签时限"
+
+[node name="LabelTimeSpin" type="SpinBox" parent="MarginContainer/MainVBox/TabContent/PanelBasic/ScrollBasic/BasicVBox/TimeLimitGrid"]
+unique_name_in_owner = true
+layout_mode = 2
+custom_minimum_size = Vector2(200, 36)
+theme_override_font_sizes/font_size = 16
+
+[node name="LabelAddressTime" type="Label" parent="MarginContainer/MainVBox/TabContent/PanelBasic/ScrollBasic/BasicVBox/TimeLimitGrid"]
+layout_mode = 2
+theme_override_colors/font_color = Color(0.93333, 0.93333, 0.93333, 1)
+theme_override_font_sizes/font_size = 16
+text = "地址排序时限"
+
+[node name="AddressTimeSpin" type="SpinBox" parent="MarginContainer/MainVBox/TabContent/PanelBasic/ScrollBasic/BasicVBox/TimeLimitGrid"]
+unique_name_in_owner = true
+layout_mode = 2
+custom_minimum_size = Vector2(200, 36)
+theme_override_font_sizes/font_size = 16
+
+[node name="LabelTrajectoryTime" type="Label" parent="MarginContainer/MainVBox/TabContent/PanelBasic/ScrollBasic/BasicVBox/TimeLimitGrid"]
+layout_mode = 2
+theme_override_colors/font_color = Color(0.93333, 0.93333, 0.93333, 1)
+theme_override_font_sizes/font_size = 16
+text = "轨迹处理时限"
+
+[node name="TrajectoryTimeSpin" type="SpinBox" parent="MarginContainer/MainVBox/TabContent/PanelBasic/ScrollBasic/BasicVBox/TimeLimitGrid"]
+unique_name_in_owner = true
+layout_mode = 2
+custom_minimum_size = Vector2(200, 36)
+theme_override_font_sizes/font_size = 16
+
+[node name="SectionScore" type="Label" parent="MarginContainer/MainVBox/TabContent/PanelBasic/ScrollBasic/BasicVBox"]
+layout_mode = 2
+theme_override_colors/font_color = Color(0.91373, 0.27059, 0.37647, 1)
+theme_override_font_sizes/font_size = 20
+text = "评分配置"
+
+[node name="ScoreGrid" type="GridContainer" parent="MarginContainer/MainVBox/TabContent/PanelBasic/ScrollBasic/BasicVBox"]
+layout_mode = 2
+columns = 2
+theme_override_constants/h_separation = 24
+theme_override_constants/v_separation = 12
+
+[node name="LabelScoreCorrect" type="Label" parent="MarginContainer/MainVBox/TabContent/PanelBasic/ScrollBasic/BasicVBox/ScoreGrid"]
+layout_mode = 2
+theme_override_colors/font_color = Color(0.93333, 0.93333, 0.93333, 1)
+theme_override_font_sizes/font_size = 16
+text = "答对得分"
+
+[node name="ScoreCorrectSpin" type="SpinBox" parent="MarginContainer/MainVBox/TabContent/PanelBasic/ScrollBasic/BasicVBox/ScoreGrid"]
+unique_name_in_owner = true
+layout_mode = 2
+custom_minimum_size = Vector2(200, 36)
+theme_override_font_sizes/font_size = 16
+
+[node name="LabelScorePenalty" type="Label" parent="MarginContainer/MainVBox/TabContent/PanelBasic/ScrollBasic/BasicVBox/ScoreGrid"]
+layout_mode = 2
+theme_override_colors/font_color = Color(0.93333, 0.93333, 0.93333, 1)
+theme_override_font_sizes/font_size = 16
+text = "答错扣分"
+
+[node name="ScorePenaltySpin" type="SpinBox" parent="MarginContainer/MainVBox/TabContent/PanelBasic/ScrollBasic/BasicVBox/ScoreGrid"]
+unique_name_in_owner = true
+layout_mode = 2
+custom_minimum_size = Vector2(200, 36)
+theme_override_font_sizes/font_size = 16
+
+[node name="LabelPassThreshold" type="Label" parent="MarginContainer/MainVBox/TabContent/PanelBasic/ScrollBasic/BasicVBox/ScoreGrid"]
+layout_mode = 2
+theme_override_colors/font_color = Color(0.93333, 0.93333, 0.93333, 1)
+theme_override_font_sizes/font_size = 16
+text = "通过阈值 (分)"
+
+[node name="PassThresholdSpin" type="SpinBox" parent="MarginContainer/MainVBox/TabContent/PanelBasic/ScrollBasic/BasicVBox/ScoreGrid"]
+unique_name_in_owner = true
+layout_mode = 2
+custom_minimum_size = Vector2(200, 36)
+theme_override_font_sizes/font_size = 16
+
+[node name="PanelQuestions" type="Control" parent="MarginContainer/MainVBox/TabContent"]
+unique_name_in_owner = true
+visible = false
+layout_mode = 1
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+grow_horizontal = 2
+grow_vertical = 2
+
+[node name="ScrollQuestions" type="ScrollContainer" parent="MarginContainer/MainVBox/TabContent/PanelQuestions"]
+layout_mode = 1
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+grow_horizontal = 2
+grow_vertical = 2
+horizontal_scroll_mode = 0
+
+[node name="QuestionsList" type="VBoxContainer" parent="MarginContainer/MainVBox/TabContent/PanelQuestions/ScrollQuestions"]
+unique_name_in_owner = true
+layout_mode = 2
+size_flags_horizontal = 3
+theme_override_constants/separation = 8
+
+[node name="PanelMaterials" type="Control" parent="MarginContainer/MainVBox/TabContent"]
+unique_name_in_owner = true
+visible = false
+layout_mode = 1
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+grow_horizontal = 2
+grow_vertical = 2
+
+[node name="ScrollMaterials" type="ScrollContainer" parent="MarginContainer/MainVBox/TabContent/PanelMaterials"]
+layout_mode = 1
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+grow_horizontal = 2
+grow_vertical = 2
+horizontal_scroll_mode = 0
+
+[node name="MaterialsList" type="VBoxContainer" parent="MarginContainer/MainVBox/TabContent/PanelMaterials/ScrollMaterials"]
+unique_name_in_owner = true
+layout_mode = 2
+size_flags_horizontal = 3
+theme_override_constants/separation = 8
+
+[node name="PanelRewards" type="Control" parent="MarginContainer/MainVBox/TabContent"]
+unique_name_in_owner = true
+visible = false
+layout_mode = 1
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+grow_horizontal = 2
+grow_vertical = 2
+
+[node name="ScrollRewards" type="ScrollContainer" parent="MarginContainer/MainVBox/TabContent/PanelRewards"]
+layout_mode = 1
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+grow_horizontal = 2
+grow_vertical = 2
+horizontal_scroll_mode = 0
+
+[node name="RewardsList" type="VBoxContainer" parent="MarginContainer/MainVBox/TabContent/PanelRewards/ScrollRewards"]
+unique_name_in_owner = true
+layout_mode = 2
+size_flags_horizontal = 3
+theme_override_constants/separation = 8

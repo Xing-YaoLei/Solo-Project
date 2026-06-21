@@ -1,0 +1,50 @@
+[
+  {
+    "id": "mat_001",
+    "name": "完好奶茶照片",
+    "category": "photo",
+    "type": "intact",
+    "description": "标准完好奶茶外包装参考图",
+    "path": ""
+  },
+  {
+    "id": "mat_002",
+    "name": "破损玻璃瓶照片",
+    "category": "photo",
+    "type": "damaged",
+    "description": "玻璃瓶裂纹损坏参考图",
+    "path": ""
+  },
+  {
+    "id": "mat_003",
+    "name": "完好蛋糕盒照片",
+    "category": "photo",
+    "type": "intact",
+    "description": "完好蛋糕盒封条完整参考图",
+    "path": ""
+  },
+  {
+    "id": "mat_004",
+    "name": "生鲜挤压损坏照片",
+    "category": "photo",
+    "type": "damaged",
+    "description": "水果外包装压痕参考图",
+    "path": ""
+  },
+  {
+    "id": "mat_005",
+    "name": "标准配送路线图",
+    "category": "trajectory",
+    "type": "normal",
+    "description": "正常配送轨迹示意图",
+    "path": ""
+  },
+  {
+    "id": "mat_006",
+    "name": "异常配送路线图",
+    "category": "trajectory",
+    "type": "abnormal",
+    "description": "偏离路线轨迹示意图",
+    "path": ""
+  }
+]

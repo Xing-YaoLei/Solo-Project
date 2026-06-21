@@ -1,0 +1,139 @@
+[gd_scene load_steps=2 format=3]
+
+[ext_resource type="Script" path="res://scripts/scenes/replay_comparison.gd" id="1_script"]
+
+[node name="ReplayComparison" type="Control"]
+layout_mode = 3
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+grow_horizontal = 2
+grow_vertical = 2
+script = ExtResource("1_script")
+
+[node name="Background" type="ColorRect" parent="."]
+layout_mode = 1
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+grow_horizontal = 2
+grow_vertical = 2
+color = Color(0.10196, 0.10196, 0.18039, 1)
+
+[node name="MarginContainer" type="MarginContainer" parent="."]
+layout_mode = 1
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+grow_horizontal = 2
+grow_vertical = 2
+theme_override_constants/margin_left = 24
+theme_override_constants/margin_top = 20
+theme_override_constants/margin_right = 24
+theme_override_constants/margin_bottom = 20
+
+[node name="MainVBox" type="VBoxContainer" parent="MarginContainer"]
+layout_mode = 2
+theme_override_constants/separation = 14
+
+[node name="HeaderHBox" type="HBoxContainer" parent="MarginContainer/MainVBox"]
+layout_mode = 2
+theme_override_constants/separation = 16
+
+[node name="Title" type="Label" parent="MarginContainer/MainVBox/HeaderHBox"]
+layout_mode = 2
+theme_override_font_sizes/font_size = 32
+text = "复盘对比 - 地址排序差异分析"
+
+[node name="SpacerHeader" type="Control" parent="MarginContainer/MainVBox/HeaderHBox"]
+layout_mode = 2
+size_flags_horizontal = 3
+
+[node name="RefreshBtn" type="Button" parent="MarginContainer/MainVBox/HeaderHBox"]
+unique_name_in_owner = true
+layout_mode = 2
+custom_minimum_size = Vector2(120, 40)
+theme_override_colors/font_color = Color(0.93333, 0.93333, 0.93333, 1)
+theme_override_font_sizes/font_size = 16
+text = "⟳ 刷新"
+
+[node name="BackBtn" type="Button" parent="MarginContainer/MainVBox/HeaderHBox"]
+unique_name_in_owner = true
+layout_mode = 2
+custom_minimum_size = Vector2(120, 40)
+theme_override_colors/font_color = Color(0.93333, 0.93333, 0.93333, 1)
+theme_override_font_sizes/font_size = 16
+text = "← 返回"
+
+[node name="PanelsHBox" type="HBoxContainer" parent="MarginContainer/MainVBox"]
+layout_mode = 2
+size_flags_vertical = 3
+theme_override_constants/separation = 16
+
+[node name="LeftPanel" type="PanelContainer" parent="MarginContainer/MainVBox/PanelsHBox"]
+layout_mode = 2
+size_flags_horizontal = 3
+
+[node name="LeftVBox" type="VBoxContainer" parent="MarginContainer/MainVBox/PanelsHBox/LeftPanel"]
+layout_mode = 2
+theme_override_constants/separation = 10
+
+[node name="PanelLabel" type="Label" parent="MarginContainer/MainVBox/PanelsHBox/LeftPanel/LeftVBox"]
+layout_mode = 2
+theme_override_font_sizes/font_size = 20
+text = "训练会话列表"
+
+[node name="SessionListScroll" type="ScrollContainer" parent="MarginContainer/MainVBox/PanelsHBox/LeftPanel/LeftVBox"]
+unique_name_in_owner = true
+layout_mode = 2
+size_flags_vertical = 3
+horizontal_scroll_mode = 0
+
+[node name="SessionListContainer" type="VBoxContainer" parent="MarginContainer/MainVBox/PanelsHBox/LeftPanel/LeftVBox/SessionListScroll"]
+unique_name_in_owner = true
+layout_mode = 2
+size_flags_horizontal = 3
+theme_override_constants/separation = 8
+
+[node name="NoSessionsLabel" type="Label" parent="MarginContainer/MainVBox/PanelsHBox/LeftPanel/LeftVBox/SessionListScroll/SessionListContainer"]
+unique_name_in_owner = true
+visible = false
+layout_mode = 2
+theme_override_colors/font_color = Color(0.6, 0.6, 0.7, 1)
+theme_override_font_sizes/font_size = 16
+horizontal_alignment = 1
+text = "暂无复盘数据"
+
+[node name="RightPanel" type="PanelContainer" parent="MarginContainer/MainVBox/PanelsHBox"]
+layout_mode = 2
+size_flags_horizontal = 5
+
+[node name="RightVBox" type="VBoxContainer" parent="MarginContainer/MainVBox/PanelsHBox/RightPanel"]
+layout_mode = 2
+theme_override_constants/separation = 10
+
+[node name="PanelLabel" type="Label" parent="MarginContainer/MainVBox/PanelsHBox/RightPanel/RightVBox"]
+layout_mode = 2
+theme_override_font_sizes/font_size = 20
+text = "尝试对比详情"
+
+[node name="ComparisonScroll" type="ScrollContainer" parent="MarginContainer/MainVBox/PanelsHBox/RightPanel/RightVBox"]
+unique_name_in_owner = true
+layout_mode = 2
+size_flags_vertical = 3
+horizontal_scroll_mode = 0
+
+[node name="ComparisonContainer" type="VBoxContainer" parent="MarginContainer/MainVBox/PanelsHBox/RightPanel/RightVBox/ComparisonScroll"]
+unique_name_in_owner = true
+visible = false
+layout_mode = 2
+size_flags_horizontal = 3
+theme_override_constants/separation = 10
+
+[node name="NoSelectionLabel" type="Label" parent="MarginContainer/MainVBox/PanelsHBox/RightPanel/RightVBox/ComparisonScroll/ComparisonContainer"]
+unique_name_in_owner = true
+layout_mode = 2
+theme_override_colors/font_color = Color(0.6, 0.6, 0.7, 1)
+theme_override_font_sizes/font_size = 16
+horizontal_alignment = 1
+text = "请从左侧选择一个训练会话"
