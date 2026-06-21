@@ -2,6 +2,13 @@ import { Injectable } from '@nestjs/common';
 import { UserRole } from '@prisma/client';
 
 interface SensitiveFieldConfig {
+  field: string;
+  label: string;
+  roles: UserRole[];
+  maskPattern?: string;
+}
+
+interface LegacyConfig {
   name: string;
   visibleRoles: UserRole[];
   maskPattern?: string;
@@ -11,13 +18,15 @@ interface SensitiveFieldConfig {
 export class PermissionsService {
   private sensitiveFields: SensitiveFieldConfig[] = [
     {
-      name: 'visitorPhone',
-      visibleRoles: [UserRole.SUPERVISOR, UserRole.OPERATOR],
+      field: 'visitorPhone',
+      label: '游客手机号',
+      roles: [UserRole.SUPERVISOR, UserRole.OPERATOR],
       maskPattern: 'phone',
     },
     {
-      name: 'visitorIdCard',
-      visibleRoles: [UserRole.SUPERVISOR],
+      field: 'visitorIdCard',
+      label: '游客身份证',
+      roles: [UserRole.SUPERVISOR],
       maskPattern: 'idCard',
     },
   ];
@@ -32,23 +41,50 @@ export class PermissionsService {
     ];
   }
 
-  getSensitiveFields() {
+  getSensitiveFields(): SensitiveFieldConfig[] {
     return this.sensitiveFields;
   }
 
-  updateSensitiveFields(fields: SensitiveFieldConfig[]) {
-    this.sensitiveFields = fields;
+  updateSensitiveField(field: string, patch: { roles?: UserRole[]; maskPattern?: string }): SensitiveFieldConfig {
+    const idx = this.sensitiveFields.findIndex((f) => f.field === field);
+    if (idx === -1) {
+      const newConfig: SensitiveFieldConfig = {
+        field,
+        label: field,
+        roles: patch.roles || [],
+        maskPattern: patch.maskPattern,
+      };
+      this.sensitiveFields.push(newConfig);
+      return newConfig;
+    }
+    const existing = this.sensitiveFields[idx];
+    const updated: SensitiveFieldConfig = {
+      ...existing,
+      roles: patch.roles !== undefined ? patch.roles : existing.roles,
+      maskPattern: patch.maskPattern !== undefined ? patch.maskPattern : existing.maskPattern,
+    };
+    this.sensitiveFields[idx] = updated;
+    return updated;
+  }
+
+  updateSensitiveFieldsBatch(fields: LegacyConfig[]): SensitiveFieldConfig[] {
+    this.sensitiveFields = fields.map((f) => ({
+      field: f.name,
+      label: f.name,
+      roles: f.visibleRoles,
+      maskPattern: f.maskPattern,
+    }));
     return this.sensitiveFields;
   }
 
   isFieldVisible(fieldName: string, role: UserRole): boolean {
-    const config = this.sensitiveFields.find((f) => f.name === fieldName);
+    const config = this.sensitiveFields.find((f) => f.field === fieldName);
     if (!config) return true;
-    return config.visibleRoles.includes(role);
+    return config.roles.includes(role);
   }
 
   getMaskPattern(fieldName: string): string | undefined {
-    const config = this.sensitiveFields.find((f) => f.name === fieldName);
+    const config = this.sensitiveFields.find((f) => f.field === fieldName);
     return config?.maskPattern;
   }
 

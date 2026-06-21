@@ -58,6 +58,22 @@ async function main() {
     });
   }
 
+  console.log('创建系统用户...');
+  const SYSTEM_USER_ID = 'system-user-0000-0000-0000-000000000001';
+  await prisma.user.upsert({
+    where: { id: SYSTEM_USER_ID },
+    update: {},
+    create: {
+      id: SYSTEM_USER_ID,
+      name: '系统',
+      phone: 'system',
+      passwordHash,
+      role: UserRole.SUPERVISOR,
+      departmentId: null,
+      avatar: null,
+    },
+  });
+
   console.log('创建用户数据...');
   const usersData = [
     { name: '张主管', phone: '13800000001', email: 'zhang@test.com', role: UserRole.SUPERVISOR, positionCode: 'OP_MANAGER', avatar: null },

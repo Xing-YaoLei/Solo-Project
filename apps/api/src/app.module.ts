@@ -3,6 +3,7 @@ import { BullModule } from '@nestjs/bullmq';
 import { ThrottlerModule } from '@nestjs/throttler';
 import { PrismaModule } from './common/prisma/prisma.module';
 import { AuthModule } from './common/auth/auth.module';
+import { SystemUserInitService } from './common/system-user-init.service';
 import { UsersModule } from './users/users.module';
 import { ComplaintsModule } from './complaints/complaints.module';
 import { DepartmentsModule } from './departments/departments.module';
@@ -35,5 +36,6 @@ import { PermissionsModule } from './permissions/permissions.module';
       },
     ]),
   ],
+  providers: [SystemUserInitService],
 })
 export class AppModule {}

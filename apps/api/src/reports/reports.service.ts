@@ -20,17 +20,25 @@ export class ReportsService {
       .map((c) => c.closeDurationMinutes)
       .filter((d): d is number => d !== null);
 
-    const avg = durations.length > 0 ? durations.reduce((a, b) => a + b, 0) / durations.length : 0;
-    const max = durations.length > 0 ? Math.max(...durations) : 0;
-    const min = durations.length > 0 ? Math.min(...durations) : 0;
+    const ranges = [
+      { label: '<30分钟', min: 0, max: 30 },
+      { label: '30分钟-2小时', min: 30, max: 120 },
+      { label: '2小时-8小时', min: 120, max: 480 },
+      { label: '8小时-24小时', min: 480, max: 1440 },
+      { label: '>24小时', min: 1440, max: Infinity },
+    ];
 
-    return {
-      total: closedComplaints.length,
-      avgDurationMinutes: Math.round(avg),
-      maxDurationMinutes: max,
-      minDurationMinutes: min,
-      byPriority: this.groupBy(closedComplaints, 'priority'),
-    };
+    return ranges.map(({ label, min, max }) => {
+      const inRange = durations.filter((d) => d >= min && d < max);
+      const avgMinutes = inRange.length > 0
+        ? Math.round(inRange.reduce((a, b) => a + b, 0) / inRange.length)
+        : 0;
+      return {
+        range: label,
+        count: inRange.length,
+        avgMinutes,
+      };
+    });
   }
 
   async getDateTrend(startDate?: string, endDate?: string) {
@@ -47,10 +55,15 @@ export class ReportsService {
     for (const c of complaints) {
       const date = c.createdAt.toISOString().split('T')[0];
       if (!dateMap[date]) {
-        dateMap[date] = { date, total: 0, statuses: {} as Record<string, number> };
+        dateMap[date] = { date, total: 0, resolved: 0, overdue: 0 };
       }
       dateMap[date].total++;
-      dateMap[date].statuses[c.status] = (dateMap[date].statuses[c.status] || 0) + 1;
+      if (c.status === ComplaintStatus.CLOSED || c.status === ComplaintStatus.VISITING) {
+        dateMap[date].resolved++;
+      }
+      if (c.status === ComplaintStatus.OVERDUE) {
+        dateMap[date].overdue++;
+      }
     }
 
     return Object.values(dateMap).sort((a, b) => a.date.localeCompare(b.date));
@@ -62,7 +75,10 @@ export class ReportsService {
 
     const complaints = await this.prisma.complaint.findMany({
       where,
-      include: { owner: { select: { id: true, name: true, department: true } } },
+      include: {
+        owner: { select: { id: true, name: true } },
+        visitResult: { select: { satisfaction: true } },
+      },
     });
 
     const ownerMap: Record<string, any> = {};
@@ -73,18 +89,49 @@ export class ReportsService {
         ownerMap[id] = {
           ownerId: id,
           ownerName: c.owner.name,
-          department: c.owner.department,
-          total: 0,
-          closed: 0,
-          processing: 0,
+          totalCount: 0,
+          closedCount: 0,
+          durations: [] as number[],
+          satisfactions: [] as number[],
+          overdueCount: 0,
         };
       }
-      ownerMap[id].total++;
-      if (c.status === ComplaintStatus.CLOSED) ownerMap[id].closed++;
-      else ownerMap[id].processing++;
+      ownerMap[id].totalCount++;
+      if (c.status === ComplaintStatus.CLOSED) {
+        ownerMap[id].closedCount++;
+        if (c.closeDurationMinutes != null) {
+          ownerMap[id].durations.push(c.closeDurationMinutes);
+        }
+        if (c.visitResult?.satisfaction != null) {
+          ownerMap[id].satisfactions.push(c.visitResult.satisfaction);
+        }
+      }
+      if (c.status === ComplaintStatus.OVERDUE) {
+        ownerMap[id].overdueCount++;
+      }
     }
 
-    return Object.values(ownerMap).sort((a, b) => b.total - a.total);
+    return Object.values(ownerMap)
+      .map((o) => {
+        const avgDurationMinutes = o.durations.length > 0
+          ? Math.round(o.durations.reduce((a: number, b: number) => a + b, 0) / o.durations.length)
+          : 0;
+        const avgSatisfaction = o.satisfactions.length > 0
+          ? Math.round(
+              (o.satisfactions.reduce((a: number, b: number) => a + b, 0) / o.satisfactions.length) * 10
+            ) / 10
+          : 0;
+        return {
+          ownerId: o.ownerId,
+          ownerName: o.ownerName,
+          totalCount: o.totalCount,
+          closedCount: o.closedCount,
+          avgDurationMinutes,
+          avgSatisfaction,
+          overdueCount: o.overdueCount,
+        };
+      })
+      .sort((a, b) => b.totalCount - a.totalCount);
   }
 
   async export(startDate?: string, endDate?: string) {
@@ -122,15 +169,5 @@ export class ReportsService {
       '满意度': c.visitResult?.satisfaction || '',
       '回访反馈': c.visitResult?.feedback || '',
     }));
-  }
-
-  private groupBy(arr: any[], key: string) {
-    return arr.reduce((acc: Record<string, number>, item) => {
-      const k = item[key];
-      const durations = arr.filter((x) => x[key] === k).map((x) => x.closeDurationMinutes).filter(Boolean);
-      const avg = durations.length > 0 ? durations.reduce((a, b) => a + b, 0) / durations.length : 0;
-      acc[k] = Math.round(avg);
-      return acc;
-    }, {});
   }
 }

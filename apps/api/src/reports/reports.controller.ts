@@ -13,8 +13,8 @@ export class ReportsController {
   @Get('close-duration')
   @ApiOperation({ summary: '工单关闭时长统计' })
   getCloseDuration(
-    @Query('startDate') startDate?: string,
-    @Query('endDate') endDate?: string,
+    @Query('dateFrom') startDate?: string,
+    @Query('dateTo') endDate?: string,
   ) {
     return this.reportsService.getCloseDuration(startDate, endDate);
   }
@@ -22,8 +22,8 @@ export class ReportsController {
   @Get('date-trend')
   @ApiOperation({ summary: '按日期趋势统计' })
   getDateTrend(
-    @Query('startDate') startDate?: string,
-    @Query('endDate') endDate?: string,
+    @Query('dateFrom') startDate?: string,
+    @Query('dateTo') endDate?: string,
   ) {
     return this.reportsService.getDateTrend(startDate, endDate);
   }

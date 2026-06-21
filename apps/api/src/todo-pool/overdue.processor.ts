@@ -2,9 +2,7 @@ import { Processor, WorkerHost } from '@nestjs/bullmq';
 import { Job } from 'bullmq';
 import { PrismaService } from '../common/prisma/prisma.service';
 import { ComplaintStatus } from '@prisma/client';
-
-const SYSTEM_USER_ID = 'system-user-0000-0000-0000-000000000001';
-const SYSTEM_USER_NAME = '系统';
+import { SYSTEM_USER_ID, SYSTEM_USER_NAME } from '../common/system-user-init.service';
 
 @Processor('overdue')
 export class OverdueProcessor extends WorkerHost {
