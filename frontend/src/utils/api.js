@@ -20,6 +20,7 @@ export const settlementApi = {
     api.get('/settlement/approval-nodes', { params: { settlement_id: settlementId } }),
   getAmountChecks: (settlementId) =>
     api.get('/settlement/amount-checks', { params: { settlement_id: settlementId } }),
+  saveAmountCheck: (data) => api.post('/settlement/amount-checks/save', data),
   getCaliberDiffs: (params) => api.get('/settlement/caliber-diffs', { params }),
   getDashboardSummary: () => api.get('/settlement/dashboard/summary'),
   getSettlementRules: () => api.get('/settlement/rules'),

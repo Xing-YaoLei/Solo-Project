@@ -1,9 +1,48 @@
-import React from 'react'
-import { Table, Tag, Tooltip } from 'antd'
-import { CheckCircleOutlined, CloseCircleOutlined, InfoCircleOutlined } from '@ant-design/icons'
+import React, { useState } from 'react'
+import { Table, Tag, Tooltip, Button, Modal, InputNumber, Input, message, Space } from 'antd'
+import { CheckCircleOutlined, CloseCircleOutlined, InfoCircleOutlined, SaveOutlined, EditOutlined } from '@ant-design/icons'
 import dayjs from 'dayjs'
+import { settlementApi } from '../utils/api'
 
-const AmountCheckTable = ({ data, loading }) => {
+const AmountCheckTable = ({ data, loading, onSave }) => {
+  const [editingId, setEditingId] = useState(null)
+  const [editValues, setEditValues] = useState({})
+  const [saving, setSaving] = useState(false)
+
+  const handleEdit = (record) => {
+    setEditingId(record.id)
+    setEditValues({
+      actual_settlement: Number(record.actual_settlement),
+      check_note: record.check_note || '',
+    })
+  }
+
+  const handleCancel = () => {
+    setEditingId(null)
+    setEditValues({})
+  }
+
+  const handleSave = async (record) => {
+    setSaving(true)
+    try {
+      await settlementApi.saveAmountCheck({
+        check_id: record.id,
+        actual_settlement: editValues.actual_settlement,
+        check_note: editValues.check_note || null,
+      })
+      message.success(`校验记录 ${record.check_no} 保存成功`)
+      setEditingId(null)
+      setEditValues({})
+      if (onSave) {
+        onSave()
+      }
+    } catch (error) {
+      message.error('保存失败: ' + (error.response?.data?.detail || error.message))
+    } finally {
+      setSaving(false)
+    }
+  }
+
   const columns = [
     {
       title: '校验单号',
@@ -51,8 +90,21 @@ const AmountCheckTable = ({ data, loading }) => {
       title: '实际结算',
       dataIndex: 'actual_settlement',
       key: 'actual_settlement',
-      width: 120,
-      render: (value) => <strong>¥{Number(value).toLocaleString()}</strong>,
+      width: 150,
+      render: (value, record) => {
+        if (editingId === record.id) {
+          return (
+            <InputNumber
+              value={editValues.actual_settlement}
+              onChange={(v) => setEditValues({ ...editValues, actual_settlement: v })}
+              precision={2}
+              style={{ width: '100%' }}
+              prefix="¥"
+            />
+          )
+        }
+        return <strong>¥{Number(value).toLocaleString()}</strong>
+      },
     },
     {
       title: '差额',
@@ -80,9 +132,19 @@ const AmountCheckTable = ({ data, loading }) => {
       title: '备注',
       dataIndex: 'check_note',
       key: 'check_note',
-      ellipsis: true,
-      render: (text) =>
-        text ? (
+      width: 180,
+      render: (text, record) => {
+        if (editingId === record.id) {
+          return (
+            <Input
+              value={editValues.check_note}
+              onChange={(e) => setEditValues({ ...editValues, check_note: e.target.value })}
+              placeholder="输入校验备注"
+              size="small"
+            />
+          )
+        }
+        return text ? (
           <Tooltip title={text}>
             <span>
               <InfoCircleOutlined style={{ color: '#d97706', marginRight: 4 }} />
@@ -91,7 +153,44 @@ const AmountCheckTable = ({ data, loading }) => {
           </Tooltip>
         ) : (
           <span style={{ color: '#9ca3af' }}>-</span>
-        ),
+        )
+      },
+    },
+    {
+      title: '操作',
+      key: 'action',
+      width: 140,
+      fixed: 'right',
+      render: (_, record) => {
+        if (editingId === record.id) {
+          return (
+            <Space size="small">
+              <Button
+                type="primary"
+                size="small"
+                icon={<SaveOutlined />}
+                loading={saving}
+                onClick={() => handleSave(record)}
+              >
+                保存
+              </Button>
+              <Button size="small" onClick={handleCancel}>
+                取消
+              </Button>
+            </Space>
+          )
+        }
+        return (
+          <Button
+            type="link"
+            size="small"
+            icon={<EditOutlined />}
+            onClick={() => handleEdit(record)}
+          >
+            修改
+          </Button>
+        )
+      },
     },
   ]
 
@@ -106,7 +205,7 @@ const AmountCheckTable = ({ data, loading }) => {
         showSizeChanger: true,
         showTotal: (total) => `共 ${total} 条记录`,
       }}
-      scroll={{ x: 1200 }}
+      scroll={{ x: 1500 }}
       size="small"
     />
   )

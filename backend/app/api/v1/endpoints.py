@@ -1,4 +1,4 @@
-from fastapi import APIRouter, Query
+from fastapi import APIRouter, Query, HTTPException
 from datetime import date
 from typing import Optional
 
@@ -11,10 +11,13 @@ from app.services.data_service import (
     get_dashboard_summary,
     get_settlement_rules_text,
     generate_download_data,
+    save_amount_check,
 )
 from app.schemas import (
     SettlementTrendResponse,
     DashboardSummary,
+    SaveAmountCheckRequest,
+    AmountCheck,
 )
 
 router = APIRouter()
@@ -51,6 +54,19 @@ def approval_nodes(settlement_id: int = Query(..., description="结算单ID")):
 def amount_checks(settlement_id: Optional[int] = Query(None, description="结算单ID")):
     """获取金额校验记录"""
     return get_amount_checks(settlement_id)
+
+
+@router.post("/amount-checks/save", response_model=AmountCheck)
+def save_amount_check_api(request: SaveAmountCheckRequest):
+    """保存金额校验结果，更新实际结算金额和一致性标记"""
+    result = save_amount_check(
+        check_id=request.check_id,
+        actual_settlement=request.actual_settlement,
+        check_note=request.check_note,
+    )
+    if result is None:
+        raise HTTPException(status_code=404, detail=f"校验记录 {request.check_id} 不存在")
+    return result
 
 
 @router.get("/caliber-diffs")

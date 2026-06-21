@@ -144,6 +144,12 @@ class AmountCheckCreate(AmountCheckBase):
     pass
 
 
+class SaveAmountCheckRequest(BaseModel):
+    check_id: int = Field(..., description="校验记录ID")
+    actual_settlement: Decimal = Field(..., description="实际结算金额")
+    check_note: Optional[str] = Field(None, description="校验备注")
+
+
 class AmountCheck(AmountCheckBase):
     id: int
     created_at: datetime

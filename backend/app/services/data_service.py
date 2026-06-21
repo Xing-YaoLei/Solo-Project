@@ -25,6 +25,9 @@ _pg_orders_func = None
 _pg_approvals_func = None
 _pg_checks_func = None
 _pg_diffs_func = None
+_pg_rules_func = None
+_pg_download_func = None
+_pg_save_check_func = None
 _pg_session_factory = None
 
 _duckdb_summary = None
@@ -48,7 +51,9 @@ _mock_download = None
 
 def _init_postgres_layer():
     global _pg_available, _pg_summary_func, _pg_trend_func, _pg_orders_func
-    global _pg_approvals_func, _pg_checks_func, _pg_diffs_func, _pg_session_factory
+    global _pg_approvals_func, _pg_checks_func, _pg_diffs_func
+    global _pg_rules_func, _pg_download_func, _pg_save_check_func
+    global _pg_session_factory
     try:
         from sqlalchemy import text
         from app.core.database import SessionLocal
@@ -59,6 +64,9 @@ def _init_postgres_layer():
             get_approval_nodes_pg,
             get_amount_checks_pg,
             get_caliber_diffs_pg,
+            get_settlement_rules_pg,
+            generate_download_data_pg,
+            save_amount_check_pg,
         )
         from app.services.postgres_init import init_postgres
 
@@ -86,6 +94,9 @@ def _init_postgres_layer():
         _pg_approvals_func = get_approval_nodes_pg
         _pg_checks_func = get_amount_checks_pg
         _pg_diffs_func = get_caliber_diffs_pg
+        _pg_rules_func = get_settlement_rules_pg
+        _pg_download_func = generate_download_data_pg
+        _pg_save_check_func = save_amount_check_pg
         _pg_session_factory = SessionLocal
         _pg_available = True
         logger.info("PostgreSQL data layer initialized successfully")
@@ -279,14 +290,18 @@ def get_caliber_diffs(page: int = 1, page_size: int = 20) -> Dict[str, Any]:
 
 
 def get_settlement_rules_text() -> str:
-    if _pg_available:
-        pass
+    if _pg_available and _pg_rules_func:
+        try:
+            return _pg_rules_func()
+        except Exception as e:
+            logger.error(f"PostgreSQL rules query failed, falling back: {e}")
 
     if _duckdb_available and _duckdb_rules:
         try:
             return _duckdb_rules()
         except Exception as e:
             logger.error(f"DuckDB rules query failed, falling back: {e}")
+
     return _mock_rules()
 
 
@@ -296,12 +311,99 @@ def generate_download_data(
     end_date: Optional[date] = None,
     include_rules: bool = True,
 ) -> Dict[str, Any]:
-    if _pg_available:
-        pass
+    if _pg_available and _pg_download_func:
+        try:
+            return _with_pg_session(
+                _pg_download_func, merchant_id, start_date, end_date, include_rules
+            )
+        except Exception as e:
+            logger.error(f"PostgreSQL download query failed, falling back: {e}")
 
     if _duckdb_available:
         try:
             return _duckdb_download(merchant_id, start_date, end_date, include_rules)
         except Exception as e:
             logger.error(f"DuckDB download query failed, falling back: {e}")
+
     return _mock_download(merchant_id, start_date, end_date, include_rules)
+
+
+def save_amount_check(
+    check_id: int,
+    actual_settlement: Decimal,
+    check_note: Optional[str] = None,
+) -> Optional[AmountCheck]:
+    if _pg_available and _pg_save_check_func:
+        try:
+            return _with_pg_session(
+                _pg_save_check_func, check_id, actual_settlement, check_note
+            )
+        except Exception as e:
+            logger.error(f"PostgreSQL save check failed: {e}")
+            raise
+
+    if _duckdb_available:
+        try:
+            return _save_amount_check_duckdb(check_id, actual_settlement, check_note)
+        except Exception as e:
+            logger.error(f"DuckDB save check failed: {e}")
+            raise
+
+    raise RuntimeError("No writable data source available")
+
+
+def _save_amount_check_duckdb(
+    check_id: int,
+    actual_settlement: Decimal,
+    check_note: Optional[str] = None,
+) -> Optional[AmountCheck]:
+    import duckdb
+    from app.services.duckdb_init import get_duckdb_path
+
+    db_path = get_duckdb_path()
+    conn = duckdb.connect(db_path)
+    try:
+        row = conn.execute(
+            "SELECT expected_settlement FROM amount_checks WHERE id = ?", [check_id]
+        ).fetchone()
+        if not row:
+            return None
+
+        expected = Decimal(str(row[0]))
+        diff = abs(expected - actual_settlement)
+        is_consistent = (diff == 0)
+
+        conn.execute(
+            "UPDATE amount_checks SET actual_settlement = ?, difference = ?, "
+            "is_consistent = ?, check_note = ? WHERE id = ?",
+            [str(actual_settlement), str(diff), is_consistent, check_note, check_id],
+        )
+
+        updated = conn.execute(
+            "SELECT id, check_no, settlement_id, check_date, order_amount, "
+            "refund_amount, service_fee, expected_settlement, actual_settlement, "
+            "difference, is_consistent, check_note, created_at "
+            "FROM amount_checks WHERE id = ?",
+            [check_id],
+        ).fetchone()
+
+        if not updated:
+            return None
+
+        return AmountCheck(
+            id=updated[0],
+            check_no=updated[1],
+            settlement_id=updated[2],
+            check_date=updated[3],
+            order_amount=Decimal(str(updated[4])),
+            refund_amount=Decimal(str(updated[5])),
+            service_fee=Decimal(str(updated[6])),
+            expected_settlement=Decimal(str(updated[7])),
+            actual_settlement=Decimal(str(updated[8])),
+            difference=Decimal(str(updated[9])),
+            is_consistent=bool(updated[10]),
+            check_note=updated[11],
+            created_at=updated[12],
+        )
+    finally:
+        conn.close()

@@ -142,7 +142,13 @@ const SettlementDashboard = () => {
     {
       key: 'amount_check',
       label: '金额校验',
-      children: <AmountCheckTable data={amountChecks} loading={loading} />,
+      children: (
+        <AmountCheckTable
+          data={amountChecks}
+          loading={loading}
+          onSave={fetchData}
+        />
+      ),
     },
     {
       key: 'caliber_diff',

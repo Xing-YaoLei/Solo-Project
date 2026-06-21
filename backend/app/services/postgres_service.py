@@ -267,3 +267,98 @@ def get_caliber_diffs_pg(
         "page": page,
         "page_size": page_size,
     }
+
+
+def save_amount_check_pg(
+    db: Session,
+    check_id: int,
+    actual_settlement: Decimal,
+    check_note: Optional[str] = None,
+) -> Optional[AmountCheck]:
+    check = db.query(AmountCheckModel).filter(AmountCheckModel.id == check_id).first()
+    if not check:
+        return None
+
+    check.actual_settlement = actual_settlement
+    check.difference = abs(check.expected_settlement - actual_settlement)
+    check.is_consistent = (check.difference == 0)
+    if check_note is not None:
+        check.check_note = check_note
+
+    db.commit()
+    db.refresh(check)
+
+    return AmountCheck(
+        id=check.id,
+        check_no=check.check_no,
+        settlement_id=check.settlement_id,
+        check_date=check.check_date,
+        order_amount=Decimal(str(check.order_amount)),
+        refund_amount=Decimal(str(check.refund_amount)),
+        service_fee=Decimal(str(check.service_fee)),
+        expected_settlement=Decimal(str(check.expected_settlement)),
+        actual_settlement=Decimal(str(check.actual_settlement)),
+        difference=Decimal(str(check.difference)),
+        is_consistent=bool(check.is_consistent),
+        check_note=check.check_note,
+        created_at=check.created_at,
+    )
+
+
+def get_settlement_rules_pg() -> str:
+    return """
+=======================================
+商户结算回款周期计算规则说明
+=======================================
+
+一、基础规则
+1. 结算周期：T+7 自然日
+2. 结算日：每周一进行上周结算
+3. 到账时效：结算审批完成后3个工作日内到账
+
+二、金额计算规则
+结算金额 = 订单总额 - 退款金额 - 服务费 - 其他扣除
+
+三、口径说明
+1. 订单口径：以订单完成时间为准
+2. 退款口径：以客服记录的退款时间为准
+3. 支付口径：以支付渠道实际到账时间为准
+
+四、异常处理
+1. 订单延迟：延迟超过24小时的订单顺延至下一结算周期
+2. 记录缺失：客服记录缺失时暂按支付流水计算，待补录后调整
+3. 口径变化：口径变更前按旧口径，变更后按新口径，过渡期保留差异表
+
+五、特殊情况
+1. 法定节假日顺延
+2. 商户申请加急结算需支付1%手续费
+3. 月度对账差异在次月5日前完成调整
+"""
+
+
+def generate_download_data_pg(
+    db: Session,
+    merchant_id: Optional[int] = None,
+    start_date: Optional[date] = None,
+    end_date: Optional[date] = None,
+    include_rules: bool = True,
+) -> Dict[str, Any]:
+    mid = merchant_id or 1
+
+    trend = get_settlement_trend_pg(db, mid, start_date, end_date)
+    orders = get_order_details_pg(db, mid, page=1, page_size=1000)
+    checks = get_amount_checks_pg(db)
+    diffs = get_caliber_diffs_pg(db, page=1, page_size=1000)
+
+    result = {
+        "trend_data": [item.model_dump(mode="json") for item in trend.trend_data],
+        "affected_ranges": trend.affected_ranges,
+        "orders": [item.model_dump(mode="json") for item in orders["items"]],
+        "amount_checks": [item.model_dump(mode="json") for item in checks],
+        "caliber_diffs": [item.model_dump(mode="json") for item in diffs["items"]],
+    }
+
+    if include_rules:
+        result["settlement_rules"] = get_settlement_rules_pg()
+
+    return result
