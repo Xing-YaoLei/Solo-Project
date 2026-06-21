@@ -139,9 +139,10 @@ func delete_question(index: int) -> bool:
 
 func reset_questions_to_default() -> void:
 	_user_questions.clear()
-	var path: String = "user://user_questions.json"
-	if FileAccess.file_exists(path):
-		DirAccess.remove_absolute(ProjectSettings.globalize_path(path))
+	var file: FileAccess = FileAccess.open("user://user_questions.json", FileAccess.WRITE)
+	if file:
+		file.store_string("[]")
+		file.close()
 	questions_changed.emit()
 
 func get_materials() -> Array:
@@ -186,9 +187,10 @@ func delete_material(index: int) -> bool:
 
 func reset_materials_to_default() -> void:
 	_user_materials.clear()
-	var path: String = "user://user_materials.json"
-	if FileAccess.file_exists(path):
-		DirAccess.remove_absolute(ProjectSettings.globalize_path(path))
+	var file: FileAccess = FileAccess.open("user://user_materials.json", FileAccess.WRITE)
+	if file:
+		file.store_string("[]")
+		file.close()
 	materials_changed.emit()
 
 func get_rewards() -> Array:
@@ -233,9 +235,10 @@ func delete_reward(index: int) -> bool:
 
 func reset_rewards_to_default() -> void:
 	_user_rewards.clear()
-	var path: String = "user://user_rewards.json"
-	if FileAccess.file_exists(path):
-		DirAccess.remove_absolute(ProjectSettings.globalize_path(path))
+	var file: FileAccess = FileAccess.open("user://user_rewards.json", FileAccess.WRITE)
+	if file:
+		file.store_string("[]")
+		file.close()
 	rewards_changed.emit()
 
 func is_within_open_time() -> bool:
