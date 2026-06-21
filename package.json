@@ -1,0 +1,53 @@
+{
+  "name": "ticket-collaboration-platform",
+  "version": "0.0.1",
+  "private": true,
+  "scripts": {
+    "dev": "vite dev",
+    "build": "vite build",
+    "preview": "vite preview",
+    "check": "svelte-kit sync && svelte-check --tsconfig ./tsconfig.json",
+    "check:watch": "svelte-kit sync && svelte-check --tsconfig ./tsconfig.json --watch",
+    "lint": "prettier --check . && eslint .",
+    "format": "prettier --write .",
+    "db:generate": "drizzle-kit generate",
+    "db:migrate": "drizzle-kit migrate",
+    "db:push": "drizzle-kit push",
+    "db:studio": "drizzle-kit studio"
+  },
+  "devDependencies": {
+    "@sveltejs/adapter-auto": "^3.3.1",
+    "@sveltejs/kit": "^2.8.1",
+    "@sveltejs/vite-plugin-svelte": "^4.0.0",
+    "@types/better-sqlite3": "^7.6.11",
+    "@types/eslint": "^9.6.1",
+    "@types/node": "^22.7.5",
+    "autoprefixer": "^10.4.20",
+    "drizzle-kit": "^0.26.2",
+    "eslint": "^9.12.0",
+    "eslint-config-prettier": "^9.1.0",
+    "eslint-plugin-svelte": "^2.46.0",
+    "globals": "^15.11.0",
+    "postcss": "^8.4.47",
+    "prettier": "^3.3.3",
+    "prettier-plugin-svelte": "^3.2.7",
+    "svelte": "^5.0.5",
+    "svelte-check": "^4.0.5",
+    "tailwindcss": "^3.4.13",
+    "typescript": "^5.6.3",
+    "typescript-eslint": "^8.8.1",
+    "vite": "^5.4.8"
+  },
+  "type": "module",
+  "dependencies": {
+    "@lucia-auth/adapter-drizzle": "^1.0.7",
+    "@trpc/client": "^10.45.2",
+    "@trpc/server": "^10.45.2",
+    "arctic": "^1.9.2",
+    "drizzle-orm": "^0.33.1",
+    "lucia": "^3.2.1",
+    "postgres": "^3.4.4",
+    "superjson": "^2.2.1",
+    "zod": "^3.23.8"
+  }
+}
