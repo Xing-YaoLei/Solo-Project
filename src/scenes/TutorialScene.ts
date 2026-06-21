@@ -2,8 +2,8 @@ import Phaser from 'phaser';
 import { COLORS } from '../config/gameConfig';
 import { AudioManager } from '../managers/AudioManager';
 import { GameStateManager } from '../managers/GameStateManager';
-import { generateBill, formatAmount } from '../utils/billUtils';
-import type { BillData } from '../types';
+import { generateBill, formatAmount, getDiscrepancyLabel } from '../utils/billUtils';
+import { CATEGORY_LABELS, type BillData, type DiscrepancyCategory } from '../types';
 
 export class TutorialScene extends Phaser.Scene {
   private audioManager: AudioManager;
@@ -67,48 +67,62 @@ export class TutorialScene extends Phaser.Scene {
         highlight: null
       },
       {
-        title: '认识账单卡片',
-        description: '每张账单包含商户信息、预期结算金额和实际到账金额。',
+        title: '认识结算账单',
+        description: '每张账单包含商户信息、订单数、预期结算金额、实际到账金额和差额。',
         hasBill: true,
         action: null,
-        highlight: 'bill'
+        highlight: 'bill',
+        billCategory: 'correct'
       },
       {
-        title: '金额校验',
-        description: '你的任务是检查「预期金额」和「实际金额」是否一致。',
+        title: '支付流水明细',
+        description: '核心是左边的支付流水表：包含订单、退款、优惠券、平台抽成、补贴、配送费等明细，你需要把流水和结算金额对照来看。',
         hasBill: true,
         action: null,
-        highlight: 'amounts'
+        highlight: 'transactions',
+        billCategory: 'correct'
       },
       {
-        title: '一致的账单',
-        description: '当两笔金额相同时，点击「✓ 金额一致」按钮，或按键盘 A/←',
+        title: '对账差异判断',
+        description: '你的任务是：核对流水后，从右侧选择正确的对账结果。可以用鼠标点击，或按键盘数字键 1-7 快速选择。',
         hasBill: true,
-        action: 'correct',
+        action: null,
+        highlight: 'options',
+        billCategory: 'correct'
+      },
+      {
+        title: '练习：金额正确',
+        description: '当前账单：流水和结算金额一致，差额为 0。请点击「✓ 金额正确」按钮，或按键盘数字键 1。',
+        hasBill: true,
+        action: 'select',
         highlight: 'correctBtn',
-        billType: 'correct'
+        billCategory: 'correct',
+        expectAnswer: 'correct'
       },
       {
-        title: '有差异的账单',
-        description: '当两笔金额不同时，点击「✗ 有差异」按钮，或按键盘 D/→',
+        title: '练习：退款未扣除',
+        description: '当前账单：有退款流水，但实际到账没有减去退款金额。请选择「✗ 退款未扣除」。',
         hasBill: true,
-        action: 'wrong',
-        highlight: 'wrongBtn',
-        billType: 'wrong'
+        action: 'select',
+        highlight: 'refundBtn',
+        billCategory: 'refund_missing',
+        expectAnswer: 'refund_missing'
+      },
+      {
+        title: '练习：补贴未到账',
+        description: '当前账单：有补贴流水但实际到账没有包含补贴。请选择「✗ 补贴未到账」。',
+        hasBill: true,
+        action: 'select',
+        highlight: 'subsidyBtn',
+        billCategory: 'subsidy_missing',
+        expectAnswer: 'subsidy_missing'
       },
       {
         title: '得分规则',
-        description: '回答正确得分，回答错误扣分。连击会获得额外加分！',
+        description: '回答正确 +20~40 分（越快越高），连击额外加分；回答错误 -15 分，连击清零。限时关卡，争分夺秒！',
         hasBill: false,
         action: null,
-        highlight: 'combo'
-      },
-      {
-        title: '速度也很重要',
-        description: '回答越快，得分越高。限时关卡，争分夺秒！',
-        hasBill: false,
-        action: null,
-        highlight: 'time'
+        highlight: null
       },
       {
         title: '准备好了吗？',
@@ -133,8 +147,8 @@ export class TutorialScene extends Phaser.Scene {
 
     const step = this.tutorialSteps[stepIndex];
 
-    if (step.hasBill) {
-      this.showBillCard(step.billType || 'correct');
+    if (step.hasBill && step.billCategory) {
+      this.showBillCard(step.billCategory);
     } else {
       if (this.billContainer) {
         this.billContainer.destroy();
@@ -142,24 +156,25 @@ export class TutorialScene extends Phaser.Scene {
       }
     }
 
-    this.tutorialContainer = this.add.container(width / 2, height / 2 + 80);
+    this.tutorialContainer = this.add.container(width / 2, height / 2 + 170);
 
-    const panelWidth = 500;
-    const panelHeight = 180;
+    const panelWidth = 620;
+    const panelHeight = 160;
 
     const panelBg = this.add.rectangle(0, 0, panelWidth, panelHeight, COLORS.cardBg)
       .setStrokeStyle(2, COLORS.primary, 0.8);
 
-    const title = this.add.text(0, -panelHeight / 2 + 35, step.title, {
-      fontSize: '24px',
+    const title = this.add.text(0, -panelHeight / 2 + 30, step.title, {
+      fontSize: '22px',
       fontWeight: 'bold',
       color: '#ffffff'
     }).setOrigin(0.5);
 
-    const description = this.add.text(0, -10, step.description, {
-      fontSize: '16px',
+    const description = this.add.text(0, -2, step.description, {
+      fontSize: '15px',
       color: '#a0a0a0',
-      wordWrap: { width: panelWidth - 60 }
+      wordWrap: { width: panelWidth - 60 },
+      align: 'center'
     }).setOrigin(0.5);
 
     const stepIndicator = this.add.text(
@@ -191,7 +206,7 @@ export class TutorialScene extends Phaser.Scene {
       });
 
       this.tutorialContainer.add(startBtn);
-    } else if (step.action !== 'correct' && step.action !== 'wrong') {
+    } else if (step.action !== 'select') {
       const nextBtn = this.add.rectangle(panelWidth / 2 - 30, panelHeight / 2 - 35, 100, 38, COLORS.primary)
         .setStrokeStyle(2, 0xffffff, 0.2)
         .setInteractive({ useHandCursor: true });
@@ -228,7 +243,7 @@ export class TutorialScene extends Phaser.Scene {
       this.tutorialContainer.add(nextBtn);
     }
 
-    if (step.highlight) {
+    if (step.highlight && this.billContainer) {
       this.showHighlight(step.highlight);
     }
 
@@ -236,12 +251,11 @@ export class TutorialScene extends Phaser.Scene {
     this.tweens.add({
       targets: this.tutorialContainer,
       alpha: 1,
-      y: height / 2 + 80,
       duration: 300,
       ease: 'Sine.easeOut'
     });
 
-    if (!step.action || (step.action !== 'correct' && step.action !== 'wrong')) {
+    if (!step.action || step.action !== 'select') {
       this.canInteract = true;
     } else {
       this.time.delayedCall(500, () => {
@@ -250,7 +264,7 @@ export class TutorialScene extends Phaser.Scene {
     }
   }
 
-  private showBillCard(type: 'correct' | 'wrong'): void {
+  private showBillCard(category: DiscrepancyCategory): void {
     const width = this.cameras.main.width;
     const height = this.cameras.main.height;
 
@@ -258,147 +272,233 @@ export class TutorialScene extends Phaser.Scene {
       this.billContainer.destroy();
     }
 
-    this.currentBill = generateBill(0, type === 'wrong' ? 1 : 0, 0);
-    if (type === 'correct') {
-      this.currentBill.actualAmount = this.currentBill.expectedAmount;
-      this.currentBill.hasDiscrepancy = false;
-    } else {
-      this.currentBill.hasDiscrepancy = true;
-    }
+    this.currentBill = generateBill(0, 0, 0, category);
 
     const bill = this.currentBill;
+    this.billContainer = this.add.container(width / 2, height / 2 - 70);
 
-    this.billContainer = this.add.container(width / 2, height / 2 - 60);
+    const leftX = -380;
+    const rightX = 180;
+    const panelW = 360;
+    const panelH = 380;
 
-    const cardWidth = 380;
-    const cardHeight = 240;
+    const leftPanel = this.add.rectangle(leftX, 0, panelW, panelH, COLORS.cardBg)
+      .setStrokeStyle(2, COLORS.cardBorder, 1);
 
-    const cardBg = this.add.rectangle(0, 0, cardWidth, cardHeight, COLORS.cardBg)
-      .setStrokeStyle(3, COLORS.primary, 0.8);
-
-    const cardShadow = this.add.rectangle(3, 3, cardWidth, cardHeight, 0x000000, 0.3);
-
-    this.billContainer.add([cardShadow, cardBg]);
-
-    const merchantLabel = this.add.text(-cardWidth / 2 + 25, -cardHeight / 2 + 30, bill.merchantName, {
-      fontSize: '22px',
+    const merchantLabel = this.add.text(leftX - panelW / 2 + 20, -panelH / 2 + 30, bill.merchantName, {
+      fontSize: '20px',
       fontWeight: 'bold',
       color: '#ffffff'
     }).setOrigin(0, 0.5);
 
-    const orderLabel = this.add.text(-cardWidth / 2 + 25, -cardHeight / 2 + 65, `订单数量: ${bill.orderCount} 单`, {
-      fontSize: '14px',
-      color: '#a0a0a0'
-    }).setOrigin(0, 0.5);
-
-    const divider1 = this.add.rectangle(0, -cardHeight / 2 + 90, cardWidth - 50, 1, COLORS.cardBorder, 0.5);
-
-    const expectedLabel = this.add.text(-cardWidth / 2 + 25, -cardHeight / 2 + 115, '预期结算金额', {
+    const orderLabel = this.add.text(leftX - panelW / 2 + 20, -panelH / 2 + 60, `订单数量: ${bill.orderCount} 单`, {
       fontSize: '13px',
       color: '#888888'
     }).setOrigin(0, 0.5);
 
-    const expectedAmount = this.add.text(cardWidth / 2 - 25, -cardHeight / 2 + 115, formatAmount(bill.expectedAmount), {
-      fontSize: '18px',
+    const divider1 = this.add.rectangle(leftX, -panelH / 2 + 85, panelW - 40, 1, COLORS.cardBorder, 0.5);
+
+    const expectedLabel = this.add.text(leftX - panelW / 2 + 20, -panelH / 2 + 110, '预期结算', {
+      fontSize: '12px',
+      color: '#888888'
+    }).setOrigin(0, 0.5);
+
+    const expectedAmount = this.add.text(leftX + panelW / 2 - 20, -panelH / 2 + 110, formatAmount(bill.expectedAmount), {
+      fontSize: '16px',
       fontWeight: 'bold',
       color: '#ffffff'
     }).setOrigin(1, 0.5);
 
-    const divider2 = this.add.rectangle(0, -cardHeight / 2 + 140, cardWidth - 50, 1, COLORS.cardBorder, 0.5);
-
-    const actualLabel = this.add.text(-cardWidth / 2 + 25, -cardHeight / 2 + 165, '实际到账金额', {
-      fontSize: '13px',
+    const actualLabel = this.add.text(leftX - panelW / 2 + 20, -panelH / 2 + 135, '实际到账', {
+      fontSize: '12px',
       color: '#888888'
     }).setOrigin(0, 0.5);
 
-    const actualAmount = this.add.text(cardWidth / 2 - 25, -cardHeight / 2 + 165, formatAmount(bill.actualAmount), {
-      fontSize: '22px',
+    const diff = bill.actualAmount - bill.expectedAmount;
+    const actualAmount = this.add.text(leftX + panelW / 2 - 20, -panelH / 2 + 135, formatAmount(bill.actualAmount), {
+      fontSize: '16px',
+      fontWeight: 'bold',
+      color: diff === 0 ? '#' + COLORS.success.toString(16).padStart(6, '0') : '#' + COLORS.danger.toString(16).padStart(6, '0')
+    }).setOrigin(1, 0.5);
+
+    const diffLabel = this.add.text(leftX - panelW / 2 + 20, -panelH / 2 + 160, '差额', {
+      fontSize: '12px',
+      color: '#888888'
+    }).setOrigin(0, 0.5);
+
+    const diffAmount = this.add.text(leftX + panelW / 2 - 20, -panelH / 2 + 160, `${diff >= 0 ? '+' : ''}${formatAmount(diff)}`, {
+      fontSize: '16px',
+      fontWeight: 'bold',
+      color: diff === 0 ? '#' + COLORS.success.toString(16).padStart(6, '0') : '#' + COLORS.danger.toString(16).padStart(6, '0')
+    }).setOrigin(1, 0.5);
+
+    const divider2 = this.add.rectangle(leftX, -panelH / 2 + 185, panelW - 40, 1, COLORS.cardBorder, 0.5);
+
+    const txTitle = this.add.text(leftX - panelW / 2 + 20, -panelH / 2 + 210, '📋 支付流水明细', {
+      fontSize: '14px',
       fontWeight: 'bold',
       color: '#' + COLORS.primary.toString(16).padStart(6, '0')
-    }).setOrigin(1, 0.5);
-
-    const buttonY = cardHeight / 2 + 45;
-    const buttonGap = 110;
-
-    const correctBtn = this.add.rectangle(-buttonGap / 2, buttonY, 160, 50, COLORS.success)
-      .setStrokeStyle(2, 0xffffff, 0.3)
-      .setInteractive({ useHandCursor: true })
-      .setName('correctBtn');
-
-    const correctText = this.add.text(-buttonGap / 2, buttonY, '✓ 金额一致', {
-      fontSize: '18px',
-      fontWeight: 'bold',
-      color: '#ffffff'
-    }).setOrigin(0.5)
-      .setName('correctText');
-
-    const wrongBtn = this.add.rectangle(buttonGap / 2, buttonY, 160, 50, COLORS.danger)
-      .setStrokeStyle(2, 0xffffff, 0.3)
-      .setInteractive({ useHandCursor: true })
-      .setName('wrongBtn');
-
-    const wrongText = this.add.text(buttonGap / 2, buttonY, '✗ 有差异', {
-      fontSize: '18px',
-      fontWeight: 'bold',
-      color: '#ffffff'
-    }).setOrigin(0.5)
-      .setName('wrongText');
-
-    const step = this.tutorialSteps[this.currentStep];
-    const expectCorrect = step.billType === 'correct';
-
-    const handleAnswer = (playerSaysCorrect: boolean) => {
-      if (!this.canInteract) return;
-
-      const isCorrect = playerSaysCorrect === !this.currentBill!.hasDiscrepancy;
-      
-      if (isCorrect) {
-        this.audioManager.playCorrect();
-        this.showFeedback('回答正确!', COLORS.success);
-        this.time.delayedCall(1000, () => {
-          this.nextStep();
-        });
-      } else {
-        this.audioManager.playWrong();
-        this.showFeedback('再想想哦~', COLORS.warning);
-        this.cameras.main.shake(150, 0.008);
-      }
-      this.canInteract = false;
-    };
-
-    correctBtn.on('pointerdown', () => handleAnswer(true));
-    wrongBtn.on('pointerdown', () => handleAnswer(false));
-
-    this.input.keyboard?.on('keydown-LEFT', () => handleAnswer(true));
-    this.input.keyboard?.on('keydown-RIGHT', () => handleAnswer(false));
-    this.input.keyboard?.on('keydown-A', () => handleAnswer(true));
-    this.input.keyboard?.on('keydown-D', () => handleAnswer(false));
+    }).setOrigin(0, 0.5);
 
     this.billContainer.add([
-      merchantLabel,
-      orderLabel,
-      divider1,
-      expectedLabel,
-      expectedAmount,
-      divider2,
-      actualLabel,
-      actualAmount,
-      correctBtn,
-      correctText,
-      wrongBtn,
-      wrongText
+      leftPanel, merchantLabel, orderLabel, divider1,
+      expectedLabel, expectedAmount, actualLabel, actualAmount,
+      diffLabel, diffAmount, divider2, txTitle
     ]);
 
-    this.billContainer.setScale(0.8);
+    const TYPE_COLORS: Record<string, number> = {
+      order: COLORS.success,
+      refund: COLORS.danger,
+      coupon: COLORS.warning,
+      platform_fee: COLORS.primary,
+      subsidy: 0xffa500,
+      delivery: 0x87ceeb
+    };
+
+    const TYPE_LABELS: Record<string, string> = {
+      order: '订单',
+      refund: '退款',
+      coupon: '优惠',
+      platform_fee: '抽成',
+      subsidy: '补贴',
+      delivery: '配送'
+    };
+
+    const visibleTransactions = bill.transactions.slice(0, 5);
+    visibleTransactions.forEach((tx, i) => {
+      const ty = -panelH / 2 + 235 + i * 24;
+      const isPositive = tx.amount >= 0;
+      const tagColor = TYPE_COLORS[tx.type] || 0x888888;
+
+      const tag = this.add.rectangle(leftX - panelW / 2 + 30, ty, 42, 18, tagColor, 0.25)
+        .setStrokeStyle(1, tagColor, 0.5);
+      const tagText = this.add.text(leftX - panelW / 2 + 30, ty, TYPE_LABELS[tx.type] || tx.type, {
+        fontSize: '10px',
+        fontWeight: 'bold',
+        color: '#' + tagColor.toString(16).padStart(6, '0')
+      }).setOrigin(0.5);
+
+      const idText = this.add.text(leftX - panelW / 2 + 60, ty, tx.orderNo, {
+        fontSize: '10px',
+        color: '#888888'
+      }).setOrigin(0, 0.5);
+
+      const amtText = this.add.text(leftX + panelW / 2 - 20, ty,
+        `${isPositive ? '+' : '-'}${formatAmount(Math.abs(tx.amount))}`, {
+          fontSize: '12px',
+          fontWeight: 'bold',
+          color: isPositive ? '#' + COLORS.success.toString(16).padStart(6, '0') : '#' + COLORS.danger.toString(16).padStart(6, '0')
+        }
+      ).setOrigin(1, 0.5);
+
+      this.billContainer!.add([tag, tagText, idText, amtText]);
+    });
+
+    if (bill.transactions.length > 5) {
+      const moreText = this.add.text(leftX, -panelH / 2 + 235 + 5 * 24,
+        `... 还有 ${bill.transactions.length - 5} 条流水`, {
+          fontSize: '11px',
+          color: '#666666'
+        }
+      ).setOrigin(0.5);
+      this.billContainer.add(moreText);
+    }
+
+    const tip = this.add.text(leftX, panelH / 2 - 20, '💡 对照流水和结算金额判断差异', {
+      fontSize: '11px',
+      color: '#666666'
+    }).setOrigin(0.5);
+    this.billContainer.add(tip);
+
+    const rightPanel = this.add.rectangle(rightX, 0, 300, panelH, COLORS.cardBg)
+      .setStrokeStyle(2, COLORS.cardBorder, 1);
+
+    const optionsTitle = this.add.text(rightX, -panelH / 2 + 30, '请选择对账结果 (按数字键 1-7)', {
+      fontSize: '13px',
+      fontWeight: 'bold',
+      color: '#' + COLORS.warning.toString(16).padStart(6, '0')
+    }).setOrigin(0.5);
+
+    this.billContainer.add([rightPanel, optionsTitle]);
+
+    const categories: DiscrepancyCategory[] = [
+      'correct', 'refund_missing', 'coupon_missing',
+      'platform_fee_wrong', 'subsidy_missing', 'delivery_fee_wrong', 'order_missing'
+    ];
+
+    const dotColors: Record<DiscrepancyCategory, number> = {
+      correct: COLORS.success,
+      refund_missing: COLORS.danger,
+      coupon_missing: COLORS.warning,
+      platform_fee_wrong: COLORS.primary,
+      subsidy_missing: 0xffa500,
+      delivery_fee_wrong: 0x87ceeb,
+      order_missing: 0xdda0dd
+    };
+
+    categories.forEach((cat, i) => {
+      const by = -panelH / 2 + 70 + i * 43;
+      const btnColor = dotColors[cat];
+      const label = CATEGORY_LABELS[cat];
+
+      const btn = this.add.rectangle(rightX, by, 260, 36, 0x1a1a2e, 1)
+        .setStrokeStyle(2, btnColor, 0.6)
+        .setInteractive({ useHandCursor: true })
+        .setName(cat + 'Btn');
+
+      const dot = this.add.circle(rightX - 110, by, 6, btnColor).setName(cat + 'Dot');
+
+      const numLabel = this.add.text(rightX - 85, by, `${i + 1}`, {
+        fontSize: '14px',
+        fontWeight: 'bold',
+        color: '#' + btnColor.toString(16).padStart(6, '0')
+      }).setOrigin(0.5);
+
+      const txt = this.add.text(rightX - 65, by, label, {
+        fontSize: '13px',
+        fontWeight: 'bold',
+        color: cat === 'correct' ? '#90ee90' : '#ffffff'
+      }).setOrigin(0, 0.5);
+
+      btn.on('pointerover', () => btn.setScale(1.03));
+      btn.on('pointerout', () => btn.setScale(1));
+      btn.on('pointerdown', () => this.handleAnswer(cat));
+
+      this.input.keyboard?.on(`keydown-${i + 1}`, () => this.handleAnswer(cat));
+
+      this.billContainer!.add([btn, dot, numLabel, txt]);
+    });
+
+    this.billContainer.setScale(0.85);
     this.billContainer.setAlpha(0);
 
     this.tweens.add({
       targets: this.billContainer,
       scale: 1,
       alpha: 1,
-      duration: 300,
+      duration: 350,
       ease: 'Back.easeOut'
     });
+  }
+
+  private handleAnswer(selected: DiscrepancyCategory): void {
+    if (!this.canInteract || !this.currentBill) return;
+
+    const step = this.tutorialSteps[this.currentStep];
+    const isCorrect = step.action === 'select' && selected === step.expectAnswer;
+
+    if (isCorrect) {
+      this.audioManager.playCorrect();
+      this.showFeedback('回答正确! ' + CATEGORY_LABELS[selected], COLORS.success);
+      this.canInteract = false;
+      this.time.delayedCall(1200, () => {
+        this.nextStep();
+      });
+    } else {
+      this.audioManager.playWrong();
+      this.showFeedback(`再想想哦~ 正确答案是: ${CATEGORY_LABELS[this.currentBill!.discrepancyCategory]}`, COLORS.warning);
+      this.cameras.main.shake(150, 0.008);
+    }
   }
 
   private showHighlight(type: string): void {
@@ -407,8 +507,8 @@ export class TutorialScene extends Phaser.Scene {
     const pulse = (target: Phaser.GameObjects.GameObject) => {
       this.tweens.add({
         targets: target,
-        scaleX: 1.1,
-        scaleY: 1.1,
+        scaleX: 1.08,
+        scaleY: 1.15,
         duration: 500,
         yoyo: true,
         repeat: -1,
@@ -416,19 +516,12 @@ export class TutorialScene extends Phaser.Scene {
       });
     };
 
-    switch (type) {
-      case 'bill':
-        const card = this.billContainer.getAt(0);
-        if (card) pulse(card);
-        break;
-      case 'correctBtn':
-        const correctBtn = this.billContainer.getByName('correctBtn');
-        if (correctBtn) pulse(correctBtn);
-        break;
-      case 'wrongBtn':
-        const wrongBtn = this.billContainer.getByName('wrongBtn');
-        if (wrongBtn) pulse(wrongBtn);
-        break;
+    if (type === 'bill') {
+      const card = this.billContainer.getAt(0);
+      if (card) pulse(card);
+    } else if (type === 'correctBtn' || type === 'refundBtn' || type === 'subsidyBtn') {
+      const btn = this.billContainer.getByName(type as string);
+      if (btn) pulse(btn);
     }
   }
 
@@ -436,8 +529,8 @@ export class TutorialScene extends Phaser.Scene {
     const width = this.cameras.main.width;
     const height = this.cameras.main.height;
 
-    const feedback = this.add.text(width / 2, height / 2 - 20, text, {
-      fontSize: '36px',
+    const feedback = this.add.text(width / 2, height / 2 - 10, text, {
+      fontSize: '32px',
       fontWeight: 'bold',
       color: '#' + color.toString(16).padStart(6, '0')
     }).setOrigin(0.5).setAlpha(0);
@@ -448,7 +541,7 @@ export class TutorialScene extends Phaser.Scene {
       y: '-=30',
       duration: 300,
       yoyo: true,
-      hold: 400,
+      hold: 500,
       onComplete: () => feedback.destroy()
     });
   }
@@ -478,5 +571,6 @@ interface TutorialStep {
   hasBill: boolean;
   action: string | null;
   highlight: string | null;
-  billType?: 'correct' | 'wrong';
+  billCategory?: DiscrepancyCategory;
+  expectAnswer?: DiscrepancyCategory;
 }

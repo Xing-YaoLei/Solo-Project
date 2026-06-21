@@ -2,10 +2,29 @@ import Phaser from 'phaser';
 import { COLORS } from '../config/gameConfig';
 import { AudioManager } from '../managers/AudioManager';
 import { GameStateManager } from '../managers/GameStateManager';
-import { generateBills, formatAmount, calculateScore } from '../utils/billUtils';
-import type { BillData, GameStats, LevelConfig } from '../types';
+import { generateBills, formatAmount, calculateScore, getDiscrepancyLabel } from '../utils/billUtils';
+import type { BillData, GameStats, LevelConfig, DiscrepancyCategory, PaymentTransaction } from '../types';
+import { CATEGORY_LABELS } from '../types';
 
 declare const Matter: any;
+
+const TX_TYPE_COLORS: Record<string, number> = {
+  order: COLORS.primary,
+  refund: COLORS.danger,
+  coupon: COLORS.warning,
+  platform_fee: 0x9b59b6,
+  subsidy: COLORS.success,
+  delivery: 0x3498db
+};
+
+const TX_TYPE_LABELS: Record<string, string> = {
+  order: '订单',
+  refund: '退款',
+  coupon: '优惠券',
+  platform_fee: '抽成',
+  subsidy: '补贴',
+  delivery: '配送'
+};
 
 export class GameScene extends Phaser.Scene {
   private audioManager: AudioManager;
@@ -36,6 +55,8 @@ export class GameScene extends Phaser.Scene {
   private matterWorld: any;
   private coinBodies: any[] = [];
   private coinGraphics: Phaser.GameObjects.Graphics[] = [];
+
+  private rootContainer: Phaser.GameObjects.Container | null = null;
 
   constructor() {
     super('GameScene');
@@ -79,6 +100,13 @@ export class GameScene extends Phaser.Scene {
       this.matterWorld = this.matter.world;
       this.matter.world.setBounds(0, 0, this.cameras.main.width, this.cameras.main.height, 64, true, true, false, true);
       this.matter.world.setGravity(0, 1);
+    }
+  }
+
+  private clearRoot(): void {
+    if (this.rootContainer) {
+      this.rootContainer.destroy();
+      this.rootContainer = null;
     }
   }
 
@@ -130,8 +158,8 @@ export class GameScene extends Phaser.Scene {
       progressBar.width = 300 * progress;
     });
 
-    this.feedbackText = this.add.text(width / 2, height / 2 - 100, '', {
-      fontSize: '48px',
+    this.feedbackText = this.add.text(width / 2, 140, '', {
+      fontSize: '42px',
       fontWeight: 'bold',
       color: '#ffffff'
     }).setOrigin(0.5).setAlpha(0);
@@ -166,156 +194,306 @@ export class GameScene extends Phaser.Scene {
 
     const width = this.cameras.main.width;
     const height = this.cameras.main.height;
-    const cardX = width / 2;
-    const cardY = height / 2 + 20;
 
-    if (this.billContainer) {
-      this.billContainer.destroy();
-    }
+    this.clearRoot();
+    this.rootContainer = this.add.container(width / 2, height / 2 + 10);
 
-    this.billContainer = this.add.container(cardX, cardY);
-
-    const cardWidth = 420;
-    const cardHeight = 280;
-
-    const cardBg = this.add.rectangle(0, 0, cardWidth, cardHeight, COLORS.cardBg)
-      .setStrokeStyle(3, COLORS.primary, 0.8);
-
-    const cardShadow = this.add.rectangle(4, 4, cardWidth, cardHeight, 0x000000, 0.3);
-
-    this.billContainer.add([cardShadow, cardBg]);
-
-    const merchantLabel = this.add.text(-cardWidth / 2 + 30, -cardHeight / 2 + 35, bill.merchantName, {
-      fontSize: '24px',
-      fontWeight: 'bold',
-      color: '#ffffff'
-    }).setOrigin(0, 0.5);
-
-    const orderLabel = this.add.text(-cardWidth / 2 + 30, -cardHeight / 2 + 75, `订单数量: ${bill.orderCount} 单`, {
-      fontSize: '16px',
-      color: '#a0a0a0'
-    }).setOrigin(0, 0.5);
-
-    const divider1 = this.add.rectangle(0, -cardHeight / 2 + 105, cardWidth - 60, 1, COLORS.cardBorder, 0.5);
-
-    const expectedLabel = this.add.text(-cardWidth / 2 + 30, -cardHeight / 2 + 135, '预期结算金额', {
-      fontSize: '14px',
-      color: '#888888'
-    }).setOrigin(0, 0.5);
-
-    const expectedAmount = this.add.text(cardWidth / 2 - 30, -cardHeight / 2 + 135, formatAmount(bill.expectedAmount), {
-      fontSize: '20px',
-      fontWeight: 'bold',
-      color: '#ffffff'
-    }).setOrigin(1, 0.5);
-
-    const divider2 = this.add.rectangle(0, -cardHeight / 2 + 165, cardWidth - 60, 1, COLORS.cardBorder, 0.5);
-
-    const actualLabel = this.add.text(-cardWidth / 2 + 30, -cardHeight / 2 + 195, '实际到账金额', {
-      fontSize: '14px',
-      color: '#888888'
-    }).setOrigin(0, 0.5);
-
-    const actualAmount = this.add.text(cardWidth / 2 - 30, -cardHeight / 2 + 195, formatAmount(bill.actualAmount), {
-      fontSize: '24px',
-      fontWeight: 'bold',
-      color: '#' + COLORS.primary.toString(16).padStart(6, '0')
-    }).setOrigin(1, 0.5);
-
-    const hint = this.add.text(0, cardHeight / 2 - 25, '检查两笔金额是否一致', {
-      fontSize: '13px',
-      color: '#666666'
-    }).setOrigin(0.5);
-
-    this.billContainer.add([
-      merchantLabel,
-      orderLabel,
-      divider1,
-      expectedLabel,
-      expectedAmount,
-      divider2,
-      actualLabel,
-      actualAmount,
-      hint
-    ]);
-
-    this.billContainer.setScale(0.8);
-    this.billContainer.setAlpha(0);
-
+    this.rootContainer.setScale(0.95);
+    this.rootContainer.setAlpha(0);
     this.tweens.add({
-      targets: this.billContainer,
+      targets: this.rootContainer,
       scale: 1,
       alpha: 1,
-      duration: 300,
+      duration: 250,
       ease: 'Back.easeOut'
     });
 
-    const buttonY = cardHeight / 2 + 50;
-    const buttonGap = 120;
+    const leftX = -380;
+    const rightX = 50;
+    const topY = -240;
 
-    const correctBtn = this.add.rectangle(-buttonGap / 2, buttonY, 180, 56, COLORS.success)
-      .setStrokeStyle(2, 0xffffff, 0.3)
-      .setInteractive({ useHandCursor: true });
-
-    const correctText = this.add.text(-buttonGap / 2, buttonY, '✓ 金额一致', {
-      fontSize: '20px',
-      fontWeight: 'bold',
-      color: '#ffffff'
-    }).setOrigin(0.5);
-
-    const wrongBtn = this.add.rectangle(buttonGap / 2, buttonY, 180, 56, COLORS.danger)
-      .setStrokeStyle(2, 0xffffff, 0.3)
-      .setInteractive({ useHandCursor: true });
-
-    const wrongText = this.add.text(buttonGap / 2, buttonY, '✗ 有差异', {
-      fontSize: '20px',
-      fontWeight: 'bold',
-      color: '#ffffff'
-    }).setOrigin(0.5);
-
-    const handleAnswer = (playerSaysCorrect: boolean) => {
-      if (this.gameOver || this.paused) return;
-
-      const isCorrect = playerSaysCorrect === !bill.hasDiscrepancy;
-      this.handleAnswer(isCorrect, bill);
-    };
-
-    correctBtn.on('pointerdown', () => handleAnswer(true));
-    wrongBtn.on('pointerdown', () => handleAnswer(false));
-
-    this.input.keyboard?.on('keydown-LEFT', () => handleAnswer(true));
-    this.input.keyboard?.on('keydown-RIGHT', () => handleAnswer(false));
-    this.input.keyboard?.on('keydown-A', () => handleAnswer(true));
-    this.input.keyboard?.on('keydown-D', () => handleAnswer(false));
-
-    this.billContainer.add([correctBtn, correctText, wrongBtn, wrongText]);
+    this.createLeftPanel(bill, leftX, topY);
+    this.createRightPanel(bill, rightX, topY);
+    this.createAnswerButtons(bill, 0, 230);
   }
 
-  private handleAnswer(isCorrect: boolean, bill: BillData): void {
+  private createLeftPanel(bill: BillData, x: number, y: number): void {
+    if (!this.rootContainer) return;
+
+    const panelWidth = 400;
+    const panelHeight = 420;
+
+    const panelBg = this.add.rectangle(x + panelWidth / 2, y + panelHeight / 2, panelWidth, panelHeight, COLORS.cardBg)
+      .setStrokeStyle(2, COLORS.cardBorder, 1);
+    this.rootContainer.add(panelBg);
+
+    const merchant = this.add.text(x + 15, y + 20, bill.merchantName, {
+      fontSize: '22px',
+      fontWeight: 'bold',
+      color: '#ffffff'
+    }).setOrigin(0, 0);
+    this.rootContainer.add(merchant);
+
+    const orderInfo = this.add.text(x + 15, y + 52, `订单数: ${bill.orderCount} 单`, {
+      fontSize: '14px',
+      color: '#a0a0a0'
+    }).setOrigin(0, 0);
+    this.rootContainer.add(orderInfo);
+
+    const amountsY = y + 85;
+    const expLabel = this.add.text(x + 15, amountsY, '预期结算', {
+      fontSize: '13px',
+      color: '#888888'
+    }).setOrigin(0, 0);
+    const expVal = this.add.text(x + panelWidth - 15, amountsY, formatAmount(bill.expectedAmount), {
+      fontSize: '20px',
+      fontWeight: 'bold',
+      color: '#ffffff'
+    }).setOrigin(1, 0);
+    this.rootContainer.add([expLabel, expVal]);
+
+    const actLabel = this.add.text(x + 15, amountsY + 32, '实际到账', {
+      fontSize: '13px',
+      color: '#888888'
+    }).setOrigin(0, 0);
+    const actVal = this.add.text(x + panelWidth - 15, amountsY + 32, formatAmount(bill.actualAmount), {
+      fontSize: '24px',
+      fontWeight: 'bold',
+      color: '#' + COLORS.primary.toString(16).padStart(6, '0')
+    }).setOrigin(1, 0);
+    this.rootContainer.add([actLabel, actVal]);
+
+    const diff = bill.actualAmount - bill.expectedAmount;
+    if (Math.abs(diff) >= 0.01) {
+      const diffColor = diff > 0 ? COLORS.success : COLORS.danger;
+      const diffLabel = this.add.text(x + 15, amountsY + 68, '差额', {
+        fontSize: '13px',
+        color: '#888888'
+      }).setOrigin(0, 0);
+      const diffVal = this.add.text(x + panelWidth - 15, amountsY + 68, `${diff > 0 ? '+' : ''}${formatAmount(Math.abs(diff))}`, {
+        fontSize: '18px',
+        fontWeight: 'bold',
+        color: '#' + diffColor.toString(16).padStart(6, '0')
+      }).setOrigin(1, 0);
+      this.rootContainer.add([diffLabel, diffVal]);
+    }
+
+    const dividerY = amountsY + 108;
+    const divider = this.add.rectangle(x + panelWidth / 2, dividerY, panelWidth - 30, 1, COLORS.cardBorder, 0.8);
+    this.rootContainer.add(divider);
+
+    const txTitle = this.add.text(x + 15, dividerY + 15, '📋 支付流水明细', {
+      fontSize: '16px',
+      fontWeight: 'bold',
+      color: '#ffffff'
+    }).setOrigin(0, 0);
+    this.rootContainer.add(txTitle);
+
+    const headerY = dividerY + 45;
+    const headers = [
+      { text: '类型', x: x + 15, w: 70 },
+      { text: '单号', x: x + 90, w: 110 },
+      { text: '时间', x: x + 205, w: 75 },
+      { text: '金额', x: x + panelWidth - 15, w: 80, align: 1 }
+    ];
+    headers.forEach(h => {
+      const t = this.add.text(h.x, headerY, h.text, {
+        fontSize: '12px',
+        color: '#666666'
+      }).setOrigin(h.align || 0, 0);
+      this.rootContainer!.add(t);
+    });
+
+    const maxShow = 5;
+    const displayTxs = bill.transactions.slice(0, maxShow);
+    displayTxs.forEach((tx, i) => {
+      const ty = headerY + 22 + i * 28;
+      this.addTransactionRow(tx, x, ty, panelWidth);
+    });
+
+    if (bill.transactions.length > maxShow) {
+      const moreY = headerY + 22 + maxShow * 28;
+      const more = this.add.text(x + panelWidth / 2, moreY + 8, `...还有 ${bill.transactions.length - maxShow} 条流水`, {
+        fontSize: '12px',
+        color: '#666666'
+      }).setOrigin(0.5, 0);
+      this.rootContainer.add(more);
+    }
+
+    const computedY = y + panelHeight - 40;
+    const computedTitle = this.add.text(x + 15, computedY, '💡 根据流水核对金额，找出问题类型', {
+      fontSize: '13px',
+      color: '#' + COLORS.warning.toString(16).padStart(6, '0')
+    }).setOrigin(0, 0);
+    this.rootContainer.add(computedTitle);
+  }
+
+  private addTransactionRow(tx: PaymentTransaction, x: number, y: number, panelWidth: number): void {
+    if (!this.rootContainer) return;
+
+    const typeColor = TX_TYPE_COLORS[tx.type] || COLORS.textSecondary;
+    const typeLabel = TX_TYPE_LABELS[tx.type] || tx.type;
+
+    const typeBg = this.add.rectangle(x + 40, y + 10, 50, 18, typeColor, 0.25);
+    const typeText = this.add.text(x + 40, y + 10, typeLabel, {
+      fontSize: '11px',
+      color: '#' + typeColor.toString(16).padStart(6, '0')
+    }).setOrigin(0.5, 0.5);
+    this.rootContainer.add([typeBg, typeText]);
+
+    const orderText = this.add.text(x + 90, y + 10, tx.orderNo.slice(-8), {
+      fontSize: '11px',
+      color: '#cccccc'
+    }).setOrigin(0, 0.5);
+    this.rootContainer.add(orderText);
+
+    const timeText = this.add.text(x + 205, y + 10, tx.timestamp, {
+      fontSize: '11px',
+      color: '#888888'
+    }).setOrigin(0, 0.5);
+    this.rootContainer.add(timeText);
+
+    const isPositive = tx.type === 'order' || tx.type === 'subsidy' || tx.type === 'delivery';
+    const amountColor = isPositive ? COLORS.success : COLORS.danger;
+    const amountStr = `${isPositive ? '+' : '-'}${formatAmount(tx.amount)}`;
+    const amountText = this.add.text(x + panelWidth - 15, y + 10, amountStr, {
+      fontSize: '12px',
+      fontWeight: 'bold',
+      color: '#' + amountColor.toString(16).padStart(6, '0')
+    }).setOrigin(1, 0.5);
+    this.rootContainer.add(amountText);
+  }
+
+  private createRightPanel(bill: BillData, x: number, y: number): void {
+    if (!this.rootContainer) return;
+
+    const panelWidth = 320;
+    const panelHeight = 420;
+
+    const panelBg = this.add.rectangle(x + panelWidth / 2, y + panelHeight / 2, panelWidth, panelHeight, COLORS.cardBg)
+      .setStrokeStyle(2, COLORS.primary, 0.6);
+    this.rootContainer.add(panelBg);
+
+    const title = this.add.text(x + panelWidth / 2, y + 22, '选择对账结果', {
+      fontSize: '18px',
+      fontWeight: 'bold',
+      color: '#ffffff'
+    }).setOrigin(0.5, 0);
+    this.rootContainer.add(title);
+
+    const subtitle = this.add.text(x + panelWidth / 2, y + 50, '综合流水、金额、差额判断', {
+      fontSize: '12px',
+      color: '#888888'
+    }).setOrigin(0.5, 0);
+    this.rootContainer.add(subtitle);
+
+    const categories: Array<{ key: DiscrepancyCategory; color: number }> = [
+      { key: 'correct', color: COLORS.success },
+      { key: 'refund_missing', color: COLORS.danger },
+      { key: 'coupon_missing', color: COLORS.warning },
+      { key: 'platform_fee_wrong', color: 0x9b59b6 },
+      { key: 'subsidy_missing', color: COLORS.primary },
+      { key: 'delivery_fee_wrong', color: 0x3498db },
+      { key: 'order_missing', color: 0xe67e22 }
+    ];
+
+    const btnStartY = y + 80;
+    const btnHeight = 40;
+    const btnGap = 10;
+    const btnWidth = panelWidth - 30;
+
+    categories.forEach((cat, i) => {
+      const by = btnStartY + i * (btnHeight + btnGap);
+      this.createCategoryButton(x + 15, by, btnWidth, btnHeight, cat.key, cat.color, bill);
+    });
+
+    const hintY = btnStartY + categories.length * (btnHeight + btnGap) + 10;
+    const hint = this.add.text(x + panelWidth / 2, hintY, '可点击按钮或按数字键 1-7', {
+      fontSize: '11px',
+      color: '#666666'
+    }).setOrigin(0.5, 0);
+    this.rootContainer.add(hint);
+  }
+
+  private createCategoryButton(
+    x: number,
+    y: number,
+    w: number,
+    h: number,
+    category: DiscrepancyCategory,
+    color: number,
+    bill: BillData
+  ): void {
+    if (!this.rootContainer) return;
+
+    const label = CATEGORY_LABELS[category];
+
+    const bg = this.add.rectangle(x + w / 2, y + h / 2, w, h, COLORS.cardBorder, 0.6)
+      .setStrokeStyle(1, color, 0.8)
+      .setInteractive({ useHandCursor: true });
+
+    const dot = this.add.circle(x + 16, y + h / 2, 6, color);
+
+    const text = this.add.text(x + 30, y + h / 2, label, {
+      fontSize: '15px',
+      color: '#ffffff'
+    }).setOrigin(0, 0.5);
+
+    this.rootContainer.add([bg, dot, text]);
+
+    bg.on('pointerover', () => {
+      bg.setFillStyle(color, 0.25);
+      bg.setStrokeStyle(2, color, 1);
+    });
+
+    bg.on('pointerout', () => {
+      bg.setFillStyle(COLORS.cardBorder, 0.6);
+      bg.setStrokeStyle(1, color, 0.8);
+    });
+
+    bg.on('pointerdown', () => {
+      this.handleAnswer(category, bill);
+    });
+  }
+
+  private createAnswerButtons(bill: BillData, x: number, y: number): void {
+    const categories: DiscrepancyCategory[] = [
+      'correct', 'refund_missing', 'coupon_missing',
+      'platform_fee_wrong', 'subsidy_missing', 'delivery_fee_wrong', 'order_missing'
+    ];
+
+    categories.forEach((cat, i) => {
+      const keyNum = (i + 1).toString();
+      this.input.keyboard?.on(`keydown-${keyNum}`, () => {
+        if (!this.gameOver && !this.paused && this.rootContainer) {
+          this.handleAnswer(cat, bill);
+        }
+      });
+    });
+  }
+
+  private handleAnswer(selected: DiscrepancyCategory, bill: BillData): void {
+    if (this.gameOver || this.paused) return;
+
     const responseTime = Date.now() - this.billStartTime;
     this.totalResponseTime += responseTime;
+
+    const isCorrect = selected === bill.discrepancyCategory;
 
     if (isCorrect) {
       this.correctCount++;
       this.combo++;
       this.maxCombo = Math.max(this.maxCombo, this.combo);
 
-      const scoreGain = calculateScore(
-        true,
-        responseTime,
-        this.combo,
-        this.level!.baseScore
-      );
+      const scoreGain = calculateScore(true, responseTime, this.combo, this.level!.baseScore);
       this.score += scoreGain;
 
       this.audioManager.playCorrect();
-      if (this.combo >= 3) {
-        this.audioManager.playCombo();
-      }
+      if (this.combo >= 3) this.audioManager.playCombo();
       this.audioManager.vibrate(20);
 
       this.showFeedback(`+${scoreGain}`, COLORS.success);
-      this.spawnParticles(this.cameras.main.width / 2, this.cameras.main.height / 2, COLORS.success);
+      this.spawnParticles(this.cameras.main.width / 2, 140, COLORS.success);
 
       if (this.combo > 0 && this.combo % 5 === 0) {
         this.createCoinRain(Math.min(this.combo / 5, 4));
@@ -338,15 +516,12 @@ export class GameScene extends Phaser.Scene {
       this.audioManager.playWrong();
       this.audioManager.vibrate([50, 30, 50]);
 
-      this.showFeedback(`-50`, COLORS.danger);
+      const correctLabel = getDiscrepancyLabel(bill.discrepancyCategory);
+      this.showFeedback(`正确答案: ${correctLabel}`, COLORS.danger);
       this.shakeScreen();
 
       if (this.comboText) {
         this.comboText.setText(`连击: ${this.combo}`);
-      }
-
-      if (bill.discrepancyReason) {
-        this.showDiscrepancyReason(bill.discrepancyReason);
       }
     }
 
@@ -356,13 +531,13 @@ export class GameScene extends Phaser.Scene {
 
     this.currentBillIndex++;
     this.events.emit('updateProgress');
-    
+
     if (this.progressText) {
       const displayIndex = Math.min(this.currentBillIndex + 1, this.totalBills);
       this.progressText.setText(`${displayIndex} / ${this.totalBills}`);
     }
 
-    this.time.delayedCall(400, () => {
+    this.time.delayedCall(700, () => {
       this.nextBill();
     });
   }
@@ -374,32 +549,15 @@ export class GameScene extends Phaser.Scene {
     this.feedbackText.setColor('#' + color.toString(16).padStart(6, '0'));
     this.feedbackText.setAlpha(1);
     this.feedbackText.setScale(1);
-    this.feedbackText.y = this.cameras.main.height / 2 - 100;
+    this.feedbackText.y = 140;
 
     this.tweens.add({
       targets: this.feedbackText,
-      y: this.cameras.main.height / 2 - 160,
+      y: 110,
       alpha: 0,
-      scale: 1.5,
-      duration: 600,
+      scale: 1.4,
+      duration: 700,
       ease: 'Power2.easeOut'
-    });
-  }
-
-  private showDiscrepancyReason(reason: string): void {
-    const width = this.cameras.main.width;
-    const tip = this.add.text(width / 2, this.cameras.main.height / 2 + 180, `差异原因: ${reason}`, {
-      fontSize: '16px',
-      color: '#' + COLORS.warning.toString(16).padStart(6, '0')
-    }).setOrigin(0.5).setAlpha(0);
-
-    this.tweens.add({
-      targets: tip,
-      alpha: 1,
-      duration: 200,
-      yoyo: true,
-      hold: 600,
-      onComplete: () => tip.destroy()
     });
   }
 
@@ -409,11 +567,11 @@ export class GameScene extends Phaser.Scene {
 
   private spawnParticles(x: number, y: number, color: number): void {
     const particles = this.add.particles(x, y, '', {
-      speed: { min: 100, max: 200 },
+      speed: { min: 80, max: 180 },
       angle: { min: 0, max: 360 },
-      scale: { start: 0.5, end: 0 },
+      scale: { start: 0.4, end: 0 },
       lifespan: 500,
-      quantity: 10,
+      quantity: 12,
       tint: color
     });
 
@@ -453,30 +611,30 @@ export class GameScene extends Phaser.Scene {
 
   private togglePause(): void {
     this.paused = !this.paused;
-    
+
     if (this.paused) {
       const width = this.cameras.main.width;
       const height = this.cameras.main.height;
 
-      const overlay = this.add.rectangle(width / 2, height / 2, width, height, 0x000000, 0.7)
-        .setName('pauseOverlay');
+      const overlay = this.add.rectangle(width / 2, height / 2, width, height, 0x000000, 0.75)
+        .setName('pauseOverlay').setDepth(100);
 
       const pauseText = this.add.text(width / 2, height / 2 - 30, '游戏暂停', {
         fontSize: '36px',
         fontWeight: 'bold',
         color: '#ffffff'
-      }).setOrigin(0.5).setName('pauseText');
+      }).setOrigin(0.5).setName('pauseText').setDepth(101);
 
       const resumeBtn = this.add.rectangle(width / 2, height / 2 + 40, 200, 50, COLORS.primary)
         .setStrokeStyle(2, 0xffffff, 0.3)
         .setInteractive({ useHandCursor: true })
-        .setName('resumeBtn');
+        .setName('resumeBtn').setDepth(101);
 
       this.add.text(width / 2, height / 2 + 40, '继续游戏', {
         fontSize: '20px',
         fontWeight: 'bold',
         color: '#ffffff'
-      }).setOrigin(0.5).setName('resumeText');
+      }).setOrigin(0.5).setName('resumeText').setDepth(102);
 
       resumeBtn.on('pointerdown', () => {
         this.togglePause();
@@ -523,16 +681,16 @@ export class GameScene extends Phaser.Scene {
     const width = this.cameras.main.width;
     const height = this.cameras.main.height;
 
-    const overlay = this.add.rectangle(width / 2, height / 2, width, height, 0x000000, 0.5);
+    const overlay = this.add.rectangle(width / 2, height / 2, width, height, 0x000000, 0.6);
     overlay.setAlpha(0);
 
-    const resultText = this.add.text(width / 2, height / 2, this.score > 500 ? '结算完成!' : '时间到!', {
+    const resultText = this.add.text(width / 2, height / 2 - 20, this.score > 500 ? '结算完成!' : '时间到!', {
       fontSize: '48px',
       fontWeight: 'bold',
       color: '#ffffff'
     }).setOrigin(0.5).setAlpha(0);
 
-    const scoreResult = this.add.text(width / 2, height / 2 + 60, `最终得分: ${this.score}`, {
+    const scoreResult = this.add.text(width / 2, height / 2 + 40, `最终得分: ${this.score}`, {
       fontSize: '28px',
       color: '#' + COLORS.gold.toString(16).padStart(6, '0')
     }).setOrigin(0.5).setAlpha(0);
@@ -558,7 +716,6 @@ export class GameScene extends Phaser.Scene {
 
     const width = this.cameras.main.width;
     const coinCount = 10 * intensity;
-
     const Matter = (Phaser.Physics.Matter as any).Matter;
 
     for (let i = 0; i < coinCount; i++) {
@@ -592,7 +749,6 @@ export class GameScene extends Phaser.Scene {
 
   private cleanupCoins(): void {
     if (!this.matterWorld) return;
-
     const Matter = (Phaser.Physics.Matter as any).Matter;
 
     this.coinBodies.forEach(body => {

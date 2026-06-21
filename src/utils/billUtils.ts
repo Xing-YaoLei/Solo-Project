@@ -1,32 +1,197 @@
-import type { BillData } from '../types';
-import { MERCHANT_NAMES, DISCREPANCY_REASONS } from '../config/gameConfig';
+import type { BillData, PaymentTransaction, DiscrepancyCategory } from '../types';
+import { CATEGORY_LABELS } from '../types';
+import { MERCHANT_NAMES } from '../config/gameConfig';
 
-export function generateBill(levelId: number, errorRate: number, index: number): BillData {
-  const merchantName = MERCHANT_NAMES[Math.floor(Math.random() * MERCHANT_NAMES.length)];
-  const orderCount = Math.floor(Math.random() * 30) + 5;
-  const baseAmount = orderCount * (15 + Math.random() * 10);
-  const expectedAmount = Math.round(baseAmount * 100) / 100;
-  
-  const hasDiscrepancy = Math.random() < errorRate;
-  let actualAmount = expectedAmount;
-  
-  if (hasDiscrepancy) {
-    const discrepancy = expectedAmount * (0.05 + Math.random() * 0.15) * (Math.random() > 0.5 ? 1 : -1);
-    actualAmount = Math.round((expectedAmount + discrepancy) * 100) / 100;
+const TRANSACTION_TYPES: Array<{ type: PaymentTransaction['type']; desc: string; positive: boolean }> = [
+  { type: 'order', desc: '订单收入', positive: true },
+  { type: 'refund', desc: '退款扣除', positive: false },
+  { type: 'coupon', desc: '优惠券抵扣', positive: false },
+  { type: 'platform_fee', desc: '平台抽成', positive: false },
+  { type: 'subsidy', desc: '活动补贴', positive: true },
+  { type: 'delivery', desc: '配送费结算', positive: true }
+];
+
+function generateOrderNo(): string {
+  return 'DD' + Date.now().toString().slice(-8) + Math.floor(Math.random() * 1000).toString().padStart(3, '0');
+}
+
+function formatTimestamp(hourOffset: number): string {
+  const d = new Date();
+  d.setHours(d.getHours() - hourOffset);
+  return `${d.getMonth() + 1}/${d.getDate()} ${d.getHours().toString().padStart(2, '0')}:${d.getMinutes().toString().padStart(2, '0')}`;
+}
+
+function generateTransactions(orderCount: number, category: DiscrepancyCategory): {
+  transactions: PaymentTransaction[];
+  calculatedExpected: number;
+  correctActual: number;
+} {
+  const transactions: PaymentTransaction[] = [];
+  let calculatedExpected = 0;
+  let correctActual = 0;
+
+  for (let i = 0; i < orderCount; i++) {
+    const orderAmount = Math.round((15 + Math.random() * 35) * 100) / 100;
+    calculatedExpected += orderAmount;
+
+    transactions.push({
+      id: `tx_${i}_${Date.now()}`,
+      orderNo: generateOrderNo(),
+      amount: orderAmount,
+      type: 'order',
+      status: 'success',
+      timestamp: formatTimestamp(Math.floor(Math.random() * 24)),
+      description: TRANSACTION_TYPES[0].desc
+    });
   }
 
-  const discrepancyReason = hasDiscrepancy 
-    ? DISCREPANCY_REASONS[Math.floor(Math.random() * DISCREPANCY_REASONS.length)]
-    : undefined;
+  const platformFeeRate = 0.1 + Math.random() * 0.05;
+  const platformFee = Math.round(calculatedExpected * platformFeeRate * 100) / 100;
+  transactions.push({
+    id: `tx_fee_${Date.now()}`,
+    orderNo: 'PLATFORM_' + Date.now(),
+    amount: platformFee,
+    type: 'platform_fee',
+    status: 'success',
+    timestamp: formatTimestamp(0),
+    description: `平台抽成 ${Math.round(platformFeeRate * 100)}%`
+  });
+
+  const refundCount = Math.floor(Math.random() * Math.min(3, Math.max(1, orderCount / 5)));
+  let totalRefund = 0;
+  for (let i = 0; i < refundCount; i++) {
+    const refundAmount = Math.round((8 + Math.random() * 20) * 100) / 100;
+    totalRefund += refundAmount;
+    transactions.push({
+      id: `tx_refund_${i}_${Date.now()}`,
+      orderNo: generateOrderNo(),
+      amount: refundAmount,
+      type: 'refund',
+      status: 'success',
+      timestamp: formatTimestamp(Math.floor(Math.random() * 12)),
+      description: TRANSACTION_TYPES[1].desc
+    });
+  }
+
+  const couponCount = Math.floor(Math.random() * Math.min(4, Math.max(1, orderCount / 4)));
+  let totalCoupon = 0;
+  for (let i = 0; i < couponCount; i++) {
+    const couponAmount = Math.round((2 + Math.random() * 8) * 100) / 100;
+    totalCoupon += couponAmount;
+    transactions.push({
+      id: `tx_coupon_${i}_${Date.now()}`,
+      orderNo: generateOrderNo(),
+      amount: couponAmount,
+      type: 'coupon',
+      status: 'success',
+      timestamp: formatTimestamp(Math.floor(Math.random() * 24)),
+      description: TRANSACTION_TYPES[2].desc
+    });
+  }
+
+  const hasSubsidy = Math.random() < 0.5;
+  let totalSubsidy = 0;
+  if (hasSubsidy) {
+    totalSubsidy = Math.round((10 + Math.random() * 30) * 100) / 100;
+    transactions.push({
+      id: `tx_subsidy_${Date.now()}`,
+      orderNo: 'SUBSIDY_' + Date.now(),
+      amount: totalSubsidy,
+      type: 'subsidy',
+      status: 'success',
+      timestamp: formatTimestamp(1),
+      description: TRANSACTION_TYPES[4].desc
+    });
+  }
+
+  const deliveryFee = Math.round((orderCount * (2 + Math.random() * 1.5)) * 100) / 100;
+  transactions.push({
+    id: `tx_delivery_${Date.now()}`,
+    orderNo: 'DELIVERY_' + Date.now(),
+    amount: deliveryFee,
+    type: 'delivery',
+    status: 'success',
+    timestamp: formatTimestamp(0),
+    description: TRANSACTION_TYPES[5].desc
+  });
+
+  calculatedExpected = Math.round(calculatedExpected * 100) / 100;
+  correctActual = Math.round((calculatedExpected - platformFee - totalRefund - totalCoupon + totalSubsidy + deliveryFee) * 100) / 100;
+
+  let actualAmount = correctActual;
+
+  switch (category) {
+    case 'refund_missing':
+      actualAmount = Math.round((correctActual + totalRefund) * 100) / 100;
+      break;
+    case 'coupon_missing':
+      actualAmount = Math.round((correctActual + totalCoupon) * 100) / 100;
+      break;
+    case 'platform_fee_wrong':
+      actualAmount = Math.round((correctActual + platformFee * 0.5) * 100) / 100;
+      break;
+    case 'subsidy_missing':
+      actualAmount = Math.round((correctActual - totalSubsidy) * 100) / 100;
+      break;
+    case 'delivery_fee_wrong':
+      actualAmount = Math.round((correctActual - deliveryFee * 0.3) * 100) / 100;
+      break;
+    case 'order_missing': {
+      const missingOrder = Math.round((20 + Math.random() * 30) * 100) / 100;
+      actualAmount = Math.round((correctActual - missingOrder) * 100) / 100;
+      const tx = transactions.find(t => t.type === 'order');
+      if (tx) {
+        tx.amount = Math.round((tx.amount + missingOrder / 2) * 100) / 100;
+      }
+      break;
+    }
+    case 'correct':
+    default:
+      actualAmount = correctActual;
+      break;
+  }
+
+  transactions.sort((a, b) => a.timestamp.localeCompare(b.timestamp));
+
+  return {
+    transactions,
+    calculatedExpected,
+    correctActual: actualAmount
+  };
+}
+
+export function generateBill(levelId: number, errorRate: number, index: number, forceCategory?: DiscrepancyCategory): BillData {
+  const merchantName = MERCHANT_NAMES[Math.floor(Math.random() * MERCHANT_NAMES.length)];
+  const orderCount = Math.floor(Math.random() * 25) + 5;
+
+  let category: DiscrepancyCategory = 'correct';
+  if (forceCategory) {
+    category = forceCategory;
+  } else {
+    const hasDiscrepancy = Math.random() < errorRate;
+    if (hasDiscrepancy) {
+      const categories: DiscrepancyCategory[] = [
+        'refund_missing',
+        'coupon_missing',
+        'platform_fee_wrong',
+        'subsidy_missing',
+        'delivery_fee_wrong',
+        'order_missing'
+      ];
+      category = categories[Math.floor(Math.random() * categories.length)];
+    }
+  }
+
+  const { transactions, calculatedExpected, correctActual } = generateTransactions(orderCount, category);
 
   return {
     id: `bill_${levelId}_${index}_${Date.now()}`,
     merchantName,
     orderCount,
-    expectedAmount,
-    actualAmount,
-    hasDiscrepancy,
-    discrepancyReason,
+    expectedAmount: calculatedExpected,
+    actualAmount: correctActual,
+    transactions,
+    discrepancyCategory: category,
     timestamp: Date.now()
   };
 }
@@ -43,6 +208,10 @@ export function formatAmount(amount: number): string {
   return `¥${amount.toFixed(2)}`;
 }
 
+export function getDiscrepancyLabel(category: DiscrepancyCategory): string {
+  return CATEGORY_LABELS[category];
+}
+
 export function calculateScore(
   isCorrect: boolean,
   responseTime: number,
@@ -51,7 +220,7 @@ export function calculateScore(
 ): number {
   if (!isCorrect) return -50;
 
-  const speedBonus = Math.max(0, Math.floor((3000 - responseTime) / 60));
+  const speedBonus = Math.max(0, Math.floor((5000 - responseTime) / 50));
   const comboBonus = Math.floor(baseScore * combo * 0.1);
   const total = baseScore + speedBonus + Math.min(comboBonus, 200);
 

@@ -9,6 +9,9 @@ export class ReviewScene extends Phaser.Scene {
   private stateManager: GameStateManager;
   private fromGame: boolean = false;
 
+  private rootContainer: Phaser.GameObjects.Container | null = null;
+  private staticHeader: Phaser.GameObjects.Container | null = null;
+
   constructor() {
     super('ReviewScene');
     this.audioManager = AudioManager.getInstance();
@@ -24,81 +27,147 @@ export class ReviewScene extends Phaser.Scene {
     const height = this.cameras.main.height;
 
     this.add.rectangle(width / 2, height / 2, width, height, COLORS.background);
+    this.createStaticHeader();
 
-    const lastStats = this.stateManager.getLastGameStats();
-    const records = this.stateManager.getAllRecords();
-
-    if (this.fromGame && lastStats) {
-      this.createGameResultView(width, height, lastStats);
+    if (this.fromGame) {
+      this.showGameResultView();
     } else {
-      this.createRecordsView(width, height, records);
+      this.showRecordsView();
     }
   }
 
-  private createGameResultView(width: number, height: number, stats: GameStats): void {
-    this.add.text(width / 2, 60, '结算报告', {
-      fontSize: '32px',
+  private clearContent(): void {
+    if (this.rootContainer) {
+      this.rootContainer.destroy();
+      this.rootContainer = null;
+    }
+  }
+
+  private createStaticHeader(): void {
+    const width = this.cameras.main.width;
+
+    this.staticHeader = this.add.container(0, 0);
+
+    const title = this.add.text(width / 2, 45, '复盘中心', {
+      fontSize: '28px',
       fontWeight: 'bold',
       color: '#ffffff'
     }).setOrigin(0.5);
 
-    const level = this.stateManager.getCurrentLevel();
-    if (level) {
-      this.add.text(width / 2, 100, `${level.name} - ${level.difficulty === 'easy' ? '简单' : level.difficulty === 'normal' ? '中等' : '困难'}`, {
-        fontSize: '18px',
-        color: '#a0a0a0'
-      }).setOrigin(0.5);
+    const backBtn = this.add.text(40, 40, '← 返回主菜单', {
+      fontSize: '16px',
+      color: '#a0a0a0'
+    }).setOrigin(0, 0.5).setInteractive({ useHandCursor: true });
+
+    backBtn.on('pointerdown', () => {
+      this.audioManager.playClick();
+      this.scene.start('MainMenuScene');
+    });
+
+    this.staticHeader.add([title, backBtn]);
+  }
+
+  private showGameResultView(): void {
+    this.clearContent();
+    const width = this.cameras.main.width;
+    const height = this.cameras.main.height;
+    const lastStats = this.stateManager.getLastGameStats();
+
+    if (!lastStats) {
+      this.showRecordsView();
+      return;
     }
 
-    const panelY = height / 2 - 20;
-    const panelWidth = 500;
-    const panelHeight = 320;
+    this.rootContainer = this.add.container(0, 0);
 
-    this.add.rectangle(width / 2, panelY, panelWidth, panelHeight, COLORS.cardBg)
+    const viewTitle = this.add.text(width / 2, 85, '单局结算报告', {
+      fontSize: '16px',
+      color: '#' + COLORS.primary.toString(16).padStart(6, '0')
+    }).setOrigin(0.5);
+
+    const level = this.stateManager.getCurrentLevel();
+    let levelInfoText = '';
+    if (level) {
+      const difficultyLabel = level.difficulty === 'easy' ? '简单' : level.difficulty === 'normal' ? '中等' : '困难';
+      levelInfoText = `${level.name} · ${difficultyLabel} · 回款周期${level.payoutCycle}天`;
+    }
+    const levelInfo = this.add.text(width / 2, 110, levelInfoText, {
+      fontSize: '14px',
+      color: '#888888'
+    }).setOrigin(0.5);
+
+    this.rootContainer.add([viewTitle, levelInfo]);
+
+    const panelY = 160 + 175;
+    const panelWidth = 560;
+    const panelHeight = 350;
+
+    const panelBg = this.add.rectangle(width / 2, panelY, panelWidth, panelHeight, COLORS.cardBg)
       .setStrokeStyle(2, COLORS.cardBorder, 1);
+    this.rootContainer.add(panelBg);
 
-    const scoreDisplay = this.add.text(width / 2, panelY - 110, stats.score.toString(), {
+    const scoreDisplay = this.add.text(width / 2, panelY - 130, lastStats.score.toString(), {
       fontSize: '64px',
       fontWeight: 'bold',
       color: '#' + COLORS.gold.toString(16).padStart(6, '0')
     }).setOrigin(0.5);
 
-    this.add.text(width / 2, panelY - 60, '总得分', {
-      fontSize: '18px',
+    const scoreLabel = this.add.text(width / 2, panelY - 75, '总得分', {
+      fontSize: '16px',
       color: '#a0a0a0'
     }).setOrigin(0.5);
 
-    const statsY = panelY - 10;
-    const statGap = 60;
+    this.rootContainer.add([scoreDisplay, scoreLabel]);
 
-    this.createStatItem(width / 2 - 120, statsY, '正确', stats.correctCount, COLORS.success);
-    this.createStatItem(width / 2 + 120, statsY, '错误', stats.wrongCount, COLORS.danger);
-    this.createStatItem(width / 2 - 120, statsY + statGap, '最高连击', stats.maxCombo, COLORS.gold);
-    
-    const accuracy = stats.totalBills > 0 
-      ? Math.round((stats.correctCount / stats.totalBills) * 100) 
-      : 0;
-    this.createStatItem(width / 2 + 120, statsY + statGap, '正确率', `${accuracy}%`, COLORS.primary);
+    const statsY = panelY - 25;
+    const statGap = 70;
+    const stats = [
+      { label: '正确', value: lastStats.correctCount, color: COLORS.success },
+      { label: '错误', value: lastStats.wrongCount, color: COLORS.danger },
+      { label: '最高连击', value: lastStats.maxCombo, color: COLORS.gold }
+    ];
 
-    const avgTime = stats.totalBills > 0 
-      ? Math.round(stats.avgResponseTime / 100) / 10 
+    const accuracy = lastStats.totalBills > 0
+      ? Math.round((lastStats.correctCount / lastStats.totalBills) * 100)
       : 0;
-    this.add.text(width / 2, statsY + statGap * 2, `平均响应: ${avgTime}秒/单`, {
-      fontSize: '16px',
+    const avgTime = lastStats.totalBills > 0
+      ? Math.round(lastStats.avgResponseTime / 100) / 10
+      : 0;
+
+    stats.forEach((s, i) => {
+      const sx = width / 2 - (stats.length - 1) * statGap / 2 + i * statGap;
+      const val = this.add.text(sx, statsY, s.value.toString(), {
+        fontSize: '28px',
+        fontWeight: 'bold',
+        color: '#' + s.color.toString(16).padStart(6, '0')
+      }).setOrigin(0.5);
+      const lbl = this.add.text(sx, statsY + 28, s.label, {
+        fontSize: '13px',
+        color: '#888888'
+      }).setOrigin(0.5);
+      this.rootContainer!.add([val, lbl]);
+    });
+
+    const acc = this.add.text(width / 2 - 80, statsY + 75, `正确率 ${accuracy}%`, {
+      fontSize: '15px',
+      color: '#' + COLORS.primary.toString(16).padStart(6, '0')
+    }).setOrigin(0.5);
+    const avg = this.add.text(width / 2 + 80, statsY + 75, `平均响应 ${avgTime}s/单`, {
+      fontSize: '15px',
       color: '#888888'
     }).setOrigin(0.5);
+    this.rootContainer.add([acc, avg]);
 
-    const record = this.stateManager.getLevelRecord(stats.levelId);
-    if (record && record.bestScore === stats.score && stats.score > 0) {
-      const newRecordBadge = this.add.text(width / 2 + 180, panelY - 130, '🎉 新纪录!', {
+    const record = this.stateManager.getLevelRecord(lastStats.levelId);
+    if (record && record.bestScore === lastStats.score && lastStats.score > 0) {
+      const badge = this.add.text(width / 2 + 200, panelY - 150, '🎉 新纪录!', {
         fontSize: '20px',
         fontWeight: 'bold',
         color: '#' + COLORS.warning.toString(16).padStart(6, '0')
-      }).setOrigin(0.5);
-      newRecordBadge.setAngle(-10);
-
+      }).setOrigin(0.5).setAngle(-10);
+      this.rootContainer.add(badge);
       this.tweens.add({
-        targets: newRecordBadge,
+        targets: badge,
         scale: 1.1,
         duration: 300,
         yoyo: true,
@@ -106,33 +175,31 @@ export class ReviewScene extends Phaser.Scene {
       });
     }
 
-    const btnY = height - 80;
+    const btnY = panelY + panelHeight / 2 + 50;
     const btnGap = 20;
 
-    const retryBtn = this.add.rectangle(width / 2 - 110 - btnGap / 2, btnY, 200, 50, COLORS.primary)
-      .setStrokeStyle(2, 0xffffff, 0.3)
+    const retryBtn = this.add.rectangle(width / 2 - 115 - btnGap / 2, btnY, 210, 50, COLORS.primary)
+      .setStrokeStyle(2, 0xffffff, 0.25)
       .setInteractive({ useHandCursor: true });
-
-    this.add.text(width / 2 - 110 - btnGap / 2, btnY, '再来一局', {
+    const retryText = this.add.text(width / 2 - 115 - btnGap / 2, btnY, '再来一局', {
       fontSize: '18px',
       fontWeight: 'bold',
       color: '#ffffff'
     }).setOrigin(0.5);
 
-    const recordsBtn = this.add.rectangle(width / 2 + 110 + btnGap / 2, btnY, 200, 50, COLORS.success)
-      .setStrokeStyle(2, 0xffffff, 0.3)
+    const recordsBtn = this.add.rectangle(width / 2 + 115 + btnGap / 2, btnY, 210, 50, COLORS.success)
+      .setStrokeStyle(2, 0xffffff, 0.25)
       .setInteractive({ useHandCursor: true });
-
-    this.add.text(width / 2 + 110 + btnGap / 2, btnY, '查看全部记录', {
+    const recordsText = this.add.text(width / 2 + 115 + btnGap / 2, btnY, '查看全部记录', {
       fontSize: '18px',
       fontWeight: 'bold',
       color: '#ffffff'
     }).setOrigin(0.5);
 
-    retryBtn.on('pointerover', () => retryBtn.setScale(1.05));
-    retryBtn.on('pointerout', () => retryBtn.setScale(1));
-    recordsBtn.on('pointerover', () => recordsBtn.setScale(1.05));
-    recordsBtn.on('pointerout', () => recordsBtn.setScale(1));
+    [retryBtn, recordsBtn].forEach(b => {
+      b.on('pointerover', () => b.setScale(1.05));
+      b.on('pointerout', () => b.setScale(1));
+    });
 
     retryBtn.on('pointerdown', () => {
       this.audioManager.playClick();
@@ -143,18 +210,10 @@ export class ReviewScene extends Phaser.Scene {
     recordsBtn.on('pointerdown', () => {
       this.audioManager.playClick();
       this.fromGame = false;
-      this.createRecordsView(width, height, this.stateManager.getAllRecords());
+      this.showRecordsView();
     });
 
-    const backBtn = this.add.text(40, 40, '← 返回主菜单', {
-      fontSize: '18px',
-      color: '#a0a0a0'
-    }).setOrigin(0, 0.5).setInteractive({ useHandCursor: true });
-
-    backBtn.on('pointerdown', () => {
-      this.audioManager.playClick();
-      this.scene.start('MainMenuScene');
-    });
+    this.rootContainer.add([retryBtn, retryText, recordsBtn, recordsText]);
 
     scoreDisplay.setScale(0);
     this.tweens.add({
@@ -166,91 +225,89 @@ export class ReviewScene extends Phaser.Scene {
     });
   }
 
-  private createStatItem(x: number, y: number, label: string, value: number | string, color: number): void {
-    const valueText = this.add.text(x, y, value.toString(), {
-      fontSize: '28px',
-      fontWeight: 'bold',
-      color: '#' + color.toString(16).padStart(6, '0')
+  private showRecordsView(): void {
+    this.clearContent();
+    const width = this.cameras.main.width;
+    const height = this.cameras.main.height;
+    const records = this.stateManager.getAllRecords();
+
+    this.rootContainer = this.add.container(0, 0);
+
+    const viewTitle = this.add.text(width / 2, 85, '全关卡成绩 · 按回款周期对比', {
+      fontSize: '16px',
+      color: '#' + COLORS.warning.toString(16).padStart(6, '0')
     }).setOrigin(0.5);
+    this.rootContainer.add(viewTitle);
 
-    this.add.text(x, y + 25, label, {
-      fontSize: '14px',
-      color: '#888888'
-    }).setOrigin(0.5);
-  }
-
-  private createRecordsView(width: number, height: number, records: LevelRecord[]): void {
-    this.add.text(width / 2, 60, '复盘记录', {
-      fontSize: '32px',
-      fontWeight: 'bold',
-      color: '#ffffff'
-    }).setOrigin(0.5);
-
-    this.add.text(width / 2, 95, '按回款周期对比各关卡表现', {
-      fontSize: '14px',
-      color: '#888888'
-    }).setOrigin(0.5);
-
-    const backBtn = this.add.text(40, 40, '← 返回', {
-      fontSize: '18px',
-      color: '#a0a0a0'
-    }).setOrigin(0, 0.5).setInteractive({ useHandCursor: true });
-
-    backBtn.on('pointerdown', () => {
-      this.audioManager.playClick();
-      if (this.fromGame) {
-        this.fromGame = false;
-        const lastStats = this.stateManager.getLastGameStats();
-        if (lastStats) {
-          this.createGameResultView(width, height, lastStats);
-          return;
-        }
-      }
-      this.scene.start('MainMenuScene');
-    });
+    if (this.stateManager.getLastGameStats()) {
+      const backBtn = this.add.text(width - 40, 40, '← 单局报告', {
+        fontSize: '14px',
+        color: '#' + COLORS.primary.toString(16).padStart(6, '0')
+      }).setOrigin(1, 0.5).setInteractive({ useHandCursor: true });
+      backBtn.on('pointerdown', () => {
+        this.audioManager.playClick();
+        this.fromGame = true;
+        this.showGameResultView();
+      });
+      this.rootContainer.add(backBtn);
+    }
 
     if (records.length === 0) {
-      this.add.text(width / 2, height / 2, '暂无记录，快去挑战吧！', {
+      const empty = this.add.text(width / 2, height / 2 + 20, '暂无记录，快去挑战吧！', {
         fontSize: '22px',
         color: '#666666'
       }).setOrigin(0.5);
 
-      const startBtn = this.add.rectangle(width / 2, height / 2 + 60, 200, 50, COLORS.primary)
-        .setStrokeStyle(2, 0xffffff, 0.3)
+      const startBtn = this.add.rectangle(width / 2, height / 2 + 80, 200, 50, COLORS.primary)
+        .setStrokeStyle(2, 0xffffff, 0.25)
         .setInteractive({ useHandCursor: true });
-
-      this.add.text(width / 2, height / 2 + 60, '开始游戏', {
+      const startText = this.add.text(width / 2, height / 2 + 80, '开始游戏', {
         fontSize: '18px',
         fontWeight: 'bold',
         color: '#ffffff'
       }).setOrigin(0.5);
 
+      startBtn.on('pointerover', () => startBtn.setScale(1.05));
+      startBtn.on('pointerout', () => startBtn.setScale(1));
       startBtn.on('pointerdown', () => {
         this.audioManager.playClick();
         this.scene.start('LevelSelectScene');
       });
+
+      this.rootContainer.add([empty, startBtn, startText]);
       return;
     }
 
     const sortedRecords = [...records].sort((a, b) => a.payoutCycle - b.payoutCycle);
 
-    const cardWidth = 220;
-    const cardHeight = 300;
-    const startX = width / 2 - (cardWidth + 30) * (sortedRecords.length - 1) / 2;
-    const cardY = height / 2 + 20;
+    const cardWidth = 230;
+    const cardHeight = 340;
+    const totalGap = cardWidth + 25;
+    const startX = width / 2 - (sortedRecords.length - 1) * totalGap / 2;
+    const cardY = height / 2 + 30;
 
     sortedRecords.forEach((record, index) => {
-      const x = startX + index * (cardWidth + 30);
-      this.createRecordCard(x, cardY, record, cardWidth, cardHeight);
+      const x = startX + index * totalGap;
+      this.createRecordCard(x, cardY, record, cardWidth, cardHeight, index);
     });
 
-    const compareTip = this.add.text(width / 2, height - 50, '💡 回款周期越短，资金周转越快，经营效率越高', {
-      fontSize: '14px',
+    const tip = this.add.text(width / 2, height - 35, '💡 回款周期越短，资金周转越快，经营效率越高', {
+      fontSize: '13px',
       color: '#666666'
     }).setOrigin(0.5);
+    this.rootContainer.add(tip);
   }
 
-  private createRecordCard(x: number, y: number, record: LevelRecord, width: number, height: number): void {
+  private createRecordCard(
+    x: number,
+    y: number,
+    record: LevelRecord,
+    width: number,
+    height: number,
+    index: number
+  ): void {
+    if (!this.rootContainer) return;
+
     const card = this.add.rectangle(x, y, width, height, COLORS.cardBg)
       .setStrokeStyle(2, COLORS.cardBorder, 1);
 
@@ -260,69 +317,55 @@ export class ReviewScene extends Phaser.Scene {
       color: '#ffffff'
     }).setOrigin(0.5);
 
-    const cycleBadge = this.add.rectangle(x, y - height / 2 + 70, 100, 28, COLORS.gold, 0.2)
+    const cycleBg = this.add.rectangle(x, y - height / 2 + 70, 110, 30, COLORS.gold, 0.18)
       .setStrokeStyle(1, COLORS.gold, 0.5);
-
-    this.add.text(x, y - height / 2 + 70, `${record.payoutCycle}天回款`, {
+    const cycleText = this.add.text(x, y - height / 2 + 70, `${record.payoutCycle}天回款`, {
       fontSize: '14px',
       fontWeight: 'bold',
       color: '#' + COLORS.gold.toString(16).padStart(6, '0')
     }).setOrigin(0.5);
 
-    const divider = this.add.rectangle(x, y - height / 2 + 95, width - 30, 1, COLORS.cardBorder, 0.5);
+    const divider = this.add.rectangle(x, y - height / 2 + 100, width - 30, 1, COLORS.cardBorder, 0.5);
 
-    const scoreLabel = this.add.text(x, y - height / 2 + 125, '最高得分', {
-      fontSize: '13px',
-      color: '#888888'
-    }).setOrigin(0.5);
+    const rows = [
+      { label: '最高得分', value: record.bestScore.toString(), color: COLORS.primary, size: '32px' },
+      { label: '最高连击', value: record.bestCombo.toString(), color: COLORS.gold, size: '24px' },
+      { label: '正确率', value: `${Math.round(record.accuracy * 100)}%`, color: COLORS.success, size: '24px' }
+    ];
 
-    const scoreValue = this.add.text(x, y - height / 2 + 155, record.bestScore.toString(), {
-      fontSize: '32px',
-      fontWeight: 'bold',
-      color: '#' + COLORS.primary.toString(16).padStart(6, '0')
-    }).setOrigin(0.5);
+    let rowY = y - height / 2 + 135;
+    rows.forEach(r => {
+      const lbl = this.add.text(x, rowY, r.label, {
+        fontSize: '12px',
+        color: '#888888'
+      }).setOrigin(0.5);
+      rowY += 18;
+      const val = this.add.text(x, rowY, r.value, {
+        fontSize: r.size,
+        fontWeight: 'bold',
+        color: '#' + r.color.toString(16).padStart(6, '0')
+      }).setOrigin(0.5);
+      rowY += 32;
+      this.rootContainer!.add([lbl, val]);
+    });
 
-    const comboLabel = this.add.text(x, y - height / 2 + 190, '最高连击', {
-      fontSize: '13px',
-      color: '#888888'
-    }).setOrigin(0.5);
-
-    const comboValue = this.add.text(x, y - height / 2 + 215, record.bestCombo.toString(), {
-      fontSize: '24px',
-      fontWeight: 'bold',
-      color: '#' + COLORS.gold.toString(16).padStart(6, '0')
-    }).setOrigin(0.5);
-
-    const accuracyLabel = this.add.text(x, y - height / 2 + 245, '正确率', {
-      fontSize: '13px',
-      color: '#888888'
-    }).setOrigin(0.5);
-
-    const accuracyValue = this.add.text(x, y - height / 2 + 270, `${Math.round(record.accuracy * 100)}%`, {
-      fontSize: '24px',
-      fontWeight: 'bold',
-      color: '#' + COLORS.success.toString(16).padStart(6, '0')
-    }).setOrigin(0.5);
-
-    const playCount = this.add.text(x, y + height / 2 - 20, `挑战次数: ${record.playCount}`, {
+    const playCount = this.add.text(x, y + height / 2 - 60, `挑战次数: ${record.playCount}`, {
       fontSize: '12px',
       color: '#666666'
     }).setOrigin(0.5);
 
-    const challengeBtn = this.add.rectangle(x, y + height / 2 - 55, 140, 38, COLORS.primary, 0.8)
+    const btn = this.add.rectangle(x, y + height / 2 - 30, 150, 40, COLORS.primary, 0.85)
       .setStrokeStyle(2, 0xffffff, 0.2)
       .setInteractive({ useHandCursor: true });
-
-    this.add.text(x, y + height / 2 - 55, '再次挑战', {
+    const btnText = this.add.text(x, y + height / 2 - 30, '再次挑战', {
       fontSize: '15px',
       fontWeight: 'bold',
       color: '#ffffff'
     }).setOrigin(0.5);
 
-    challengeBtn.on('pointerover', () => challengeBtn.setScale(1.05));
-    challengeBtn.on('pointerout', () => challengeBtn.setScale(1));
-
-    challengeBtn.on('pointerdown', () => {
+    btn.on('pointerover', () => btn.setScale(1.05));
+    btn.on('pointerout', () => btn.setScale(1));
+    btn.on('pointerdown', () => {
       this.audioManager.playClick();
       this.audioManager.vibrate(30);
       const level = this.stateManager.getLevelById(record.levelId);
@@ -330,6 +373,22 @@ export class ReviewScene extends Phaser.Scene {
         this.stateManager.setCurrentLevel(level);
         this.scene.start('GameScene');
       }
+    });
+
+    this.rootContainer.add([
+      card, levelName, cycleBg, cycleText, divider,
+      playCount, btn, btnText
+    ]);
+
+    card.setAlpha(0);
+    card.setScale(0.9);
+    this.tweens.add({
+      targets: card,
+      alpha: 1,
+      scale: 1,
+      duration: 400,
+      delay: index * 100,
+      ease: 'Back.easeOut'
     });
   }
 }
