@@ -34,7 +34,7 @@ export class ReportsService {
       where,
       include: {
         lawyer: true,
-        invoices: true,
+        invoices: { orderBy: { createdAt: 'desc' } },
       },
     });
 

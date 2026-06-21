@@ -1,5 +1,6 @@
 import { Injectable, NotFoundException, BadRequestException } from '@nestjs/common';
 import { PrismaService } from '../prisma/prisma.service';
+import { RedisService } from '../redis/redis.service';
 import { TimelineService } from '../timeline/timeline.service';
 import { CreateInvoiceDto, UpdatePaymentStatusDto } from './dto/invoices.dto';
 import { TimelineEventType, PaymentStatus } from '@legal/shared';
@@ -8,8 +9,16 @@ import { TimelineEventType, PaymentStatus } from '@legal/shared';
 export class InvoicesService {
   constructor(
     private prisma: PrismaService,
+    private redis: RedisService,
     private timelineService: TimelineService,
   ) {}
+
+  async clearReportCache() {
+    const keys = await this.redis.keys('report:monthly:*');
+    if (keys.length > 0) {
+      await Promise.all(keys.map((k) => this.redis.del(k)));
+    }
+  }
 
   async findByCase(caseId: string) {
     const caseData = await this.prisma.case.findUnique({ where: { id: caseId } });
@@ -55,6 +64,7 @@ export class InvoicesService {
       operatorName: operator?.name || '',
       metadata: { invoiceId: inv.id },
     });
+    await this.clearReportCache();
     return inv;
   }
 
@@ -109,6 +119,7 @@ export class InvoicesService {
       operatorName: operator?.name || '',
       metadata: { invoiceId: updated.id },
     });
+    await this.clearReportCache();
     return updated;
   }
 }

@@ -214,7 +214,7 @@ export class CasesService {
           client: { include: { user: true } },
           lawyer: true,
           assistant: true,
-          invoices: true,
+          invoices: { orderBy: { createdAt: 'desc' } },
         },
       }),
       this.prisma.case.count({ where }),
@@ -241,7 +241,7 @@ export class CasesService {
         materials: { orderBy: { createdAt: 'desc' } },
         conflictChecks: { orderBy: { checkedAt: 'desc' } },
         timelineEvents: { orderBy: { createdAt: 'desc' } },
-        invoices: true,
+        invoices: { orderBy: { createdAt: 'desc' } },
       },
     });
 
