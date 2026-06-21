@@ -102,7 +102,8 @@ export const routeTree = rootRoute.addChildren([
   authenticatedRoute.addChildren([
     indexRoute,
     dashboardRoute,
-    documentsRoute.addChildren([documentDetailRoute]),
+    documentsRoute,
+    documentDetailRoute,
     auditRoute,
     statsRoute,
   ]),

@@ -67,6 +67,41 @@ export const DOC_TYPE_LABELS: Record<DocumentType, string> = {
   other: '其他',
 }
 
+export interface Interaction {
+  id: number
+  document_id: number
+  user_id: number
+  interaction_type: string
+  content: string
+  participants: string[]
+  attachments: any[]
+  created_at: string
+}
+
+export interface RiskHit {
+  id: number
+  document_id: number
+  keyword: string
+  context: string | null
+  position_start: number | null
+  position_end: number | null
+  severity: string
+  suggestion: string | null
+  created_at: string
+}
+
+export interface AuditRecord {
+  id: number
+  document_id: number
+  auditor_id: number
+  action: string
+  previous_status: string | null
+  new_status: string | null
+  comments: string | null
+  material_tags_suggestion: string[]
+  created_at: string
+}
+
 export interface Document {
   id: number
   title: string
@@ -104,6 +139,8 @@ export interface DocumentVersion {
 
 export interface DocumentDetail extends Document {
   versions: DocumentVersion[]
+  interactions: Interaction[]
+  audit_records: AuditRecord[]
 }
 
 export type InteractionType =
@@ -121,41 +158,6 @@ export const INTERACTION_TYPE_LABELS: Record<InteractionType, string> = {
   internal_discussion: '内部讨论',
   revision_note: '修改备注',
   other: '其他',
-}
-
-export interface Interaction {
-  id: number
-  document_id: number
-  user_id: number
-  interaction_type: string
-  content: string
-  participants: string[]
-  attachments: any[]
-  created_at: string
-}
-
-export interface RiskHit {
-  id: number
-  document_id: number
-  keyword: string
-  context: string | null
-  position_start: number | null
-  position_end: number | null
-  severity: string
-  suggestion: string | null
-  created_at: string
-}
-
-export interface AuditRecord {
-  id: number
-  document_id: number
-  auditor_id: number
-  action: string
-  previous_status: string | null
-  new_status: string | null
-  comments: string | null
-  material_tags_suggestion: string[]
-  created_at: string
 }
 
 export interface DashboardData {

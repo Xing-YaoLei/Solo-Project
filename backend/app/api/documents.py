@@ -1,7 +1,7 @@
 from datetime import datetime
 from typing import Optional
 from fastapi import APIRouter, Depends, HTTPException, Query
-from sqlalchemy.orm import Session
+from sqlalchemy.orm import Session, joinedload
 
 from app.database import get_db
 from app.models import User, Document, DocumentStatus, DocumentVersion
@@ -53,7 +53,7 @@ def get_dashboard(
         ])
     ).count() if current_user.role in ["lawyer", "assistant"] else pending_review
 
-    recent = query.order_by(Document.updated_at.desc()).limit(10).all()
+    recent = query.options(joinedload(Document.assignee)).order_by(Document.updated_at.desc()).limit(10).all()
     recent_list = [
         {
             "id": d.id,
@@ -163,7 +163,11 @@ def get_document(
     current_user: User = Depends(get_current_user),
 ):
     """获取文书详情"""
-    document = db.query(Document).filter(Document.id == document_id).first()
+    document = db.query(Document).options(
+        joinedload(Document.versions),
+        joinedload(Document.interactions),
+        joinedload(Document.audit_records),
+    ).filter(Document.id == document_id).first()
     if not document:
         raise HTTPException(status_code=404, detail="文书不存在")
 

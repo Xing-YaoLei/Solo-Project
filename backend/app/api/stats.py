@@ -1,11 +1,10 @@
 from datetime import datetime, timedelta
-from typing import Optional
 from fastapi import APIRouter, Depends, HTTPException, Query
-from sqlalchemy import func, extract
+from sqlalchemy import func
 from sqlalchemy.orm import Session
 
 from app.database import get_db
-from app.models import User, Document, DocumentStatus, DocumentType, AuditRecord
+from app.models import User, Document, DocumentStatus, AuditRecord
 from app.api.deps import require_roles
 
 router = APIRouter(prefix="/stats", tags=["统计报表"])
@@ -215,8 +214,8 @@ def get_stats_by_assignee(
         {
             "user_id": r[0],
             "full_name": r[1],
-            "role": r[3].value if hasattr(r[3], "value") else r[3],
-            "total": r[4],
+            "role": r[2].value if hasattr(r[2], "value") else r[2],
+            "total": r[3],
             "approved": approved_by_user.get(r[0], 0),
             "rejected": rejected_by_user.get(r[0], 0),
             "pending": pending_by_user.get(r[0], 0),

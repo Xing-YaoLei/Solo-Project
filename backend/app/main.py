@@ -68,7 +68,11 @@ def init_db():
 
 @asynccontextmanager
 async def lifespan(app: FastAPI):
-    init_db()
+    try:
+        init_db()
+    except Exception as e:
+        import logging
+        logging.getLogger("app.main").warning(f"Database init skipped (unavailable): {e}")
     yield
 
 

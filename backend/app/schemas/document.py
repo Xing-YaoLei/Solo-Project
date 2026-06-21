@@ -57,10 +57,12 @@ class Document(DocumentBase):
     document_no: Optional[str] = None
     status: str
     creator_id: Optional[int] = None
+    assignee_id: Optional[int] = None
     current_version: int
     is_version_verified: bool
     risk_level: Optional[str] = None
     material_tags: List[str] = []
+    review_comments: Optional[str] = None
     rejection_count: int = 0
     created_at: datetime
     updated_at: datetime
@@ -73,3 +75,5 @@ class Document(DocumentBase):
 
 class DocumentDetail(Document):
     versions: List[DocumentVersion] = []
+    interactions: List[Any] = []
+    audit_records: List[Any] = []

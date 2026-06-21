@@ -73,30 +73,48 @@ export default function DocumentDetail() {
   const fetchAll = async () => {
     try {
       setLoading(true)
-      const [docRes, interRes, riskRes, auditRes] = await Promise.all([
-        documentApi.get(Number(id)),
-        auditApi.getInteractions(Number(id)),
-        auditApi.getRiskHits(Number(id)),
-        auditApi.getAuditHistory(Number(id)),
-      ])
-      setDoc(docRes.data)
-      setInteractions(interRes.data)
-      setRiskHits(riskRes.data)
-      setAuditHistory(auditRes.data)
+      const docRes = await documentApi.get(Number(id))
+      const docData = docRes.data
+      setDoc(docData)
+
+      if (docData.interactions && docData.interactions.length > 0) {
+        setInteractions(docData.interactions)
+      } else {
+        try {
+          const interRes = await auditApi.getInteractions(Number(id))
+          setInteractions(interRes.data)
+        } catch { setInteractions([]) }
+      }
+
+      try {
+        const riskRes = await auditApi.getRiskHits(Number(id))
+        setRiskHits(riskRes.data)
+      } catch { setRiskHits([]) }
+
+      if (docData.audit_records && docData.audit_records.length > 0) {
+        setAuditHistory(docData.audit_records)
+      } else {
+        try {
+          const auditRes = await auditApi.getAuditHistory(Number(id))
+          setAuditHistory(auditRes.data)
+        } catch { setAuditHistory([]) }
+      }
 
       setEditForm({
-        title: docRes.data.title,
-        content: docRes.data.content,
-        summary: docRes.data.summary || '',
-        client_name: docRes.data.client_name || '',
-        case_no: docRes.data.case_no || '',
-        material_tags_str: (docRes.data.material_tags || []).join(', '),
-        assignee_id: docRes.data.assignee_id || undefined,
+        title: docData.title,
+        content: docData.content,
+        summary: docData.summary || '',
+        client_name: docData.client_name || '',
+        case_no: docData.case_no || '',
+        material_tags_str: (docData.material_tags || []).join(', '),
+        assignee_id: docData.assignee_id || undefined,
       })
 
       if (hasRole('admin', 'manager')) {
-        const userRes = await authApi.getUsers()
-        setUsers(userRes.data)
+        try {
+          const userRes = await authApi.getUsers()
+          setUsers(userRes.data)
+        } catch {}
       }
     } finally {
       setLoading(false)
