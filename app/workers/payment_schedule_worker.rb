@@ -116,11 +116,11 @@ class PaymentReminderWorker
     settlement = Settlement.find_by(id: settlement_id)
     return unless settlement&.payment_scheduled? && !settlement.completed?
 
-    NotificationWorker.perform_async(settlement.merchant_id, :payment_reminder, settlement.id)
+    NotificationWorker.perform_async(settlement.merchant_id, 'payment_reminder', settlement.id)
 
     finance_users = User.by_role(:finance)
     finance_users.each do |user|
-      NotificationWorker.perform_async(user.id, :payment_reminder, settlement.id)
+      NotificationWorker.perform_async(user.id, 'payment_reminder', settlement.id)
     end
   end
 end

@@ -57,7 +57,7 @@ class BatchSettlementWorker
     city_managers.each do |manager|
       NotificationWorker.perform_async(
         manager.id,
-        :batch_settlement_summary,
+        'batch_settlement_summary',
         @period,
         @results[:success].count,
         @results[:failed].count,

@@ -36,10 +36,10 @@ class SettlementRejectionService
         description: "驳回原因: #{@reason || '无原因'}\n请修改后重新提交。",
         priority: :high,
         status: :pending,
-        due_date: 3.business_days.from_now
+        due_date: 3.days.from_now.to_date
       )
 
-      NotificationWorker.perform_async(@settlement.merchant_id, :settlement_rejected) if @settlement.merchant_id
+      NotificationWorker.perform_async(@settlement.merchant_id, 'settlement_rejected') if @settlement.merchant_id
 
       @settlement
     end
@@ -82,7 +82,7 @@ class SettlementRejectionService
               description: "差异金额: #{sprintf("%.2f", @settlement.difference_amount)}元",
               priority: discrepancy_priority(@settlement.difference_amount),
               status: :pending,
-              due_date: 3.business_days.from_now
+              due_date: 3.days.from_now.to_date
             )
           end
         end
@@ -98,7 +98,7 @@ class SettlementRejectionService
         description: "请等待审批。",
         priority: :medium,
         status: :pending,
-        due_date: 5.business_days.from_now
+        due_date: 5.days.from_now.to_date
       )
 
       @settlement

@@ -16,6 +16,7 @@ ActiveRecord::Schema[8.1].define(version: 2026_06_22_000003) do
 
   create_table "amount_audit_logs", id: :uuid, default: -> { "gen_random_uuid()" }, force: :cascade do |t|
     t.text "change_reason"
+    t.string "change_type"
     t.datetime "created_at", null: false
     t.jsonb "metadata", default: {}
     t.decimal "new_amount", precision: 12, scale: 2, default: "0.0"
@@ -23,6 +24,7 @@ ActiveRecord::Schema[8.1].define(version: 2026_06_22_000003) do
     t.uuid "operator_id", null: false
     t.uuid "settlement_id", null: false
     t.datetime "updated_at", null: false
+    t.index ["change_type"], name: "index_amount_audit_logs_on_change_type"
     t.index ["operator_id"], name: "index_amount_audit_logs_on_operator_id"
     t.index ["settlement_id"], name: "index_amount_audit_logs_on_settlement_id"
   end
@@ -155,7 +157,9 @@ ActiveRecord::Schema[8.1].define(version: 2026_06_22_000003) do
     t.decimal "merchant_amount", precision: 12, scale: 2, default: "0.0"
     t.uuid "merchant_id", null: false
     t.jsonb "metadata", default: {}
+    t.integer "order_count", default: 0
     t.date "payment_date"
+    t.string "payment_method", default: "bank_transfer"
     t.string "period", null: false
     t.integer "status", default: 0, null: false
     t.decimal "system_amount", precision: 12, scale: 2, default: "0.0"
@@ -182,6 +186,8 @@ ActiveRecord::Schema[8.1].define(version: 2026_06_22_000003) do
   create_table "todo_items", id: :uuid, default: -> { "gen_random_uuid()" }, force: :cascade do |t|
     t.uuid "assignee_id", null: false
     t.uuid "assigner_id"
+    t.datetime "completed_at"
+    t.text "completion_note"
     t.datetime "created_at", null: false
     t.text "description"
     t.uuid "discrepancy_id"

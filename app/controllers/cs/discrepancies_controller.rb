@@ -34,31 +34,28 @@ module Cs
     def resolve
       authorize @discrepancy, :resolve?
 
-      if @discrepancy.update(status: :resolved, resolution: params[:resolution])
+      resolution_type = params[:resolution_type] || 'agreed'
+      new_amount = params[:new_amount]&.to_d || @discrepancy.settlement.system_amount
+      comment = params[:comment]
+
+      service = DiscrepancyResolutionService.new(@discrepancy, current_user)
+      begin
+        service.resolve(resolution_type, new_amount, comment)
         redirect_to cs_discrepancy_path(@discrepancy), notice: "差异已解决。"
-      else
-        redirect_to cs_discrepancy_path(@discrepancy), alert: "解决失败，请重试。"
+      rescue StandardError => e
+        redirect_to cs_discrepancy_path(@discrepancy), alert: "解决失败: #{e.message}"
       end
     end
 
     def escalate
       authorize @discrepancy, :escalate?
 
-      if @discrepancy.update(status: :investigating)
-        manager = User.city_manager.first
-        TodoItem.create!(
-          title: "差异需要调查: 结算单 #{@discrepancy.settlement.period}",
-          description: @discrepancy.description,
-          assignee: manager,
-          assigner: current_user,
-          discrepancy: @discrepancy,
-          priority: :urgent,
-          status: :pending,
-          due_date: 1.day.from_now
-        )
-        redirect_to cs_discrepancy_path(@discrepancy), notice: "差异已升级。"
-      else
-        redirect_to cs_discrepancy_path(@discrepancy), alert: "升级失败，请重试。"
+      service = DiscrepancyResolutionService.new(@discrepancy, current_user)
+      begin
+        service.escalate(params[:comment])
+        redirect_to cs_discrepancy_path(@discrepancy), notice: "差异已升级，已通知经理处理。"
+      rescue StandardError => e
+        redirect_to cs_discrepancy_path(@discrepancy), alert: "升级失败: #{e.message}"
       end
     end
 

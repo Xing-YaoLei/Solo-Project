@@ -219,12 +219,12 @@ class DataSyncWorker
     if result[:success]
       admin_users = User.by_role(:city_manager)
       admin_users.each do |user|
-        NotificationWorker.perform_async(user.id, :data_sync_completed, @sync_type, result[:record_count])
+        NotificationWorker.perform_async(user.id, 'data_sync_completed', @sync_type, result[:record_count])
       end
     else
       admin_users = User.by_role(:city_manager)
       admin_users.each do |user|
-        NotificationWorker.perform_async(user.id, :data_sync_failed, @sync_type, result[:error])
+        NotificationWorker.perform_async(user.id, 'data_sync_failed', @sync_type, result[:error])
       end
     end
   end

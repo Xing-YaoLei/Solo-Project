@@ -5,123 +5,495 @@
   <span class="text-[#1e3a5f] font-medium">详情</span>
 <% end %>
 
+<%
+  status_label = { pending: '待处理', processing: '处理中', approved: '已批准', rejected: '已驳回', completed: '已完成' }
+  status_color = {
+    pending: 'bg-orange-100 text-orange-600',
+    processing: 'bg-blue-100 text-blue-600',
+    approved: 'bg-green-100 text-green-600',
+    rejected: 'bg-red-100 text-red-600',
+    completed: 'bg-gray-100 text-gray-600'
+  }
+%>
+
 <div class="p-6 space-y-6">
   <div class="bg-white rounded-2xl p-6 shadow-card animate-fade-in">
     <div class="flex items-start justify-between">
       <div>
         <div class="flex items-center gap-3 mb-2">
-          <h2 class="text-2xl font-bold text-[#1e3a5f] font-serif">结算单 #10023</h2>
-          <span class="px-3 py-1 rounded-full text-sm font-medium bg-orange-100 text-orange-600">待处理</span>
+          <h2 class="text-2xl font-bold text-[#1e3a5f] font-serif">结算单 #<%= @settlement.id[0..7] %></h2>
+          <span class="px-3 py-1 rounded-full text-sm font-medium <%= status_color[@settlement.status.to_sym] %>">
+            <%= status_label[@settlement.status.to_sym] || @settlement.status %>
+          </span>
+          <% if @settlement.difference_amount != 0 %>
+            <span class="px-3 py-1 rounded-full text-sm font-medium bg-red-100 text-red-600">
+              有差异
+            </span>
+          <% end %>
         </div>
-        <p class="text-gray-500">商户：美味餐饮有限公司 · 结算周期：2024年第24周（6月10日-6月16日）</p>
+        <p class="text-gray-500">
+          商户：<%= @settlement.merchant&.name || '未知商户' %> ·
+          结算周期：<%= @settlement.period %> ·
+          付款日期：<%= @settlement.payment_date&.strftime('%Y-%m-%d') || '待安排' %>
+        </p>
+        <% if @settlement.handler %>
+          <p class="text-sm text-gray-400 mt-1">处理人：<%= @settlement.handler.name %> （<%= @settlement.handler.role_name %>）</p>
+        <% end %>
       </div>
-      <div class="flex items-center gap-3">
-        <button class="px-4 py-2 border border-gray-200 rounded-lg text-gray-600 hover:border-[#1e3a5f] hover:text-[#1e3a5f] transition-colors flex items-center gap-2">
-          <i data-lucide="download" class="w-4 h-4"></i>
-          导出
-        </button>
-        <button class="px-4 py-2 border border-gray-200 rounded-lg text-gray-600 hover:border-[#1e3a5f] hover:text-[#1e3a5f] transition-colors flex items-center gap-2">
-          <i data-lucide="printer" class="w-4 h-4"></i>
-          打印
-        </button>
-        <button class="px-5 py-2 bg-[#1e3a5f] text-white rounded-lg hover:bg-[#2d4a6f] transition-colors">
-          提交审批
-        </button>
+      <div class="flex items-center gap-3 flex-wrap">
+        <% if policy(@settlement).submit_for_approval? %>
+          <%= button_to "提交审批", submit_for_approval_cs_settlement_path(@settlement), method: :post,
+            class: "px-5 py-2 bg-[#10b981] text-white rounded-lg hover:bg-[#059669] transition-colors font-medium" %>
+        <% end %>
+
+        <% if policy(@settlement).reject? %>
+          <button onclick="openModal('reject-modal')"
+            class="px-4 py-2 border border-red-500 text-red-500 rounded-lg hover:bg-red-50 transition-colors font-medium flex items-center gap-2">
+            <i data-lucide="x-circle" class="w-4 h-4"></i>
+            驳回
+          </button>
+        <% end %>
+
+        <% if policy(@settlement).resubmit? %>
+          <button onclick="openModal('resubmit-modal')"
+            class="px-4 py-2 border border-[#10b981] text-[#10b981] rounded-lg hover:bg-green-50 transition-colors font-medium flex items-center gap-2">
+            <i data-lucide="refresh-cw" class="w-4 h-4"></i>
+            重新提交
+          </button>
+        <% end %>
+
+        <% if policy(@settlement).reassign? %>
+          <button onclick="openModal('reassign-modal')"
+            class="px-4 py-2 border border-[#1e3a5f] text-[#1e3a5f] rounded-lg hover:bg-[#1e3a5f]/5 transition-colors font-medium flex items-center gap-2">
+            <i data-lucide="user-switch" class="w-4 h-4"></i>
+            重新分派
+          </button>
+        <% end %>
+
+        <% if policy(@settlement).supplement_material? %>
+          <button onclick="openModal('supplement-modal')"
+            class="px-4 py-2 bg-[#1e3a5f] text-white rounded-lg hover:bg-[#2d4a6f] transition-colors font-medium flex items-center gap-2">
+            <i data-lucide="paperclip" class="w-4 h-4"></i>
+            补充材料
+          </button>
+        <% end %>
       </div>
     </div>
   </div>
 
-  <div class="grid grid-cols-1 lg:grid-cols-2 gap-6">
-    <%= render AmountComparisonComponent.new(settlement: OpenStruct.new(
-      system_amount: 528642.50,
-      merchant_amount: 512345.00,
-      difference_amount: 16297.50,
-      period: '2024年第24周',
-      payment_date: Date.parse('2024-06-20')
-    )) %>
+  <% if notice || alert %>
+    <div class="rounded-xl p-4 <%= notice ? 'bg-green-50 border border-green-200 text-green-700' : 'bg-red-50 border border-red-200 text-red-700' %>">
+      <%= notice || alert %>
+    </div>
+  <% end %>
 
-    <%= render ApprovalFlowComponent.new(
-      approval_records: [],
-      approval_nodes: [
-        OpenStruct.new(id: 1, name: '客服审核', role_name: '客服专员', enabled?: true, sequence: 1),
-        OpenStruct.new(id: 2, name: '财务复核', role_name: '财务人员', enabled?: true, sequence: 2),
-        OpenStruct.new(id: 3, name: '经理审批', role_name: '城市经理', enabled?: true, sequence: 3)
-      ]
-    ) %>
+  <div class="grid grid-cols-1 lg:grid-cols-2 gap-6">
+    <div class="bg-white rounded-2xl p-6 shadow-card animate-fade-in">
+      <h3 class="text-lg font-bold text-[#1e3a5f] mb-4 font-serif">金额对比</h3>
+      <div class="grid grid-cols-3 gap-4 mb-6">
+        <div class="p-4 rounded-xl bg-blue-50 text-center">
+          <p class="text-xs text-gray-500 mb-1">系统统计金额</p>
+          <p class="text-2xl font-bold text-[#1e3a5f] font-serif">¥<%= number_with_delimiter(sprintf('%.2f', @settlement.system_amount)) %></p>
+        </div>
+        <div class="p-4 rounded-xl bg-amber-50 text-center">
+          <p class="text-xs text-gray-500 mb-1">商户上报金额</p>
+          <p class="text-2xl font-bold text-[#f59e0b] font-serif">¥<%= number_with_delimiter(sprintf('%.2f', @settlement.merchant_amount)) %></p>
+        </div>
+        <div class="p-4 rounded-xl <%= @settlement.difference_amount != 0 ? 'bg-red-50' : 'bg-green-50' %> text-center">
+          <p class="text-xs text-gray-500 mb-1">差异金额</p>
+          <p class="text-2xl font-bold <%= @settlement.difference_amount != 0 ? 'text-red-600' : 'text-green-600' %> font-serif">
+            <%= @settlement.difference_amount > 0 ? '+' : '' %>¥<%= number_with_delimiter(sprintf('%.2f', @settlement.difference_amount)) %>
+          </p>
+        </div>
+      </div>
+      <div class="space-y-2">
+        <div class="flex justify-between py-2 border-b border-gray-100">
+          <span class="text-gray-500 text-sm">结算周期</span>
+          <span class="font-medium text-gray-900"><%= @settlement.period %></span>
+        </div>
+        <div class="flex justify-between py-2 border-b border-gray-100">
+          <span class="text-gray-500 text-sm">订单数量</span>
+          <span class="font-medium text-gray-900"><%= @settlement.order_count %> 单</span>
+        </div>
+        <div class="flex justify-between py-2 border-b border-gray-100">
+          <span class="text-gray-500 text-sm">付款方式</span>
+          <span class="font-medium text-gray-900"><%= @settlement.payment_method || '银行转账' %></span>
+        </div>
+        <div class="flex justify-between py-2">
+          <span class="text-gray-500 text-sm">创建时间</span>
+          <span class="font-medium text-gray-900"><%= @settlement.created_at.strftime('%Y-%m-%d %H:%M') %></span>
+        </div>
+      </div>
+    </div>
+
+    <div class="bg-white rounded-2xl p-6 shadow-card animate-fade-in" style="animation-delay: 50ms">
+      <h3 class="text-lg font-bold text-[#1e3a5f] mb-4 font-serif">审批流程</h3>
+      <div class="space-y-4">
+        <% if @approval_records.any? %>
+          <% @approval_records.each_with_index do |record, i| %>
+            <div class="flex items-start gap-4">
+              <div class="flex flex-col items-center">
+                <div class="w-10 h-10 rounded-full flex items-center justify-center font-bold text-sm
+                            <%= record.approved? ? 'bg-green-100 text-green-600' : record.rejected? ? 'bg-red-100 text-red-600' : 'bg-gray-100 text-gray-400' %>">
+                  <%= record.approved? ? '✓' : record.rejected? ? '✗' : (i + 1) %>
+                </div>
+                <% if i < @approval_records.length - 1 %>
+                  <div class="w-0.5 h-10 bg-gray-200 mt-2"></div>
+                <% end %>
+              </div>
+              <div class="flex-1 pb-6">
+                <div class="flex items-center justify-between mb-1">
+                  <span class="font-medium text-gray-900"><%= record.approval_node&.name || '审批节点' %></span>
+                  <span class="px-2 py-0.5 rounded-full text-xs font-medium
+                               <%= record.approved? ? 'bg-green-100 text-green-600' : record.rejected? ? 'bg-red-100 text-red-600' : 'bg-gray-100 text-gray-500' %>">
+                    <%= { pending: '待审批', approved: '已通过', rejected: '已拒绝' }[record.decision.to_sym] %>
+                  </span>
+                </div>
+                <p class="text-sm text-gray-500">审批人：<%= record.approver&.name || '待分配' %></p>
+                <% if record.comment.present? %>
+                  <p class="text-xs text-gray-400 mt-1">备注：<%= record.comment %></p>
+                <% end %>
+                <% if record.decision_at.present? %>
+                  <p class="text-xs text-gray-400 mt-1"><%= record.decision_at.strftime('%Y-%m-%d %H:%M') %></p>
+                <% end %>
+              </div>
+            </div>
+          <% end %>
+        <% else %>
+          <div class="text-center py-8 text-gray-400">
+            <i data-lucide="clipboard-list" class="w-12 h-12 mx-auto mb-3 text-gray-300"></i>
+            <p>尚未提交审批</p>
+          </div>
+        <% end %>
+      </div>
+    </div>
   </div>
 
   <div class="grid grid-cols-1 lg:grid-cols-3 gap-6">
     <div class="lg:col-span-2 bg-white rounded-2xl shadow-card overflow-hidden animate-fade-in" style="animation-delay: 100ms">
       <div class="p-6 border-b border-gray-100">
-        <h3 class="text-lg font-bold text-[#1e3a5f] font-serif">结算明细</h3>
+        <h3 class="text-lg font-bold text-[#1e3a5f] font-serif">结算明细（<%= @settlement_items.count %> 条）</h3>
       </div>
-      <div class="overflow-x-auto">
-        <table class="w-full">
-          <thead class="bg-gray-50">
-            <tr>
-              <th class="px-6 py-3 text-left text-xs font-semibold text-gray-500 uppercase">日期</th>
-              <th class="px-6 py-3 text-left text-xs font-semibold text-gray-500 uppercase">订单号</th>
-              <th class="px-6 py-3 text-left text-xs font-semibold text-gray-500 uppercase">商品</th>
-              <th class="px-6 py-3 text-right text-xs font-semibold text-gray-500 uppercase">系统金额</th>
-              <th class="px-6 py-3 text-right text-xs font-semibold text-gray-500 uppercase">商户金额</th>
-              <th class="px-6 py-3 text-right text-xs font-semibold text-gray-500 uppercase">差异</th>
-            </tr>
-          </thead>
-          <tbody class="divide-y divide-gray-100">
-            <% 8.times do |i| %>
-              <tr class="hover:bg-gray-50 transition-colors">
-                <td class="px-6 py-4 text-sm text-gray-600">2024-06-<%= 10 + i %></td>
-                <td class="px-6 py-4 text-sm font-medium text-gray-900">ORD<%= sprintf('%08d', 12345678 + i) %></td>
-                <td class="px-6 py-4 text-sm text-gray-600">商品订单 #<%= i + 1 %></td>
-                <td class="px-6 py-4 text-sm font-medium text-gray-900 text-right font-serif">¥<%= sprintf('%.2f', 125.50 + i * 23.5) %></td>
-                <td class="px-6 py-4 text-sm font-medium text-gray-900 text-right font-serif">¥<%= sprintf('%.2f', 125.50 + i * 23.5 - (i % 3 == 0 ? 5.5 : 0)) %></td>
-                <td class="px-6 py-4 text-sm font-medium text-right">
-                  <% if i % 3 == 0 %>
-                    <span class="text-red-600 font-serif">+¥5.50</span>
-                  <% else %>
-                    <span class="text-gray-400">-</span>
-                  <% end %>
-                </td>
+      <div class="overflow-x-auto max-h-96 overflow-y-auto">
+        <% if @settlement_items.any? %>
+          <table class="w-full">
+            <thead class="bg-gray-50 sticky top-0 z-10">
+              <tr>
+                <th class="px-4 py-3 text-left text-xs font-semibold text-gray-500 uppercase">日期</th>
+                <th class="px-4 py-3 text-left text-xs font-semibold text-gray-500 uppercase">订单号</th>
+                <th class="px-4 py-3 text-left text-xs font-semibold text-gray-500 uppercase">说明</th>
+                <th class="px-4 py-3 text-right text-xs font-semibold text-gray-500 uppercase">系统金额</th>
+                <th class="px-4 py-3 text-right text-xs font-semibold text-gray-500 uppercase">商户金额</th>
+                <th class="px-4 py-3 text-right text-xs font-semibold text-gray-500 uppercase">差异</th>
               </tr>
-            <% end %>
-          </tbody>
-        </table>
+            </thead>
+            <tbody class="divide-y divide-gray-100">
+              <% @settlement_items.each do |item| %>
+                <tr class="hover:bg-gray-50 transition-colors">
+                  <td class="px-4 py-3 text-sm text-gray-600"><%= item.delivery_order&.delivery_time&.strftime('%Y-%m-%d') || '-' %></td>
+                  <td class="px-4 py-3 text-sm font-medium text-gray-900">#<%= item.delivery_order&.order_no || item.id[0..7] %></td>
+                  <td class="px-4 py-3 text-sm text-gray-600"><%= item.description || '配送订单' %></td>
+                  <td class="px-4 py-3 text-sm font-medium text-right font-serif">¥<%= sprintf('%.2f', item.system_amount) %></td>
+                  <td class="px-4 py-3 text-sm font-medium text-right font-serif">¥<%= sprintf('%.2f', item.merchant_amount) %></td>
+                  <td class="px-4 py-3 text-sm font-bold text-right">
+                    <% diff = item.system_amount - item.merchant_amount %>
+                    <% if diff != 0 %>
+                      <span class="<%= diff > 0 ? 'text-red-600' : 'text-blue-600' %> font-serif">
+                        <%= diff > 0 ? '+' : '' %>¥<%= sprintf('%.2f', diff) %>
+                      </span>
+                    <% else %>
+                      <span class="text-gray-400">-</span>
+                    <% end %>
+                  </td>
+                </tr>
+              <% end %>
+            </tbody>
+          </table>
+        <% else %>
+          <div class="text-center py-12 text-gray-400">
+            <i data-lucide="file-text" class="w-12 h-12 mx-auto mb-3 text-gray-300"></i>
+            <p>暂无结算明细</p>
+          </div>
+        <% end %>
       </div>
     </div>
 
-    <%= render AuditLogComponent.new(
-      audit_logs: [
-        OpenStruct.new(id: 1, action: 'create', operator: OpenStruct.new(name: '张三'), description: '创建结算单 #10023', changed_fields: nil, created_at: 2.hours.ago),
-        OpenStruct.new(id: 2, action: 'update', operator: OpenStruct.new(name: '李四'), description: '更新系统金额', changed_fields: { '系统金额' => ['520,000.00', '528,642.50'] }, created_at: 1.hour.ago),
-        OpenStruct.new(id: 3, action: 'update', operator: OpenStruct.new(name: '王五'), description: '上传商户金额凭证', changed_fields: nil, created_at: 30.minutes.ago)
-      ],
-      limit: 5
-    ) %>
+    <div class="space-y-6">
+      <div class="bg-white rounded-2xl p-6 shadow-card animate-fade-in" style="animation-delay: 120ms">
+        <h3 class="text-lg font-bold text-[#1e3a5f] mb-4 font-serif">待办事项</h3>
+        <% if @todo_items.any? %>
+          <div class="space-y-3 max-h-64 overflow-y-auto">
+            <% @todo_items.each do |todo| %>
+              <div class="p-3 rounded-xl bg-gray-50">
+                <div class="flex items-start justify-between gap-2 mb-1">
+                  <span class="font-medium text-sm text-gray-900"><%= todo.title %></span>
+                  <span class="px-2 py-0.5 rounded-full text-xs font-medium
+                               <%= todo.urgent? ? 'bg-red-100 text-red-600' : todo.high? ? 'bg-orange-100 text-orange-600' : todo.medium? ? 'bg-blue-100 text-blue-600' : 'bg-gray-100 text-gray-600' %>">
+                    <%= { low: '低', medium: '中', high: '高', urgent: '紧急' }[todo.priority.to_sym] %>
+                  </span>
+                </div>
+                <p class="text-xs text-gray-500 mb-1"><%= todo.description %></p>
+                <div class="flex items-center justify-between text-xs text-gray-400">
+                  <span>指派人：<%= todo.assignee&.name %></span>
+                  <span>
+                    <%= { pending: '待处理', in_progress: '进行中', completed: '已完成', cancelled: '已取消' }[todo.status.to_sym] %>
+                    · <%= todo.due_date&.strftime('%m-%d') %>
+                  </span>
+                </div>
+              </div>
+            <% end %>
+          </div>
+        <% else %>
+          <div class="text-center py-8 text-gray-400">
+            <i data-lucide="check-square" class="w-10 h-10 mx-auto mb-2 text-gray-300"></i>
+            <p class="text-sm">暂无待办</p>
+          </div>
+        <% end %>
+      </div>
+
+      <div class="bg-white rounded-2xl p-6 shadow-card animate-fade-in" style="animation-delay: 140ms">
+        <h3 class="text-lg font-bold text-[#1e3a5f] mb-4 font-serif">金额校验留痕</h3>
+        <% audit_logs = @settlement.amount_audit_logs.recent.limit(5) %>
+        <% if audit_logs.any? %>
+          <div class="space-y-3 max-h-64 overflow-y-auto">
+            <% audit_logs.each do |log| %>
+              <div class="p-3 rounded-xl bg-gray-50">
+                <div class="flex items-start justify-between gap-2 mb-1">
+                  <span class="font-medium text-sm text-gray-900">
+                    <%= log.change_reason %>
+                  </span>
+                  <% if log.change_type.present? %>
+                    <span class="px-2 py-0.5 rounded-full text-xs font-medium bg-[#1e3a5f]/10 text-[#1e3a5f]">
+                      <%= log.change_type %>
+                    </span>
+                  <% end %>
+                </div>
+                <p class="text-xs text-gray-500 mb-1 font-serif">
+                  ¥<%= sprintf('%.2f', log.old_amount) %> → ¥<%= sprintf('%.2f', log.new_amount) %>
+                </p>
+                <p class="text-xs text-gray-400">
+                  <%= log.operator&.name %> · <%= log.created_at.strftime('%m-%d %H:%M') %>
+                </p>
+              </div>
+            <% end %>
+          </div>
+        <% else %>
+          <div class="text-center py-8 text-gray-400">
+            <i data-lucide="shield-check" class="w-10 h-10 mx-auto mb-2 text-gray-300"></i>
+            <p class="text-sm">暂无修改记录</p>
+          </div>
+        <% end %>
+      </div>
+    </div>
   </div>
 
   <div class="bg-white rounded-2xl p-6 shadow-card animate-fade-in" style="animation-delay: 200ms">
-    <h3 class="text-lg font-bold text-[#1e3a5f] mb-4 font-serif">差异处理记录</h3>
-    <div class="space-y-4">
-      <% 3.times do |i| %>
-        <div class="p-4 rounded-xl bg-gray-50">
-          <div class="flex items-start gap-3">
-            <div class="w-8 h-8 rounded-full bg-gradient-to-br from-[#f59e0b] to-[#f97316] flex items-center justify-center text-white font-bold text-sm">
-              差
-            </div>
-            <div class="flex-1">
-              <div class="flex items-center gap-2 mb-1">
-                <span class="font-medium text-gray-900">差异 #<%= i + 1 %></span>
-                <span class="px-2 py-0.5 rounded-full text-xs font-medium bg-orange-100 text-orange-600">处理中</span>
+    <h3 class="text-lg font-bold text-[#1e3a5f] mb-4 font-serif">差异处理记录（<%= @discrepancies.count %> 条）</h3>
+    <% if @discrepancies.any? %>
+      <div class="space-y-4">
+        <% @discrepancies.each do |discrepancy| %>
+          <div class="p-4 rounded-xl <%= discrepancy.resolved? ? 'bg-green-50' : discrepancy.investigating? ? 'bg-yellow-50' : 'bg-gray-50' %>">
+            <div class="flex items-start justify-between gap-4">
+              <div class="flex items-start gap-3">
+                <div class="w-8 h-8 rounded-full bg-gradient-to-br from-[#f59e0b] to-[#f97316] flex items-center justify-center text-white font-bold text-sm flex-shrink-0">
+                  差
+                </div>
+                <div>
+                  <div class="flex items-center gap-2 mb-1">
+                    <span class="font-medium text-gray-900">差异 #<%= discrepancy.id[0..7] %></span>
+                    <span class="px-2 py-0.5 rounded-full text-xs font-medium
+                                 <%= discrepancy.resolved? ? 'bg-green-100 text-green-600' : discrepancy.investigating? ? 'bg-yellow-100 text-yellow-700' : 'bg-orange-100 text-orange-600' %>">
+                      <%= { pending: '待处理', resolved: '已解决', rejected: '已驳回', investigating: '调查中' }[discrepancy.status.to_sym] %>
+                    </span>
+                    <span class="text-sm font-bold <%= discrepancy.difference_amount > 0 ? 'text-red-600' : 'text-blue-600' %> font-serif">
+                      <%= discrepancy.difference_amount > 0 ? '+' : '' %>¥<%= sprintf('%.2f', discrepancy.difference_amount) %>
+                    </span>
+                  </div>
+                  <p class="text-sm text-gray-600 mb-1"><%= discrepancy.description || '金额统计存在差异' %></p>
+                  <% if discrepancy.supplement_materials.any? %>
+                    <p class="text-xs text-gray-400">补充材料：<%= discrepancy.supplement_materials.count %> 份</p>
+                  <% end %>
+                  <% if discrepancy.comment.present? %>
+                    <p class="text-xs text-gray-400 mt-1">处理备注：<%= discrepancy.comment %></p>
+                  <% end %>
+                  <p class="text-xs text-gray-400 mt-1">
+                    创建于 <%= discrepancy.created_at.strftime('%Y-%m-%d %H:%M') %>
+                    <% if discrepancy.resolved? && discrepancy.resolved_at.present? %>
+                      · 解决于 <%= discrepancy.resolved_at.strftime('%Y-%m-%d %H:%M') %>
+                      <% if discrepancy.resolved_by_user.present? %>
+                        · 处理人：<%= discrepancy.resolved_by_user.name %>
+                      <% end %>
+                    <% end %>
+                  </p>
+                </div>
               </div>
-              <p class="text-sm text-gray-600">订单金额差异：系统统计 ¥<%= sprintf('%.2f', 125.50 + i * 23.5) %>，商户上报 ¥<%= sprintf('%.2f', 120.00 + i * 23.5) %></p>
-              <p class="text-xs text-gray-400 mt-2">创建于 <%= (i + 1).hours.ago.strftime('%Y-%m-%d %H:%M') %></p>
+              <% unless discrepancy.resolved? %>
+                <%= link_to cs_discrepancy_path(discrepancy), class: 'px-4 py-2 text-sm text-white bg-[#1e3a5f] rounded-lg hover:bg-[#2d4a6f] transition-colors inline-block flex-shrink-0' do %>
+                  处理差异
+                <% end %>
+              <% end %>
             </div>
-            <button class="px-3 py-1.5 text-sm text-[#1e3a5f] border border-[#1e3a5f] rounded-lg hover:bg-[#1e3a5f] hover:text-white transition-colors">
-              处理
-            </button>
           </div>
-        </div>
-      <% end %>
-    </div>
+        <% end %>
+      </div>
+    <% else %>
+      <div class="text-center py-8 text-gray-400">
+        <i data-lucide="badge-check" class="w-12 h-12 mx-auto mb-3 text-green-300"></i>
+        <p>暂无差异，金额一致</p>
+      </div>
+    <% end %>
   </div>
 </div>
+
+<!-- 驳回 Modal -->
+<div id="reject-modal" class="fixed inset-0 bg-black/50 z-50 hidden items-center justify-center p-4">
+  <div class="bg-white rounded-2xl shadow-xl max-w-md w-full p-6 animate-fade-in">
+    <div class="flex items-center justify-between mb-4">
+      <h3 class="text-lg font-bold text-gray-900">驳回结算单</h3>
+      <button onclick="closeModal('reject-modal')" class="p-2 hover:bg-gray-100 rounded-lg">
+        <i data-lucide="x" class="w-5 h-5 text-gray-500"></i>
+      </button>
+    </div>
+    <%= form_tag reject_cs_settlement_path(@settlement), method: :post, class: "space-y-4" do %>
+      <div>
+        <label class="block text-sm font-medium text-gray-700 mb-1">驳回原因</label>
+        <textarea name="reason" rows="4" required
+          class="w-full px-4 py-3 border border-gray-200 rounded-xl text-sm focus:border-[#1e3a5f] focus:ring-2 focus:ring-[#1e3a5f]/10 outline-none resize-none"
+          placeholder="请输入驳回原因..."></textarea>
+      </div>
+      <div class="flex gap-3 pt-2">
+        <button type="button" onclick="closeModal('reject-modal')"
+          class="flex-1 px-4 py-3 border border-gray-200 text-gray-600 rounded-xl hover:bg-gray-50 transition-colors font-medium">
+          取消
+        </button>
+        <button type="submit"
+          class="flex-1 px-4 py-3 bg-red-500 text-white rounded-xl hover:bg-red-600 transition-colors font-medium">
+          确认驳回
+        </button>
+      </div>
+    <% end %>
+  </div>
+</div>
+
+<!-- 重新提交 Modal -->
+<div id="resubmit-modal" class="fixed inset-0 bg-black/50 z-50 hidden items-center justify-center p-4">
+  <div class="bg-white rounded-2xl shadow-xl max-w-md w-full p-6 animate-fade-in">
+    <div class="flex items-center justify-between mb-4">
+      <h3 class="text-lg font-bold text-gray-900">重新提交结算单</h3>
+      <button onclick="closeModal('resubmit-modal')" class="p-2 hover:bg-gray-100 rounded-lg">
+        <i data-lucide="x" class="w-5 h-5 text-gray-500"></i>
+      </button>
+    </div>
+    <%= form_tag resubmit_cs_settlement_path(@settlement), method: :post, class: "space-y-4" do %>
+      <div>
+        <label class="block text-sm font-medium text-gray-700 mb-1">调整后系统金额（元）</label>
+        <input type="number" name="updated_amount" step="0.01" value="<%= @settlement.system_amount %>"
+          class="w-full px-4 py-3 border border-gray-200 rounded-xl text-sm focus:border-[#1e3a5f] focus:ring-2 focus:ring-[#1e3a5f]/10 outline-none font-serif"
+          placeholder="请输入调整后的金额">
+        <p class="text-xs text-gray-400 mt-1">
+          当前系统金额：¥<%= sprintf('%.2f', @settlement.system_amount) %>
+          ，商户金额：¥<%= sprintf('%.2f', @settlement.merchant_amount) %>
+        </p>
+      </div>
+      <div class="flex gap-3 pt-2">
+        <button type="button" onclick="closeModal('resubmit-modal')"
+          class="flex-1 px-4 py-3 border border-gray-200 text-gray-600 rounded-xl hover:bg-gray-50 transition-colors font-medium">
+          取消
+        </button>
+        <button type="submit"
+          class="flex-1 px-4 py-3 bg-[#10b981] text-white rounded-xl hover:bg-[#059669] transition-colors font-medium">
+          重新提交
+        </button>
+      </div>
+    <% end %>
+  </div>
+</div>
+
+<!-- 重新分派 Modal -->
+<div id="reassign-modal" class="fixed inset-0 bg-black/50 z-50 hidden items-center justify-center p-4">
+  <div class="bg-white rounded-2xl shadow-xl max-w-md w-full p-6 animate-fade-in">
+    <div class="flex items-center justify-between mb-4">
+      <h3 class="text-lg font-bold text-gray-900">重新分配处理人</h3>
+      <button onclick="closeModal('reassign-modal')" class="p-2 hover:bg-gray-100 rounded-lg">
+        <i data-lucide="x" class="w-5 h-5 text-gray-500"></i>
+      </button>
+    </div>
+    <%= form_tag reassign_cs_settlement_path(@settlement), method: :post, class: "space-y-4" do %>
+      <div>
+        <label class="block text-sm font-medium text-gray-700 mb-1">选择新的处理人</label>
+        <select name="new_handler_id" required
+          class="w-full px-4 py-3 border border-gray-200 rounded-xl text-sm focus:border-[#1e3a5f] focus:ring-2 focus:ring-[#1e3a5f]/10 outline-none">
+          <option value="">请选择处理人...</option>
+          <% User.cs.each do |user| %>
+            <option value="<%= user.id %>" <%= @settlement.handler_id == user.id ? 'selected' : '' %>>
+              <%= user.name %>（<%= user.role_name %>）
+            </option>
+          <% end %>
+        </select>
+        <% if @settlement.handler.present? %>
+          <p class="text-xs text-gray-400 mt-1">当前处理人：<%= @settlement.handler.name %></p>
+        <% end %>
+      </div>
+      <div class="flex gap-3 pt-2">
+        <button type="button" onclick="closeModal('reassign-modal')"
+          class="flex-1 px-4 py-3 border border-gray-200 text-gray-600 rounded-xl hover:bg-gray-50 transition-colors font-medium">
+          取消
+        </button>
+        <button type="submit"
+          class="flex-1 px-4 py-3 bg-[#1e3a5f] text-white rounded-xl hover:bg-[#2d4a6f] transition-colors font-medium">
+          确认分派
+        </button>
+      </div>
+    <% end %>
+  </div>
+</div>
+
+<!-- 补充材料 Modal -->
+<div id="supplement-modal" class="fixed inset-0 bg-black/50 z-50 hidden items-center justify-center p-4">
+  <div class="bg-white rounded-2xl shadow-xl max-w-md w-full p-6 animate-fade-in">
+    <div class="flex items-center justify-between mb-4">
+      <h3 class="text-lg font-bold text-gray-900">上传补充材料</h3>
+      <button onclick="closeModal('supplement-modal')" class="p-2 hover:bg-gray-100 rounded-lg">
+        <i data-lucide="x" class="w-5 h-5 text-gray-500"></i>
+      </button>
+    </div>
+    <%= form_tag supplement_material_cs_settlement_path(@settlement), method: :post, class: "space-y-4" do %>
+      <div>
+        <label class="block text-sm font-medium text-gray-700 mb-1">材料描述</label>
+        <textarea name="description" rows="3" required
+          class="w-full px-4 py-3 border border-gray-200 rounded-xl text-sm focus:border-[#1e3a5f] focus:ring-2 focus:ring-[#1e3a5f]/10 outline-none resize-none"
+          placeholder="请描述补充材料内容..."></textarea>
+      </div>
+      <div>
+        <label class="block text-sm font-medium text-gray-700 mb-1">文件链接（可选）</label>
+        <input type="text" name="file_url"
+          class="w-full px-4 py-3 border border-gray-200 rounded-xl text-sm focus:border-[#1e3a5f] focus:ring-2 focus:ring-[#1e3a5f]/10 outline-none"
+          placeholder="https://...">
+      </div>
+      <div class="flex gap-3 pt-2">
+        <button type="button" onclick="closeModal('supplement-modal')"
+          class="flex-1 px-4 py-3 border border-gray-200 text-gray-600 rounded-xl hover:bg-gray-50 transition-colors font-medium">
+          取消
+        </button>
+        <button type="submit"
+          class="flex-1 px-4 py-3 bg-[#1e3a5f] text-white rounded-xl hover:bg-[#2d4a6f] transition-colors font-medium">
+          上传
+        </button>
+      </div>
+    <% end %>
+  </div>
+</div>
+
+<script>
+function openModal(id) {
+  const modal = document.getElementById(id);
+  modal.classList.remove('hidden');
+  modal.classList.add('flex');
+  setTimeout(() => lucide.createIcons(), 10);
+}
+function closeModal(id) {
+  const modal = document.getElementById(id);
+  modal.classList.add('hidden');
+  modal.classList.remove('flex');
+}
+</script>

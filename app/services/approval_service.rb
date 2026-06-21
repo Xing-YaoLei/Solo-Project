@@ -37,7 +37,7 @@ class ApprovalService
         create_approval_todo(next_node)
       else
         @settlement.update!(status: :approved)
-        NotificationWorker.perform_async(@settlement.merchant_id, :settlement_approved)
+        NotificationWorker.perform_async(@settlement.merchant_id, 'settlement_approved')
       end
 
       @settlement
@@ -61,7 +61,7 @@ class ApprovalService
 
       @settlement.update!(status: :rejected)
       create_reject_todo(approval_record)
-      NotificationWorker.perform_async(@settlement.merchant_id, :settlement_rejected)
+      NotificationWorker.perform_async(@settlement.merchant_id, 'settlement_rejected')
 
       @settlement
     end
@@ -90,7 +90,7 @@ class ApprovalService
         description: comment || "原审批人：#{old_approver&.name || '未指定'}，新审批人：#{new_approver.name}",
         priority: :high,
         status: :pending,
-        due_date: 2.business_days.from_now
+        due_date: 2.days.from_now.to_date
       )
 
       @settlement
@@ -133,7 +133,7 @@ class ApprovalService
       description: "#{@settlement.merchant.name} #{@settlement.period} 结算单待审批，金额：#{sprintf("%.2f", @settlement.system_amount)}元",
       priority: :high,
       status: :pending,
-      due_date: 3.business_days.from_now
+      due_date: 3.days.from_now.to_date
     )
   end
 
@@ -147,7 +147,7 @@ class ApprovalService
       description: "驳回原因：#{approval_record.comment || '未填写'}",
       priority: :urgent,
       status: :pending,
-      due_date: 1.business_day.from_now
+      due_date: 1.day.from_now.to_date
     )
   end
 end

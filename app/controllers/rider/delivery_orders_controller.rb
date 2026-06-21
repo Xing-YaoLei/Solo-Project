@@ -7,7 +7,13 @@ module Rider
 
       @q = policy_scope(DeliveryOrder).by_rider(current_user.id).ransack(params[:q])
       scope = @q.result.includes(:merchant).recent
-      scope = scope.by_status(params[:status]) if params[:status].present?
+      if params[:status].present?
+        if params[:status] == 'in_progress'
+          scope = scope.in_delivery
+        else
+          scope = scope.by_status(params[:status])
+        end
+      end
       if params[:delivery_date].present?
         date = Date.parse(params[:delivery_date])
         scope = scope.by_delivery_date(date.beginning_of_day, date.end_of_day)

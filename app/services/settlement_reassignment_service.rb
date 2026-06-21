@@ -19,7 +19,7 @@ class SettlementReassignmentService
         description: "原处理人: #{old_handler&.name || '未分配'}\n请及时处理该结算单。",
         priority: :high,
         status: :pending,
-        due_date: 3.business_days.from_now
+        due_date: 3.days.from_now.to_date
       )
 
       if old_handler && old_handler != @new_handler
@@ -31,7 +31,7 @@ class SettlementReassignmentService
           description: "该结算单已转派给 #{@new_handler.name} 处理。",
           priority: :low,
           status: :pending,
-          due_date: 1.business_days.from_now
+          due_date: 1.day.from_now.to_date
         )
       end
 
@@ -43,7 +43,7 @@ class SettlementReassignmentService
         end
       end
 
-      NotificationWorker.perform_async(@new_handler.id, :settlement_reassigned)
+      NotificationWorker.perform_async(@new_handler.id, 'settlement_reassigned')
 
       @settlement
     end

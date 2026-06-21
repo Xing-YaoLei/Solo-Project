@@ -10,10 +10,10 @@ class TodoAssignmentService
       todo.assignee = assignee
       todo.status ||= :pending
       todo.priority ||= :medium
-      todo.due_date ||= 3.business_days.from_now
+      todo.due_date ||= 3.days.from_now.to_date
       todo.save!
 
-      NotificationWorker.perform_async(assignee.id, :todo_assigned, todo.id)
+      NotificationWorker.perform_async(assignee.id, 'todo_assigned', todo.id)
 
       todo
     end
@@ -45,11 +45,11 @@ class TodoAssignmentService
           description: "原处理人: #{old_assignee.name}\n#{comment || '无备注'}",
           priority: todo.priority,
           status: :pending,
-          due_date: todo.due_date || 2.business_days.from_now,
+          due_date: todo.due_date || 2.days.from_now.to_date,
           parent_id: todo.id
         )
 
-        NotificationWorker.perform_async(new_assignee.id, :todo_reassigned, todo.id)
+        NotificationWorker.perform_async(new_assignee.id, 'todo_reassigned', todo.id)
       end
 
       todos
@@ -81,11 +81,11 @@ class TodoAssignmentService
         description: "驳回原因: #{reject_reason}",
         priority: :urgent,
         status: :pending,
-        due_date: new_due_date || 3.business_days.from_now,
+        due_date: new_due_date || 3.days.from_now.to_date,
         parent_id: todo.id
       )
 
-      NotificationWorker.perform_async(todo.assignee.id, :todo_rejected, todo.id)
+      NotificationWorker.perform_async(todo.assignee.id, 'todo_rejected', todo.id)
 
       todo
     end
@@ -103,7 +103,7 @@ class TodoAssignmentService
         completion_note:
       )
 
-      NotificationWorker.perform_async(todo.assigner.id, :todo_completed, todo.id) if todo.assigner
+      NotificationWorker.perform_async(todo.assigner.id, 'todo_completed', todo.id) if todo.assigner
 
       todo
     end
@@ -121,7 +121,7 @@ class TodoAssignmentService
         cancel_reason:
       )
 
-      NotificationWorker.perform_async(todo.assignee.id, :todo_cancelled, todo.id)
+      NotificationWorker.perform_async(todo.assignee.id, 'todo_cancelled', todo.id)
 
       todo
     end

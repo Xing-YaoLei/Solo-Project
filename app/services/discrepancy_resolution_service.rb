@@ -32,7 +32,7 @@ class DiscrepancyResolutionService
       )
 
       complete_discrepancy_todos("差异已解决")
-      NotificationWorker.perform_async(settlement.merchant_id, :discrepancy_resolved)
+      NotificationWorker.perform_async(settlement.merchant_id, 'discrepancy_resolved')
 
       @discrepancy
     end
@@ -59,11 +59,11 @@ class DiscrepancyResolutionService
           description: "差异金额: #{sprintf("%.2f", @discrepancy.difference_amount)}元\n#{comment || '无备注'}",
           priority: :urgent,
           status: :pending,
-          due_date: 1.business_day.from_now
+          due_date: 1.day.from_now.to_date
         )
       end
 
-      NotificationWorker.perform_async(@current_user.id, :discrepancy_escalated)
+      NotificationWorker.perform_async(@current_user.id, 'discrepancy_escalated')
 
       @discrepancy
     end
@@ -90,7 +90,7 @@ class DiscrepancyResolutionService
           description: "材料描述: #{description}",
           priority: :high,
           status: :pending,
-          due_date: 2.business_days.from_now
+          due_date: 2.days.from_now.to_date
         )
       end
 

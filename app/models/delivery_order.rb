@@ -16,4 +16,6 @@ class DeliveryOrder < ApplicationRecord
   scope :by_delivery_date, ->(start_date, end_date) { where(delivery_time: start_date..end_date) }
   scope :recent, -> { order(created_at: :desc) }
   scope :completed, -> { where(status: :delivered) }
+  scope :in_delivery, -> { where(status: [:assigned, :picked_up]) }
+  scope :by_statuses, ->(statuses) { where(status: statuses) }
 end

@@ -21,7 +21,7 @@ class AmountAdjustmentService
       audit_log = log_change(old_amount, new_amount, change_reason, adjustment_type)
 
       create_adjustment_todo(difference, change_reason)
-      NotificationWorker.perform_async(@settlement.merchant_id, :amount_adjusted, @settlement.id)
+      NotificationWorker.perform_async(@settlement.merchant_id, 'amount_adjusted', @settlement.id)
 
       { settlement: @settlement, audit_log: }
     end
@@ -113,7 +113,7 @@ class AmountAdjustmentService
         description: "调整金额: #{sprintf("%+.2f", difference)}元\n调整原因: #{change_reason}",
         priority: difference.abs >= 5000 ? :high : :medium,
         status: :pending,
-        due_date: 2.business_days.from_now
+        due_date: 2.days.from_now.to_date
       )
     end
   end

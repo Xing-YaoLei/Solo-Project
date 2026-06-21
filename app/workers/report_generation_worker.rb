@@ -49,7 +49,7 @@ class ReportGenerationWorker
 
     NotificationWorker.perform_async(
       @params[:user_id],
-      :report_ready,
+      'report_ready',
       @report_type,
       result[:file_path]
     )
