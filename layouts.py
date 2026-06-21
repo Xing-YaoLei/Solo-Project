@@ -1,11 +1,9 @@
 from dash import html, dcc
 import dash_bootstrap_components as dbc
-from app import build_date_range_picker
 
 
 def build_funnel_layout():
     return dbc.Container([
-        build_date_range_picker(),
         dbc.Row([
             dbc.Col([
                 dbc.Card([
@@ -43,7 +41,6 @@ def build_funnel_layout():
 
 def build_orders_layout():
     return dbc.Container([
-        build_date_range_picker(),
         dbc.Row([
             dbc.Col([
                 dbc.Label("订单状态"),
@@ -125,7 +122,6 @@ def build_orders_layout():
 
 def build_tracks_layout():
     return dbc.Container([
-        build_date_range_picker(),
         dbc.Row([
             dbc.Col([
                 dbc.Label("选择骑手"),
@@ -202,7 +198,6 @@ def build_tracks_layout():
 
 def build_subsidy_layout():
     return dbc.Container([
-        build_date_range_picker(),
         dbc.Row([
             dbc.Col([
                 dbc.Card([
@@ -240,7 +235,6 @@ def build_subsidy_layout():
 
 def build_anomaly_layout():
     return dbc.Container([
-        build_date_range_picker(),
         dbc.Row([
             dbc.Col([
                 dbc.Label("异常类型"),
@@ -322,7 +316,6 @@ def build_anomaly_layout():
 
 def build_review_layout():
     return dbc.Container([
-        build_date_range_picker(),
         dbc.Row([
             dbc.Col([
                 dbc.Label("备注类型"),

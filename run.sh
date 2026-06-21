@@ -10,17 +10,14 @@ case "$1" in
         ;;
 
     init-db)
-        echo "正在初始化数据库..."
+        echo "正在初始化数据库和默认数据..."
         export PYTHONPATH=$(pwd)
-        python init_db.py all
+        python init_db.py
         echo "数据库初始化完成"
         ;;
 
     seed-data)
-        echo "正在生成模拟数据..."
-        export PYTHONPATH=$(pwd)
-        python seed_data.py
-        echo "数据生成完成"
+        echo "数据已在 init-db 中初始化完成"
         ;;
 
     worker)

@@ -5,11 +5,11 @@ load_dotenv()
 
 
 class Config:
-    DATABASE_URL = os.getenv("DATABASE_URL", "postgresql://postgres:postgres@localhost:5432/errand_dashboard")
+    DATABASE_URL = os.getenv("DATABASE_URL", "sqlite:///./errand_dashboard.db")
     REDIS_URL = os.getenv("REDIS_URL", "redis://localhost:6379/0")
-    CELERY_BROKER_URL = os.getenv("CELERY_BROKER_URL", "redis://localhost:6379/1")
-    CELERY_RESULT_BACKEND = os.getenv("CELERY_RESULT_BACKEND", "redis://localhost:6379/2")
-    DEBUG = os.getenv("DEBUG", "True").lower() == "true"
+    CELERY_BROKER_URL = os.getenv("CELERY_BROKER_URL", os.getenv("REDIS_URL", "redis://localhost:6379/1"))
+    CELERY_RESULT_BACKEND = os.getenv("CELERY_RESULT_BACKEND", os.getenv("REDIS_URL", "redis://localhost:6379/2"))
+    DEBUG = os.getenv("DEBUG", "False").lower() == "true"
     SECRET_KEY = os.getenv("SECRET_KEY", "dev-secret-key")
 
     COMPENSATION_RULES = {

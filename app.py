@@ -38,6 +38,19 @@ def serve_layout():
         build_navbar(),
         dbc.Container([
             build_alert_banner(),
+            dbc.Row([
+                dbc.Col([
+                    build_date_range_picker(),
+                ], width=6),
+                dbc.Col([
+                    html.Br(),
+                    dbc.Button([
+                        html.I(className="fas fa-sync-alt me-2"),
+                        "刷新数据",
+                    ], id="btn-refresh", color="info", outline=True, className="me-2"),
+                    dbc.Badge(id="anomaly-count-badge", color="danger", className="ms-2", pill=True),
+                ], width="auto"),
+            ], className="mb-3", align="center"),
             dbc.Tabs(id="main-tabs", active_tab="funnel", children=[
                 dbc.Tab(label="漏斗分析", tab_id="funnel"),
                 dbc.Tab(label="订单地址", tab_id="orders"),
@@ -103,15 +116,7 @@ def build_date_range_picker():
                 end_date=end_date,
                 display_format="YYYY-MM-DD",
             ),
-        ], width=6),
-        dbc.Col([
-            html.Br(),
-            dbc.Button([
-                html.I(className="fas fa-sync-alt me-2"),
-                "刷新数据",
-            ], id="btn-refresh", color="info", outline=True, className="me-2"),
-            dbc.Badge(id="anomaly-count-badge", color="danger", className="ms-2", pill=True),
-        ], width="auto"),
+        ]),
     ], className="mb-3", align="center")
 
 
@@ -122,4 +127,4 @@ from callbacks import *
 if __name__ == "__main__":
     from models import init_db
     init_db()
-    app.run_server(debug=Config.DEBUG, host="0.0.0.0", port=8050)
+    app.run_server(debug=False, host="0.0.0.0", port=8050)
