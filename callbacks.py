@@ -1,4 +1,6 @@
-from dash import Input, Output, State, callback_context, html, dcc
+import dash
+from dash import Input, Output, State, callback_context, html, dcc, ALL, MATCH, ALLSMALLER, Dash
+from dash.exceptions import PreventUpdate
 import dash_bootstrap_components as dbc
 import plotly.graph_objects as go
 import plotly.express as px
@@ -24,6 +26,8 @@ from tasks.data_tasks import (
     get_anomalies,
     get_subsidy_rules,
     get_review_notes,
+    get_track_anomaly_notes,
+    get_all_review_notes,
     get_saved_views,
     add_review_note,
     add_track_anomaly_note,
@@ -468,7 +472,7 @@ def update_orders(start_date, end_date, status_filter, payment_filter, map_filte
 @app.callback(
     Output("order-detail-modal", "is_open"),
     [
-        Input({"type": "order-row", "index": dash.dependencies.ALL}, "n_clicks"),
+        Input({"type": "order-row", "index": ALL}, "n_clicks"),
         Input("btn-close-order-detail", "n_clicks"),
     ],
     [State("order-detail-modal", "is_open")],
@@ -487,7 +491,7 @@ def toggle_order_modal(row_clicks, close_click, is_open):
 
 @app.callback(
     Output("order-detail-body", "children"),
-    [Input({"type": "order-row", "index": dash.dependencies.ALL}, "n_clicks")],
+    [Input({"type": "order-row", "index": ALL}, "n_clicks")],
     [State("date-range-picker", "start_date"), State("date-range-picker", "end_date")],
 )
 def update_order_detail(row_clicks, start_date, end_date):
@@ -937,7 +941,7 @@ def update_review(start_date, end_date, type_filter, _):
         start_dt = pd.to_datetime(start_date) if start_date else None
         end_dt = pd.to_datetime(end_date) + timedelta(days=1) if end_date else None
 
-        notes_df = get_review_notes()
+        all_notes_df = get_all_review_notes(start_date=start_dt, end_date=end_dt)
         orders_df = get_orders_data(start_dt, end_dt)
 
         order_options = []
@@ -947,43 +951,116 @@ def update_review(start_date, end_date, type_filter, _):
         timeline = html.Div("暂无复盘备注")
         table_content = html.Thead(html.Tr(html.Th("暂无复盘备注")))
 
-        if not notes_df.empty:
-            df = notes_df.copy()
+        if not all_notes_df.empty:
+            df = all_notes_df.copy()
+
+            if type_filter and type_filter != "all":
+                if type_filter == "order":
+                    df = df[df["type"] == "review"]
+                elif type_filter == "anomaly":
+                    df = df[df["type"] == "review"]
+                    if "review_type" in df.columns:
+                        df = df[df["review_type"] == "anomaly_analysis"]
+                elif type_filter == "track":
+                    df = df[df["type"] == "track_anomaly"]
+
+            if df.empty:
+                return html.Div("暂无匹配的备注"), html.Thead(html.Tr(html.Th("暂无匹配数据"))), order_options
+
             df = df.sort_values("created_at", ascending=False)
 
             timeline_items = []
             for _, note in df.head(50).iterrows():
+                note_type = note.get("type", "review")
+                judgment = note.get("judgment_tag", "")
+
                 badge_color = "primary"
-                if note.get("judgment_tag") == "system_issue":
+                if judgment == "system_issue" or judgment == "signal_error":
                     badge_color = "danger"
-                elif note.get("judgment_tag") == "rider_issue":
+                elif judgment == "rider_issue" or judgment == "stopped" or judgment == "detour":
                     badge_color = "warning"
-                elif note.get("judgment_tag") == "user_issue":
+                elif judgment == "user_issue":
                     badge_color = "info"
+                elif judgment == "gps_drift":
+                    badge_color = "secondary"
+                elif judgment == "external":
+                    badge_color = "dark"
+                elif judgment == "mixed":
+                    badge_color = "light"
+                elif judgment == "pending":
+                    badge_color = "warning"
+                elif judgment == "normal":
+                    badge_color = "success"
+
+                type_label = "订单备注" if note_type == "review" else "轨迹异常备注"
+                type_icon = "fa-file-alt" if note_type == "review" else "fa-map-marker-alt"
+                type_badge_color = "info" if note_type == "review" else "warning"
+
+                header_items = [
+                    html.I(className=f"fas {type_icon} me-2"),
+                    html.Strong(f"{note.get('author', '未知')}"),
+                    dbc.Badge(type_label, color=type_badge_color, className="ms-2"),
+                ]
+
+                review_type_val = note.get("review_type", "")
+                if review_type_val:
+                    header_items.append(dbc.Badge(review_type_val, color="info", className="ms-1"))
+
+                if judgment:
+                    header_items.append(dbc.Badge(f"判断: {judgment}", color=badge_color, className="ms-1"))
+
+                created_at = note.get("created_at", "")
+                if created_at:
+                    header_items.append(html.Span(f" - {created_at}", className="text-muted ms-2"))
+
+                body_items = []
+                order_id_val = note.get("order_id")
+                if order_id_val:
+                    body_items.append(html.P([html.I(className="fas fa-receipt me-2"), f"关联订单: #{order_id_val}"]))
+                if note_type == "track_anomaly":
+                    anomaly_type = note.get("anomaly_type", "")
+                    if anomaly_type:
+                        body_items.append(html.P([html.I(className="fas fa-exclamation-triangle me-2"), f"异常类型: {anomaly_type}"]))
+                body_items.append(html.P(note.get("content", "")))
 
                 timeline_items.append(
                     dbc.Card([
-                        dbc.CardHeader([
-                            html.I(className="fas fa-user-circle me-2"),
-                            html.Strong(f"{note.get('author', '未知')}"),
-                            dbc.Badge(note.get("review_type", ""), color="info", className="ms-2"),
-                            dbc.Badge(note.get("judgment_tag", ""), color=badge_color, className="ms-1"),
-                            html.Span(f" - {note.get('created_at', '')}", className="text-muted ms-2"),
-                        ]),
-                        dbc.CardBody([
-                            html.P(f"关联订单: #{note.get('order_id', 'N/A')}"),
-                            html.P(note.get("content", "")),
-                        ]),
-                    ], className="mb-3")
+                        dbc.CardHeader(header_items),
+                        dbc.CardBody(body_items),
+                    ], className=f"mb-3 border-{'warning' if note_type == 'track_anomaly' else 'info'}")
                 )
 
             timeline = html.Div(timeline_items)
 
-            display_df = df[[
-                "author", "content", "review_type", "judgment_tag", "order_id", "created_at",
-            ]].copy()
+            display_columns = []
+            if "author" in df.columns:
+                display_columns.append("author")
+            if "content" in df.columns:
+                display_columns.append("content")
+            if "review_type" in df.columns:
+                display_columns.append("review_type")
+            if "type" in df.columns:
+                display_columns.append("type")
+            if "judgment_tag" in df.columns:
+                display_columns.append("judgment_tag")
+            if "order_id" in df.columns:
+                display_columns.append("order_id")
+            if "created_at" in df.columns:
+                display_columns.append("created_at")
+
+            display_df = df[display_columns].copy()
             display_df["created_at"] = pd.to_datetime(display_df["created_at"]).dt.strftime("%Y-%m-%d %H:%M")
-            display_df.columns = ["作者", "内容", "类型", "判断标签", "订单ID", "创建时间"]
+
+            column_labels = {
+                "author": "作者",
+                "content": "内容",
+                "review_type": "备注类型",
+                "type": "来源",
+                "judgment_tag": "判断标签",
+                "order_id": "订单ID",
+                "created_at": "创建时间",
+            }
+            display_df.columns = [column_labels.get(col, col) for col in display_df.columns]
 
             table_content = [
                 html.Thead(html.Tr([html.Th(col) for col in display_df.columns])),
@@ -1014,7 +1091,7 @@ def update_review(start_date, end_date, type_filter, _):
 )
 def submit_review_note(n_clicks, order_id, review_type, judgment, content, author, start_date, end_date):
     if not n_clicks or not content:
-        raise dash.exceptions.PreventUpdate
+        raise PreventUpdate
 
     try:
         add_review_note(
@@ -1057,7 +1134,7 @@ def submit_review_note(n_clicks, order_id, review_type, judgment, content, autho
 )
 def download_excel(n_clicks, start_date, end_date):
     if not n_clicks:
-        raise dash.exceptions.PreventUpdate
+        raise PreventUpdate
 
     try:
         start_dt = pd.to_datetime(start_date) if start_date else None
@@ -1099,7 +1176,7 @@ def toggle_save_modal(open_click, cancel_click, confirm_click, is_open):
 )
 def confirm_save_view(n_clicks, view_name, view_type, active_tab):
     if not n_clicks or not view_name:
-        raise dash.exceptions.PreventUpdate
+        raise PreventUpdate
     try:
         save_view(
             view_name=view_name,
@@ -1114,17 +1191,62 @@ def confirm_save_view(n_clicks, view_name, view_type, active_tab):
 
 
 @app.callback(
-    Output("track-anomaly-modal", "is_open"),
-    [Input({"type": "track-row", "index": dash.dependencies.ALL}, "n_clicks"), Input("btn-cancel-track-note", "n_clicks"), Input("btn-save-track-note", "n_clicks")],
-    [State("track-anomaly-modal", "is_open")],
+    [Output("track-anomaly-modal", "is_open"), Output("selected-track-id-store", "data")],
+    [Input({"type": "track-row", "index": ALL}, "n_clicks"), Input("btn-cancel-track-note", "n_clicks")],
+    [State("track-anomaly-modal", "is_open"), State("selected-track-id-store", "data"),
+     State("date-range-picker", "start_date"), State("date-range-picker", "end_date"),
+     State("rider-dropdown", "value"), State("track-order-dropdown", "value")],
 )
-def toggle_track_anomaly_modal(row_clicks, cancel_click, save_click, is_open):
+def toggle_track_anomaly_modal(row_clicks, cancel_click, is_open, selected_track_id, start_date, end_date, rider_id, order_id):
     ctx = callback_context
     if not ctx.triggered:
-        return False
+        return False, None
     trigger = ctx.triggered[0]["prop_id"]
-    if "btn-cancel" in trigger or "btn-save" in trigger:
-        return False
-    if any(n for n in row_clicks if n):
-        return True
-    return is_open
+    if "btn-cancel" in trigger:
+        return False, selected_track_id
+
+    if any(n is not None and n > 0 for n in row_clicks):
+        clicked_idx = None
+        for i, clicks in enumerate(row_clicks):
+            if clicks and clicks > 0:
+                clicked_idx = i
+                break
+
+        if clicked_idx is not None:
+            try:
+                start_dt = pd.to_datetime(start_date) if start_date else None
+                end_dt = pd.to_datetime(end_date) + timedelta(days=1) if end_date else None
+                tracks_df = get_rider_tracks(rider_id=rider_id, order_id=order_id,
+                                             start_date=start_dt, end_date=end_dt)
+                if not tracks_df.empty and clicked_idx < len(tracks_df):
+                    track_id = int(tracks_df.iloc[clicked_idx]["id"])
+                    return True, track_id
+            except Exception:
+                pass
+        return True, selected_track_id
+
+    return is_open, selected_track_id
+
+
+@app.callback(
+    Output("refresh-trigger", "data", allow_duplicate=True),
+    [Input("btn-save-track-note", "n_clicks")],
+    [State("selected-track-id-store", "data"), State("track-anomaly-note-input", "value"),
+     State("track-anomaly-judgment", "value"), State("refresh-trigger", "data")],
+    prevent_initial_call=True,
+)
+def save_track_anomaly_note(n_clicks, track_id, note_content, judgment_tag, refresh_trigger):
+    if not n_clicks or not track_id or not note_content:
+        raise PreventUpdate
+
+    try:
+        add_track_anomaly_note(
+            track_id=int(track_id),
+            content=note_content,
+            author="analyst",
+            judgment_tag=judgment_tag,
+        )
+        return (refresh_trigger or 0) + 1
+    except Exception as e:
+        print(f"保存轨迹备注失败: {e}")
+        raise PreventUpdate

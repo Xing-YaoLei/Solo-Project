@@ -26,6 +26,7 @@ def serve_layout():
     return html.Div([
         dcc.Store(id="selected-order-store", data=None),
         dcc.Store(id="selected-anomaly-store", data=None),
+        dcc.Store(id="selected-track-id-store", data=None),
         dcc.Store(id="refresh-trigger", data=0),
         dcc.Store(id="notification-store", data=[]),
         dcc.Interval(

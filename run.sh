@@ -11,35 +11,15 @@ case "$1" in
 
     init-db)
         echo "正在初始化数据库..."
-        python -c "
-from models import init_db, ensure_riders_exist, ensure_subsidy_rules_exist
-from tasks.sync_tasks import ensure_riders_exist
-from tasks.compensation_tasks import ensure_subsidy_rules_exist
-init_db()
-print('数据库表创建完成')
-"
+        export PYTHONPATH=$(pwd)
+        python init_db.py all
         echo "数据库初始化完成"
         ;;
 
     seed-data)
         echo "正在生成模拟数据..."
-        python -c "
-from tasks.sync_tasks import sync_instant_orders, ensure_riders_exist, sync_rider_tracks
-from tasks.anomaly_tasks import run_all_anomaly_detection
-from tasks.compensation_tasks import ensure_subsidy_rules_exist, bulk_calculate_compensation
-from datetime import datetime, timedelta
-
-ensure_riders_exist.delay().get()
-ensure_subsidy_rules_exist.delay().get()
-sync_instant_orders.delay(
-    start_date=datetime.utcnow() - timedelta(days=30),
-    end_date=datetime.utcnow()
-).get()
-sync_rider_tracks.delay().get()
-run_all_anomaly_detection.delay().get()
-bulk_calculate_compensation.delay().get()
-print('模拟数据生成完成')
-"
+        export PYTHONPATH=$(pwd)
+        python seed_data.py
         echo "数据生成完成"
         ;;
 

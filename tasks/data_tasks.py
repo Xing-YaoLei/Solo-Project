@@ -241,6 +241,81 @@ def get_review_notes(order_id=None, anomaly_id=None):
         db.close()
 
 
+def get_track_anomaly_notes(start_date=None, end_date=None):
+    db = next(get_db())
+    try:
+        from models import TrackAnomalyNote, RiderTrack
+
+        query = db.query(
+            TrackAnomalyNote.id,
+            TrackAnomalyNote.author,
+            TrackAnomalyNote.content,
+            TrackAnomalyNote.judgment_tag,
+            TrackAnomalyNote.created_at,
+            TrackAnomalyNote.updated_at,
+            RiderTrack.id.label("track_id"),
+            RiderTrack.rider_id,
+            RiderTrack.order_id,
+            RiderTrack.anomaly_type,
+        ).join(RiderTrack, RiderTrack.anomaly_note_id == TrackAnomalyNote.id)
+
+        if start_date:
+            query = query.filter(TrackAnomalyNote.created_at >= start_date)
+        if end_date:
+            query = query.filter(TrackAnomalyNote.created_at <= end_date)
+
+        results = query.order_by(TrackAnomalyNote.created_at.desc()).all()
+
+        if not results:
+            return pd.DataFrame()
+
+        data = []
+        for r in results:
+            data.append({
+                "id": r.id,
+                "type": "track_anomaly",
+                "track_id": r.track_id,
+                "rider_id": r.rider_id,
+                "order_id": r.order_id,
+                "author": r.author,
+                "content": r.content,
+                "judgment_tag": r.judgment_tag,
+                "anomaly_type": r.anomaly_type,
+                "created_at": r.created_at,
+            })
+
+        return pd.DataFrame(data)
+    finally:
+        db.close()
+
+
+def get_all_review_notes(start_date=None, end_date=None):
+    review_df = get_review_notes()
+    track_notes_df = get_track_anomaly_notes(start_date=start_date, end_date=end_date)
+
+    dfs = []
+    if not review_df.empty:
+        review_df["type"] = "review"
+        review_df["title"] = review_df["review_type"].apply(lambda x: f"订单备注 - {x}")
+        dfs.append(review_df)
+
+    if not track_notes_df.empty:
+        track_notes_df["title"] = track_notes_df["anomaly_type"].apply(
+            lambda x: f"轨迹异常备注 - {x}" if x else "轨迹异常备注"
+        )
+        track_notes_df["review_type"] = "track_anomaly"
+        dfs.append(track_notes_df)
+
+    if not dfs:
+        return pd.DataFrame()
+
+    combined = pd.concat(dfs, ignore_index=True)
+    if "created_at" in combined.columns:
+        combined = combined.sort_values("created_at", ascending=False).reset_index(drop=True)
+
+    return combined
+
+
 def get_saved_views(view_type=None):
     db = next(get_db())
     try:
