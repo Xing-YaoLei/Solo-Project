@@ -6,8 +6,8 @@ Rails.application.routes.draw do
 
   root "dashboard#index"
 
-  get "dashboard", to: "dashboard#index"
-  get "dashboard/statistics", to: "dashboard#statistics"
+  get "dashboard", to: "dashboard#index", as: :dashboard
+  get "dashboard/statistics", to: "dashboard#statistics", as: :statistics_dashboard
 
   resources :clients do
     collection do
@@ -15,7 +15,7 @@ Rails.application.routes.draw do
     end
   end
 
-  resources :legal_cases, path: "cases" do
+  resources :legal_cases, path: "cases", as: :cases do
     member do
       post :submit
       post :start_processing

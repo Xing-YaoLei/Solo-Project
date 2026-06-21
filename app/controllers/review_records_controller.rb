@@ -28,7 +28,7 @@ class ReviewRecordsController < ApplicationController
   private
 
   def set_legal_case
-    @legal_case = LegalCase.find(params[:legal_case_id])
+    @legal_case = LegalCase.find(params[:case_id])
   end
 
   def review_record_params

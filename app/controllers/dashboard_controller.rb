@@ -1,6 +1,11 @@
 class DashboardController < ApplicationController
   include Pagy::Backend
 
+  AGGREGATE_STATUSES = {
+    "active" => %w[draft pending in_progress material_missing review_required],
+    "finished" => %w[completed closed]
+  }.freeze
+
   def index
     @filter_status = params[:status]
     @filter_channel = params[:channel]
@@ -8,7 +13,7 @@ class DashboardController < ApplicationController
     @keyword = params[:keyword]
 
     cases = LegalCase.includes(:client).order(updated_at: :desc)
-    cases = cases.where(status: @filter_status) if @filter_status.present?
+    cases = filter_by_status(cases, @filter_status)
     cases = cases.by_channel(@filter_channel)
     cases = cases.by_responsible(@filter_responsible)
     if @keyword.present?
@@ -38,12 +43,40 @@ class DashboardController < ApplicationController
     @by_responsible = LegalCase.group(:responsible_person).count
     @by_category = LegalCase.group(:category).count
 
-    @monthly_trend = LegalCase.where("created_at >= ?", 6.months.ago)
-                              .group_by_month(:created_at)
-                              .count
+    @monthly_trend = compute_monthly_trend(6)
 
     @status_transitions = StatusTransition.includes(:legal_case)
                                           .order(created_at: :desc)
                                           .limit(50)
+  end
+
+  private
+
+  def filter_by_status(cases, status)
+    return cases if status.blank?
+
+    if AGGREGATE_STATUSES.key?(status)
+      cases.where(status: AGGREGATE_STATUSES[status])
+    else
+      cases.where(status: status)
+    end
+  end
+
+  def compute_monthly_trend(months_back)
+    start_date = months_back.months.ago.beginning_of_month
+    raw = LegalCase.where("created_at >= ?", start_date)
+                   .group("DATE_TRUNC('month', created_at)")
+                   .count
+
+    result = {}
+    current = Date.today.beginning_of_month
+    months_back.times do
+      key = current.beginning_of_month
+      # find value from raw hash by matching Date or Time
+      value = raw.find { |k, _| k.is_a?(Time) ? k.to_date == key : k.to_date == key }&.last || 0
+      result[key] = value
+      current = current.ago(1.month)
+    end
+    result.sort.reverse.to_h
   end
 end
