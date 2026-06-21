@@ -3,7 +3,8 @@ gatherUsageStats = false
 
 [server]
 headless = true
-port = 8501
+port = 8503
+address = "0.0.0.0"
 
 [theme]
 base = "light"

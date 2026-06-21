@@ -131,6 +131,8 @@ class ExportManager:
     def parse_shareable_filter_string(self, filter_str: str) -> Optional[dict]:
         try:
             import base64
+            if filter_str.startswith("filter="):
+                filter_str = filter_str[7:]
             padded = filter_str + "=" * (-len(filter_str) % 4)
             decoded = base64.urlsafe_b64decode(padded.encode("utf-8")).decode("utf-8")
             return json.loads(decoded)

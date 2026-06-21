@@ -22,10 +22,39 @@ st.set_page_config(
 st.title(f"🏞️ {Config.SCENIC_NAME} - 游客投诉漏斗报表")
 st.caption("基于 Streamlit + Polars + DuckDB + MinIO 构建")
 
-repo = DataRepository()
-chart_builder = ChartBuilder()
-pipeline = PipelineManager()
-export_mgr = ExportManager()
+
+@st.cache_resource(show_spinner=False)
+def get_repo():
+    return DataRepository()
+
+
+@st.cache_resource(show_spinner=False)
+def get_chart_builder():
+    return ChartBuilder()
+
+
+@st.cache_resource(show_spinner=False)
+def get_pipeline():
+    return PipelineManager()
+
+
+@st.cache_resource(show_spinner=False)
+def get_export_mgr():
+    return ExportManager()
+
+
+@st.cache_data(show_spinner=False)
+def init_data_cached():
+    try:
+        db = DuckDBManager()
+        result = db.execute_query("SELECT COUNT(*) as cnt FROM complaints")
+        if result["cnt"][0] == 0:
+            raise Exception("No data")
+        return True, None
+    except Exception:
+        simulator = DataSimulator()
+        counts = simulator.initialize_all_data(days=90)
+        return True, counts
 
 
 def init_data():
@@ -33,19 +62,18 @@ def init_data():
         st.session_state.data_initialized = False
 
     if not st.session_state.data_initialized:
-        try:
-            db = DuckDBManager()
-            result = db.execute_query("SELECT COUNT(*) as cnt FROM complaints")
-            if result["cnt"][0] == 0:
-                raise Exception("No data")
-            st.session_state.data_initialized = True
-        except Exception:
-            with st.spinner("正在初始化模拟数据..."):
-                simulator = DataSimulator()
-                counts = simulator.initialize_all_data(days=90)
+        with st.spinner("正在初始化模拟数据..."):
+            success, counts = init_data_cached()
+            if success:
                 st.session_state.data_initialized = True
-                st.success(f"数据初始化完成: 投诉{counts['complaints']}条, 订单{counts['orders']}条")
+                if counts:
+                    st.success(f"数据初始化完成: 投诉{counts['complaints']}条, 订单{counts['orders']}条")
 
+
+repo = get_repo()
+chart_builder = get_chart_builder()
+pipeline = get_pipeline()
+export_mgr = get_export_mgr()
 
 init_data()
 
@@ -108,7 +136,7 @@ with tab1:
     col1, col2, col3, col4 = st.columns(4)
 
     funnel_data = repo.get_complaints_funnel(start_date, end_date, selected_region)
-    total_complaints = len(funnel_data.select(pl.sum("count")).item() if len(funnel_data) > 0 else 0)
+    total_complaints = funnel_data.select(pl.sum("count")).item() if len(funnel_data) > 0 else 0
     closed_count = funnel_data.filter(pl.col("status") == "已关闭").select(pl.sum("count")).item() if len(funnel_data) > 0 else 0
     processing_count = funnel_data.filter(pl.col("status") == "处理中").select(pl.sum("count")).item() if len(funnel_data) > 0 else 0
 
