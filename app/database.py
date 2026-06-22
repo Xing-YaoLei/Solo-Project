@@ -26,13 +26,22 @@ def get_db():
 
 
 def init_db():
+    import app.models
     Base.metadata.create_all(bind=engine)
 
 
+def register_models():
+    import app.models
+    return len(Base.metadata.tables)
+
+
 def is_schema_initialized() -> bool:
+    register_models()
     inspector = inspect(engine)
     tables = inspector.get_table_names()
-    return len(tables) > 0
+    expected_tables = set(Base.metadata.tables.keys())
+    existing_tables = set(tables)
+    return expected_tables.issubset(existing_tables) and len(tables) > 0
 
 
 def check_database_connection() -> bool:
@@ -50,13 +59,20 @@ def check_database_connection() -> bool:
 def ensure_database_ready() -> bool:
     if not check_database_connection():
         return False
+    
+    model_count = register_models()
+    print(f'已注册模型数量: {model_count}')
+    
     if not is_schema_initialized():
+        print('检测到空数据库，开始初始化...')
         init_db()
-        from utils.init_data import init_reference_data, generate_mock_data
         print('数据库表创建完成。')
+        
+        from utils.init_data import init_reference_data, generate_mock_data
         print('正在初始化基础数据...')
         init_reference_data()
         print('基础数据初始化完成。')
+        
         print('正在生成模拟业务数据...')
         generate_mock_data()
         print('模拟数据生成完成。')
