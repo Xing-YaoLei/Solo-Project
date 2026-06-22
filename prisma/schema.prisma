@@ -1,0 +1,112 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+model User {
+  id         String        @id @default(uuid())
+  email      String        @unique
+  name       String
+  role       String        // MANAGEMENT | EXECUTOR | REVIEWER
+  department String?
+  createdAt  DateTime      @default(now())
+  assigned   AuditItem[]   @relation("Assignee")
+  reviewed   AuditItem[]   @relation("Reviewer")
+  batches    ImportBatch[]
+}
+
+model ImportBatch {
+  id          String            @id @default(uuid())
+  batchNo     String            @unique
+  sourceType  String            // PERMISSION_LOG | ERP_EXPORT | EMAIL_MATERIAL | COMBINED
+  fileName    String?
+  filePath    String?
+  createdById String
+  createdBy   User              @relation(fields: [createdById], references: [id])
+  recordCount Int               @default(0)
+  status      String            // PENDING | PROCESSING | SUCCESS | FAILED
+  errorLog    String?
+  createdAt   DateTime          @default(now())
+  auditItems  AuditItem[]
+  permLogs    PermissionLog[]
+  erpRecords  ErpRecord[]
+  emails      EmailMaterial[]
+}
+
+model AuditItem {
+  id              String            @id @default(uuid())
+  title           String
+  description     String
+  riskLevel       String            // HIGH | MEDIUM | LOW
+  status          String            // CREATED | ASSIGNED | IN_PROGRESS | PENDING_REVIEW | REJECTED | CLOSED
+  dispatchRule    String
+  assigneeId      String?
+  assignee        User?             @relation("Assignee", fields: [assigneeId], references: [id])
+  reviewerId      String?
+  reviewer        User?             @relation("Reviewer", fields: [reviewerId], references: [id])
+  batchId         String
+  batch           ImportBatch       @relation(fields: [batchId], references: [id])
+  deadlineAt      DateTime
+  createdAt       DateTime          @default(now())
+  closedAt        DateTime?
+  closeReason     String?
+  revisionCount   Int               @default(0)
+  firstTimePass   Boolean?
+  rectifications  Rectification[]
+  reviews         ReviewComment[]
+}
+
+model Rectification {
+  id             String     @id @default(uuid())
+  auditId        String
+  audit          AuditItem  @relation(fields: [auditId], references: [id])
+  submitterId    String
+  description    String
+  attachmentUrls String[]
+  createdAt      DateTime   @default(now())
+}
+
+model ReviewComment {
+  id         String     @id @default(uuid())
+  auditId    String
+  audit      AuditItem  @relation(fields: [auditId], references: [id])
+  reviewerId String
+  comment    String
+  passed     Boolean
+  createdAt  DateTime   @default(now())
+}
+
+model PermissionLog {
+  id         String      @id @default(uuid())
+  batchId    String
+  batch      ImportBatch @relation(fields: [batchId], references: [id])
+  userId     String?
+  action     String
+  resource   String
+  ipAddress  String?
+  happenedAt DateTime
+}
+
+model ErpRecord {
+  id           String      @id @default(uuid())
+  batchId      String
+  batch        ImportBatch @relation(fields: [batchId], references: [id])
+  documentNo   String
+  amount       Decimal?
+  department   String?
+  happenedAt   DateTime
+}
+
+model EmailMaterial {
+  id         String      @id @default(uuid())
+  batchId    String
+  batch      ImportBatch @relation(fields: [batchId], references: [id])
+  subject    String
+  sender     String
+  recipients String[]
+  sentAt     DateTime
+}
