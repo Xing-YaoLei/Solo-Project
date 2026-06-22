@@ -452,14 +452,14 @@ func _build_evidence_identification_content(parent: VBoxContainer, q_type_key: S
 		correct_chk.text = "✓ 是证据（正确答案）"
 		correct_chk.button_pressed = options_ref[oi].get("is_evidence", false)
 		correct_chk.add_theme_font_size_override("font_size", 13)
-		correct_chk.pressed.connect(func(pressed):
-			DataManager.questions[q_type_key][q_index]["options"][oi]["is_evidence"] = pressed
+		correct_chk.pressed.connect(func(pressed, idx=oi):
+			DataManager.questions[q_type_key][q_index]["options"][idx]["is_evidence"] = pressed
 		)
 		row1.add_child(correct_chk)
 		var del_opt = create_button("删除选项", Vector2.ZERO, Vector2(88, 26), STYLE_DANGER)
 		del_opt.add_theme_font_size_override("font_size", 11)
-		del_opt.pressed.connect(func():
-			DataManager.questions[q_type_key][q_index]["options"].remove_at(oi)
+		del_opt.pressed.connect(func(idx=oi):
+			DataManager.questions[q_type_key][q_index]["options"].remove_at(idx)
 			show_notification("已删除选项，刷新页面生效", "warning", 1.5)
 			get_tree().reload_current_scene()
 		)
@@ -556,14 +556,14 @@ func _build_template_selection_content(parent: VBoxContainer, q_type_key: String
 		correct_chk.text = "✓ 适用（正确答案）"
 		correct_chk.button_pressed = options_ref[oi].get("appropriate", false)
 		correct_chk.add_theme_font_size_override("font_size", 13)
-		correct_chk.pressed.connect(func(pressed):
-			DataManager.questions[q_type_key][q_index]["options"][oi]["appropriate"] = pressed
+		correct_chk.pressed.connect(func(pressed, idx=oi):
+			DataManager.questions[q_type_key][q_index]["options"][idx]["appropriate"] = pressed
 		)
 		row1.add_child(correct_chk)
 		var del_opt = create_button("删除选项", Vector2.ZERO, Vector2(88, 26), STYLE_DANGER)
 		del_opt.add_theme_font_size_override("font_size", 11)
-		del_opt.pressed.connect(func():
-			DataManager.questions[q_type_key][q_index]["options"].remove_at(oi)
+		del_opt.pressed.connect(func(idx=oi):
+			DataManager.questions[q_type_key][q_index]["options"].remove_at(idx)
 			show_notification("已删除选项，刷新页面生效", "warning", 1.5)
 			get_tree().reload_current_scene()
 		)
@@ -674,8 +674,8 @@ func _build_checklist_sorting_content(parent: VBoxContainer, q_type_key: String,
 		row1.add_child(order_spin)
 		var del_item = create_button("删除步骤", Vector2.ZERO, Vector2(88, 26), STYLE_DANGER)
 		del_item.add_theme_font_size_override("font_size", 11)
-		del_item.pressed.connect(func():
-			DataManager.questions[q_type_key][q_index]["items"].remove_at(ii)
+		del_item.pressed.connect(func(idx=ii):
+			DataManager.questions[q_type_key][q_index]["items"].remove_at(idx)
 			show_notification("已删除步骤，刷新页面生效", "warning", 1.5)
 			get_tree().reload_current_scene()
 		)
@@ -786,8 +786,8 @@ func _build_sampling_processing_content(parent: VBoxContainer, q_type_key: Strin
 			row1.add_child(count_spin)
 			var del_rec = create_button("删除", Vector2.ZERO, Vector2(64, 26), STYLE_DANGER)
 			del_rec.add_theme_font_size_override("font_size", 11)
-			del_rec.pressed.connect(func():
-				DataManager.questions[q_type_key][q_index]["records"].remove_at(ri)
+			del_rec.pressed.connect(func(idx=ri):
+				DataManager.questions[q_type_key][q_index]["records"].remove_at(idx)
 				show_notification("已删除记录，刷新生效", "warning", 1.5)
 				get_tree().reload_current_scene()
 			)
@@ -894,8 +894,8 @@ func _build_sampling_processing_content(parent: VBoxContainer, q_type_key: Strin
 			row1.add_child(spacer)
 			var del_sc = create_button("删除场景", Vector2.ZERO, Vector2(88, 26), STYLE_DANGER)
 			del_sc.add_theme_font_size_override("font_size", 11)
-			del_sc.pressed.connect(func():
-				DataManager.questions[q_type_key][q_index]["scenarios"].remove_at(si)
+			del_sc.pressed.connect(func(idx=si):
+				DataManager.questions[q_type_key][q_index]["scenarios"].remove_at(idx)
 				show_notification("已删除场景，刷新生效", "warning", 1.5)
 				get_tree().reload_current_scene()
 			)
@@ -969,8 +969,8 @@ func _build_sampling_processing_content(parent: VBoxContainer, q_type_key: Strin
 				corr_chk.text = "✓正确"
 				corr_chk.button_pressed = sc_options[oi].get("correct", false)
 				corr_chk.add_theme_font_size_override("font_size", 12)
-				corr_chk.pressed.connect(func(pressed):
-					DataManager.questions[q_type_key][q_index]["scenarios"][si]["options"][oi]["correct"] = pressed
+				corr_chk.pressed.connect(func(pressed, idx=oi):
+					DataManager.questions[q_type_key][q_index]["scenarios"][si]["options"][idx]["correct"] = pressed
 				)
 				o_row.add_child(corr_chk)
 				var m_in = LineEdit.new()
@@ -978,26 +978,26 @@ func _build_sampling_processing_content(parent: VBoxContainer, q_type_key: Strin
 				m_in.placeholder_text = "method key"
 				m_in.custom_minimum_size = Vector2(110, 24)
 				m_in.add_theme_font_size_override("font_size", 12)
-				m_in.text_changed.connect(func(txt): DataManager.questions[q_type_key][q_index]["scenarios"][si]["options"][oi]["method"] = txt)
+				m_in.text_changed.connect(func(txt, idx=oi): DataManager.questions[q_type_key][q_index]["scenarios"][si]["options"][idx]["method"] = txt)
 				o_row.add_child(m_in)
 				var n_in = LineEdit.new()
 				n_in.text = sc_options[oi].get("name", "")
 				n_in.placeholder_text = "显示名"
 				n_in.custom_minimum_size = Vector2(110, 24)
 				n_in.add_theme_font_size_override("font_size", 12)
-				n_in.text_changed.connect(func(txt): DataManager.questions[q_type_key][q_index]["scenarios"][si]["options"][oi]["name"] = txt)
+				n_in.text_changed.connect(func(txt, idx=oi): DataManager.questions[q_type_key][q_index]["scenarios"][si]["options"][idx]["name"] = txt)
 				o_row.add_child(n_in)
 				var f_in = LineEdit.new()
 				f_in.text = sc_options[oi].get("feedback", "")
 				f_in.placeholder_text = "选择反馈"
 				f_in.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 				f_in.add_theme_font_size_override("font_size", 12)
-				f_in.text_changed.connect(func(txt): DataManager.questions[q_type_key][q_index]["scenarios"][si]["options"][oi]["feedback"] = txt)
+				f_in.text_changed.connect(func(txt, idx=oi): DataManager.questions[q_type_key][q_index]["scenarios"][si]["options"][idx]["feedback"] = txt)
 				o_row.add_child(f_in)
 				var del_opt2 = create_button("删", Vector2.ZERO, Vector2(40, 24), STYLE_DANGER)
 				del_opt2.add_theme_font_size_override("font_size", 11)
-				del_opt2.pressed.connect(func():
-					DataManager.questions[q_type_key][q_index]["scenarios"][si]["options"].remove_at(oi)
+				del_opt2.pressed.connect(func(idx=oi):
+					DataManager.questions[q_type_key][q_index]["scenarios"][si]["options"].remove_at(idx)
 					show_notification("已删除方法选项，刷新生效", "warning", 1.5)
 					get_tree().reload_current_scene()
 				)

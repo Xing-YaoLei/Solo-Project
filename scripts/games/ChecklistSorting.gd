@@ -241,7 +241,11 @@ func _on_reset() -> void:
 
 func _on_submit() -> void:
 	var question = current_question
-	var correct_order = question.get("items", [])
+	var raw_items = question.get("items", [])
+	var correct_order = raw_items.duplicate()
+	correct_order.sort_custom(func(a, b):
+		return a.get("order", 0) < b.get("order", 0)
+	)
 	var correct = true
 	var correct_positions = 0
 	for i in range(current_order.size()):
@@ -263,6 +267,10 @@ func _on_submit() -> void:
 
 func _get_correct_answer() -> Array:
 	var correct_ids: Array = []
-	for item in current_question.get("items", []):
+	var sorted_items = current_question.get("items", []).duplicate()
+	sorted_items.sort_custom(func(a, b):
+		return a.get("order", 0) < b.get("order", 0)
+	)
+	for item in sorted_items:
 		correct_ids.append(item.get("id", ""))
 	return correct_ids
