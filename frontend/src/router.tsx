@@ -7,7 +7,6 @@ import {
   createRouter,
   Link,
   useRouter,
-  useLocation,
   useNavigate,
 } from '@tanstack/react-router'
 import { Layout, Menu, Avatar, Dropdown, Badge, ConfigProvider } from 'antd'
@@ -47,7 +46,6 @@ interface RouterContext {
 
 const ProtectedRoute: React.FC<{ children: React.ReactNode }> = ({ children }) => {
   const { user, loading } = useAuth()
-  const location = useLocation()
   const navigate = useNavigate()
 
   if (loading) {
@@ -59,7 +57,7 @@ const ProtectedRoute: React.FC<{ children: React.ReactNode }> = ({ children }) =
   }
 
   if (!user) {
-    const redirectPath = location.pathname + location.search
+    const redirectPath = window.location.pathname + window.location.search
     const redirectTo = redirectPath === '/' || redirectPath.startsWith('/login') ? '/' : redirectPath
     navigate({
       to: '/login',

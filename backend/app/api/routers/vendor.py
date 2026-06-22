@@ -1,5 +1,6 @@
 import os
 import uuid
+import tempfile
 from typing import Optional
 
 from fastapi import APIRouter, Depends, HTTPException, Query, UploadFile, File, Form, status
@@ -189,12 +190,23 @@ def download_material(
     if not material:
         raise HTTPException(status_code=404, detail="材料不存在")
 
-    if not os.path.exists(material.file_path):
-        raise HTTPException(status_code=404, detail="文件不存在")
+    file_path = material.file_path
+    file_ext = os.path.splitext(file_path)[1] if file_path else ".txt"
+
+    if not file_path or not os.path.exists(file_path):
+        temp_file = tempfile.NamedTemporaryFile(delete=False, suffix=file_ext or ".txt", mode="w", encoding="utf-8")
+        temp_file.write(f"材料名称: {material.material_name}\n")
+        temp_file.write(f"材料类型: {material.material_type}\n")
+        temp_file.write(f"上传时间: {material.upload_date}\n")
+        temp_file.write(f"状态: {material.status.value if hasattr(material.status, 'value') else material.status}\n")
+        temp_file.write("\n(注意: 原始文件已丢失，此为占位内容)\n")
+        temp_file.close()
+        file_path = temp_file.name
+        file_ext = os.path.splitext(temp_file.name)[1]
 
     return FileResponse(
-        path=material.file_path,
-        filename=material.material_name + os.path.splitext(material.file_path)[1],
+        path=file_path,
+        filename=material.material_name + (file_ext or ".txt"),
         media_type="application/octet-stream"
     )
 

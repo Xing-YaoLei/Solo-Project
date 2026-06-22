@@ -1,4 +1,5 @@
 from datetime import datetime, date, timedelta
+import os
 from sqlalchemy.orm import Session
 from app.models import (
     User, UserRole, Vendor, AuditChecklist, SamplingRecord,
@@ -7,6 +8,20 @@ from app.models import (
     ExceptionType, ExceptionStatus, MaterialStatus
 )
 from app.core.security import get_password_hash
+from app.core.config import settings
+
+
+def _ensure_upload_dirs():
+    vendor_dirs = ["huawei", "alibaba", "tencent"]
+    for vendor_dir in vendor_dirs:
+        target_dir = os.path.join(settings.UPLOAD_DIR, vendor_dir)
+        os.makedirs(target_dir, exist_ok=True)
+
+
+def _create_placeholder_file(file_path: str, content: str):
+    os.makedirs(os.path.dirname(file_path), exist_ok=True)
+    with open(file_path, "w", encoding="utf-8") as f:
+        f.write(content)
 
 
 def init_default_user(db: Session):
@@ -273,58 +288,77 @@ def init_test_data(db: Session):
     db.add_all([log1, log2, log3, log4, log5])
     db.flush()
 
+    _ensure_upload_dirs()
+
+    material1_path = os.path.join(settings.UPLOAD_DIR, "huawei", "iso27001_cert.pdf")
+    _create_placeholder_file(material1_path, "ISO 27001 信息安全管理体系认证证书 - 华为技术有限公司\n有效期: 2024-2027\n发证机构: 中国信息安全认证中心")
     material1 = SupplierMaterial(
         vendor_id=vendor1.id,
         material_type="资质证书",
         material_name="ISO 27001 信息安全管理体系认证证书",
         upload_date=datetime.utcnow() - timedelta(days=10),
         uploaded_by="admin",
-        file_path="/materials/huawei/iso27001_cert.pdf",
+        file_path=material1_path,
         status=MaterialStatus.APPROVED,
     )
+
+    material2_path = os.path.join(settings.UPLOAD_DIR, "huawei", "iso9001_cert.pdf")
+    _create_placeholder_file(material2_path, "ISO 9001 质量管理体系认证证书 - 华为技术有限公司\n有效期: 2023-2026\n发证机构: 中国质量认证中心")
     material2 = SupplierMaterial(
         vendor_id=vendor1.id,
         material_type="资质证书",
         material_name="ISO 9001 质量管理体系认证证书",
         upload_date=datetime.utcnow() - timedelta(days=8),
         uploaded_by="admin",
-        file_path="/materials/huawei/iso9001_cert.pdf",
+        file_path=material2_path,
         status=MaterialStatus.APPROVED,
     )
+
+    material3_path = os.path.join(settings.UPLOAD_DIR, "alibaba", "data_security_report.pdf")
+    _create_placeholder_file(material3_path, "数据安全合规评估报告 - 阿里巴巴集团\n评估日期: 2025-05\n评估范围: 数据处理全流程")
     material3 = SupplierMaterial(
         vendor_id=vendor2.id,
         material_type="合规报告",
         material_name="数据安全合规评估报告",
         upload_date=datetime.utcnow() - timedelta(days=5),
         uploaded_by="admin",
-        file_path="/materials/alibaba/data_security_report.pdf",
+        file_path=material3_path,
         status=MaterialStatus.PENDING,
     )
+
+    material4_path = os.path.join(settings.UPLOAD_DIR, "alibaba", "等保备案证明.pdf")
+    _create_placeholder_file(material4_path, "网络安全等级保护备案证明 - 阿里巴巴集团\n备案等级: 三级\n备案编号: 11010812345")
     material4 = SupplierMaterial(
         vendor_id=vendor2.id,
         material_type="资质证书",
         material_name="网络安全等级保护备案证明",
         upload_date=datetime.utcnow() - timedelta(days=3),
         uploaded_by="admin",
-        file_path="/materials/alibaba/等保备案证明.pdf",
+        file_path=material4_path,
         status=MaterialStatus.PENDING,
     )
+
+    material5_path = os.path.join(settings.UPLOAD_DIR, "tencent", "iso27001_cert.pdf")
+    _create_placeholder_file(material5_path, "ISO 27001 信息安全管理体系认证证书 - 腾讯科技\n（已过期，需重新提交）")
     material5 = SupplierMaterial(
         vendor_id=vendor3.id,
         material_type="资质证书",
         material_name="ISO 27001 信息安全管理体系认证证书",
         upload_date=datetime.utcnow() - timedelta(days=15),
         uploaded_by="admin",
-        file_path="/materials/tencent/iso27001_cert.pdf",
+        file_path=material5_path,
         status=MaterialStatus.REJECTED,
     )
+
+    material6_path = os.path.join(settings.UPLOAD_DIR, "tencent", "security_policy.pdf")
+    _create_placeholder_file(material6_path, "供应商安全管理制度 - 腾讯科技\n版本: v2.0\n发布日期: 2025-06")
     material6 = SupplierMaterial(
         vendor_id=vendor3.id,
         material_type="其他材料",
         material_name="供应商安全管理制度",
         upload_date=datetime.utcnow() - timedelta(days=1),
         uploaded_by="admin",
-        file_path="/materials/tencent/security_policy.pdf",
+        file_path=material6_path,
         status=MaterialStatus.PENDING,
     )
     db.add_all([material1, material2, material3, material4, material5, material6])

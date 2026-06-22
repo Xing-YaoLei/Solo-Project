@@ -1,7 +1,7 @@
 import React, { useState } from 'react'
 import { Form, Input, Button, Card, message, Typography, Checkbox } from 'antd'
 import { UserOutlined, LockOutlined, LoginOutlined, SafetyOutlined } from '@ant-design/icons'
-import { useNavigate, useLocation } from '@tanstack/react-router'
+import { useNavigate } from '@tanstack/react-router'
 import { useAuth } from '@/hooks/useAuth'
 import { LoginData } from '@/types'
 
@@ -11,10 +11,9 @@ const LoginPage: React.FC = () => {
   const [loading, setLoading] = useState(false)
   const [form] = Form.useForm()
   const navigate = useNavigate()
-  const location = useLocation()
   const { login } = useAuth()
 
-  const searchParams = new URLSearchParams(location.search || '')
+  const searchParams = new URLSearchParams(window.location.search || '')
   const rawRedirect = searchParams.get('redirect') || '/'
   let redirectTo = '/'
   try {

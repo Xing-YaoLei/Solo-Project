@@ -28,7 +28,7 @@ import {
 import { useQuery, useMutation } from '@tanstack/react-query'
 import dayjs from 'dayjs'
 import { exportApi } from '@/api/export'
-import { ExportType } from '@/types/enums'
+import { ExportType, SamplingStatus, RectificationStatus, ExceptionStatus, RiskLevel, ExceptionType } from '@/types/enums'
 import { ExportTask } from '@/types'
 import StatusTag from '@/components/StatusTag'
 
@@ -39,6 +39,8 @@ interface ExportFormValues {
   format: 'excel' | 'csv'
   status?: string
   riskLevel?: string
+  exceptionType?: string
+  evidenceStatus?: string
   dateRange?: [dayjs.Dayjs, dayjs.Dayjs]
 }
 
@@ -69,17 +71,37 @@ const exportTypeMap: Record<string, { label: string; icon: React.ReactNode }> = 
   [ExportType.EXCEPTION]: { label: '异常单', icon: <WarningOutlined /> },
 }
 
-const statusOptions = [
-  { label: '待处理/未启动', value: 'pending' },
-  { label: '进行中/处理中', value: 'processing' },
-  { label: '已完成/已关闭', value: 'completed' },
+const samplingStatusOptions = [
+  { label: '待审核', value: SamplingStatus.PENDING },
+  { label: '已审核', value: SamplingStatus.REVIEWED },
+  { label: '需跟进', value: SamplingStatus.FOLLOW_UP },
+]
+
+const rectificationStatusOptions = [
+  { label: '未启动', value: RectificationStatus.NOT_STARTED },
+  { label: '进行中', value: RectificationStatus.IN_PROGRESS },
+  { label: '已提交', value: RectificationStatus.SUBMITTED },
+  { label: '已审核', value: RectificationStatus.REVIEWED },
+  { label: '已关闭', value: RectificationStatus.CLOSED },
+]
+
+const exceptionStatusOptions = [
+  { label: '待处理', value: ExceptionStatus.OPEN },
+  { label: '处理中', value: ExceptionStatus.PROCESSING },
+  { label: '已关闭', value: ExceptionStatus.CLOSED },
+]
+
+const exceptionTypeOptions = [
+  { label: '证据缺失', value: ExceptionType.EVIDENCE_MISSING },
+  { label: '不合规', value: ExceptionType.NON_COMPLIANCE },
+  { label: '其他', value: ExceptionType.OTHER },
 ]
 
 const riskLevelOptions = [
-  { label: '低风险', value: 'low' },
-  { label: '中风险', value: 'medium' },
-  { label: '高风险', value: 'high' },
-  { label: '严重风险', value: 'critical' },
+  { label: '低风险', value: RiskLevel.LOW },
+  { label: '中风险', value: RiskLevel.MEDIUM },
+  { label: '高风险', value: RiskLevel.HIGH },
+  { label: '严重风险', value: RiskLevel.CRITICAL },
 ]
 
 const ExportPage: React.FC = () => {
@@ -125,6 +147,8 @@ const ExportPage: React.FC = () => {
       const filters: Record<string, any> = {}
       if (values.status) filters.status = values.status
       if (values.riskLevel) filters.riskLevel = values.riskLevel
+      if (values.exceptionType) filters.exceptionType = values.exceptionType
+      if (values.evidenceStatus) filters.evidenceStatus = values.evidenceStatus
       if (values.dateRange) {
         filters.startDate = values.dateRange[0].startOf('day').toISOString()
         filters.endDate = values.dateRange[1].endOf('day').toISOString()
@@ -185,17 +209,40 @@ const ExportPage: React.FC = () => {
               </Form.Item>
 
               {selectedType === ExportType.SAMPLING && (
-                <Form.Item label="状态筛选" name="status">
-                  <Select placeholder="选择抽样状态（可选）" allowClear options={statusOptions} />
-                </Form.Item>
-              )}
-              {(selectedType === ExportType.RECTIFICATION || selectedType === ExportType.EXCEPTION) && (
                 <>
                   <Form.Item label="状态筛选" name="status">
-                    <Select placeholder="选择状态（可选）" allowClear options={statusOptions} />
+                    <Select placeholder="选择抽样状态（可选）" allowClear options={samplingStatusOptions} />
+                  </Form.Item>
+                  <Form.Item label="证据状态" name="evidenceStatus">
+                    <Select
+                      placeholder="选择证据状态（可选）"
+                      allowClear
+                      options={[
+                        { label: '完整', value: 'complete' },
+                        { label: '部分', value: 'partial' },
+                        { label: '缺失', value: 'missing' },
+                      ]}
+                    />
+                  </Form.Item>
+                </>
+              )}
+              {selectedType === ExportType.RECTIFICATION && (
+                <>
+                  <Form.Item label="状态筛选" name="status">
+                    <Select placeholder="选择整改状态（可选）" allowClear options={rectificationStatusOptions} />
                   </Form.Item>
                   <Form.Item label="风险等级" name="riskLevel">
                     <Select placeholder="选择风险等级（可选）" allowClear options={riskLevelOptions} />
+                  </Form.Item>
+                </>
+              )}
+              {selectedType === ExportType.EXCEPTION && (
+                <>
+                  <Form.Item label="状态筛选" name="status">
+                    <Select placeholder="选择异常状态（可选）" allowClear options={exceptionStatusOptions} />
+                  </Form.Item>
+                  <Form.Item label="异常类型" name="exceptionType">
+                    <Select placeholder="选择异常类型（可选）" allowClear options={exceptionTypeOptions} />
                   </Form.Item>
                 </>
               )}
