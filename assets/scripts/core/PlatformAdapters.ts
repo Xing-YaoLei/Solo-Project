@@ -176,6 +176,64 @@ export class FileResourceLoader implements IResourceLoader {
     }
 }
 
+export class CocosResourceLoader implements IResourceLoader {
+    private _basePath: string;
+
+    constructor(basePath: string = 'configs') {
+        this._basePath = basePath;
+    }
+
+    async loadJson(path: string): Promise<any> {
+        const fullPath = this._basePath ? `${this._basePath}/${path}` : path;
+        const url = fullPath.replace(/\.json$/, '');
+        return new Promise((resolve, reject) => {
+            try {
+                const { resources, JsonAsset } = (globalThis as any).cc || {};
+                if (!resources || !JsonAsset) {
+                    reject(new Error('Cocos resources module not available'));
+                    return;
+                }
+                resources.load(url, JsonAsset, (err: any, asset: any) => {
+                    if (err) {
+                        reject(err);
+                    } else if (asset) {
+                        resolve(asset.json);
+                    } else {
+                        reject(new Error(`Loaded asset is null: ${url}`));
+                    }
+                });
+            } catch (e) {
+                reject(e);
+            }
+        });
+    }
+
+    async loadText(path: string): Promise<string> {
+        const fullPath = this._basePath ? `${this._basePath}/${path}` : path;
+        const url = fullPath.replace(/\.json$/, '');
+        return new Promise((resolve, reject) => {
+            try {
+                const { resources, TextAsset } = (globalThis as any).cc || {};
+                if (!resources || !TextAsset) {
+                    reject(new Error('Cocos resources module not available'));
+                    return;
+                }
+                resources.load(url, TextAsset, (err: any, asset: any) => {
+                    if (err) {
+                        reject(err);
+                    } else if (asset) {
+                        resolve(asset.text);
+                    } else {
+                        reject(new Error(`Loaded asset is null: ${url}`));
+                    }
+                });
+            } catch (e) {
+                reject(e);
+            }
+        });
+    }
+}
+
 export class InMemoryResourceLoader implements IResourceLoader {
     private _resources: Map<string, any> = new Map();
 
@@ -203,7 +261,11 @@ export class ResourceFactory {
 
     public static getInstance(): IResourceLoader {
         if (!ResourceFactory._instance) {
-            ResourceFactory._instance = new InMemoryResourceLoader();
+            if (typeof cc !== 'undefined' && (cc as any).resources) {
+                ResourceFactory._instance = new CocosResourceLoader();
+            } else {
+                ResourceFactory._instance = new InMemoryResourceLoader();
+            }
         }
         return ResourceFactory._instance;
     }
