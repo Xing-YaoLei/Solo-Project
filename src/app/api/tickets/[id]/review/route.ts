@@ -2,7 +2,7 @@ import { NextResponse } from 'next/server'
 import { prisma } from '@/lib/prisma'
 import { z } from 'zod'
 import type { ReviewRequest, ReviewResponse, ReviewOpinion } from '@/lib/types'
-import { nanoid } from 'nanoid'
+import { getCurrentUserId } from '@/lib/auth'
 
 const reviewSchema = z.object({
   opinion: z.enum(['approved', 'rejected', 'returned_for_modification']),
@@ -58,6 +58,7 @@ export async function POST(
     }
 
     const { opinion, comment } = validation.data
+    const currentUserId = await getCurrentUserId(request)
 
     const ticket = await prisma.ticket.findUnique({
       where: { id: params.id },
@@ -77,7 +78,7 @@ export async function POST(
           ticketId: params.id,
           opinion,
           comment,
-          reviewerId: '1',
+          reviewerId: currentUserId,
         },
       })
 
@@ -107,7 +108,7 @@ export async function POST(
           ticketId: params.id,
           action: `复核${opinion === 'approved' ? '通过' : opinion === 'rejected' ? '不通过' : '退回修改'}`,
           description: comment,
-          operatorId: '1',
+          operatorId: currentUserId,
         },
       })
 

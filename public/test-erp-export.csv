@@ -1,0 +1,7 @@
+title,department,description,assignee_email,due_date,evidence_email,attachments
+"ERP系统用户权限异常","信息技术部","发现3个账号拥有超出职责范围的敏感权限，包括财务数据查询和系统配置修改权限","business1@company.com",2024-07-15,"权限审计报告：检测到异常权限分配，需要立即整改","https://example.com/attachment1.pdf"
+"采购订单审批流程违规","采购部","连续5笔大额采购订单未经过财务部门审核即下单，涉及金额超过200万元","business3@company.com",2024-07-20,"采购流程审计发现审批环节缺失，存在合规风险","https://example.com/attachment2.pdf"
+"客户敏感数据导出未记录","运营管理部","运营部门导出12000条客户个人信息，但操作日志中未记录导出目的和审批人","business2@company.com",2024-07-18,"数据导出审计：发现未授权的敏感数据导出行为","https://example.com/attachment3.pdf"
+"离职人员账号未及时禁用","人力资源部","上月离职的8名员工中，有3人的系统账号仍处于活跃状态","business2@company.com",2024-07-10,"人员变动审计：账号管理存在漏洞，可能导致数据泄露","https://example.com/attachment4.pdf"
+"财务报表生成权限过大","财务部","2名财务人员拥有直接修改已结账报表的权限，不符合职责分离原则","business1@company.com",2024-07-25,"财务系统权限审计：存在越权操作风险","https://example.com/attachment5.pdf"
+"供应商资质审核缺失","采购部","新增的6家供应商中，有2家未完成完整的资质审核和背景调查","business3@company.com",2024-07-22,"供应商准入审计：合规审核流程执行不到位","https://example.com/attachment6.pdf"

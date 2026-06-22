@@ -45,12 +45,13 @@ enum RemarkPriority {
 }
 
 model User {
-  id         String   @id @default(uuid())
-  email      String   @unique
-  name       String
-  role       UserRole
-  department String?
-  createdAt  DateTime @default(now())
+  id             String   @id @default(uuid())
+  email          String   @unique
+  name           String
+  role           UserRole
+  department     String?
+  passwordHash   String?
+  createdAt      DateTime @default(now())
 
   assignedTickets Ticket[]         @relation("TicketAssignee")
   auditedTickets  Ticket[]         @relation("TicketAuditor")

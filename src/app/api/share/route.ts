@@ -3,6 +3,7 @@ import { prisma } from '@/lib/prisma'
 import { z } from 'zod'
 import { nanoid } from 'nanoid'
 import type { CreateShareRequest, CreateShareResponse, UserRole, SharePage } from '@/lib/types'
+import { getCurrentUserId } from '@/lib/auth'
 
 const shareSchema = z.object({
   scope: z.array(z.enum(['auditor', 'business_owner', 'compliance_officer', 'management'])),
@@ -24,6 +25,7 @@ export async function POST(request: Request) {
     }
 
     const { scope, expiresIn, page, ticketId } = validation.data
+    const currentUserId = await getCurrentUserId(request)
 
     if (page === 'ticket' && !ticketId) {
       return NextResponse.json(
@@ -41,7 +43,7 @@ export async function POST(request: Request) {
         page,
         allowedRoles: JSON.stringify(scope),
         expiresAt,
-        createdById: '1',
+        createdById: currentUserId,
         ticketId,
       },
     })

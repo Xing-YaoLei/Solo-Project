@@ -1,6 +1,7 @@
 import { NextResponse } from 'next/server'
 import { prisma } from '@/lib/prisma'
 import { z } from 'zod'
+import { getCurrentUserId } from '@/lib/auth'
 
 const updateTaskSchema = z.object({
   completed: z.boolean().optional(),
@@ -23,6 +24,7 @@ export async function PATCH(
       )
     }
 
+    const currentUserId = await getCurrentUserId(request)
     const task = await prisma.remarkTask.findUnique({
       where: { id: params.taskId },
     })
@@ -35,7 +37,7 @@ export async function PATCH(
     if (validation.data.completed !== undefined) {
       updateData.completedAt = validation.data.completed ? new Date() : null
       if (validation.data.completed) {
-        updateData.completedById = '1'
+        updateData.completedById = currentUserId
       } else {
         updateData.completedById = null
       }
@@ -51,7 +53,7 @@ export async function PATCH(
         ticketId: params.id,
         action: validation.data.completed ? '完成备注任务' : '重新打开备注任务',
         description: updatedTask.description,
-        operatorId: '1',
+        operatorId: currentUserId,
       },
     })
 
