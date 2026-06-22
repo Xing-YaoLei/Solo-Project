@@ -13275,6 +13275,119 @@
     }
   };
 
+  // app/javascript/controllers/modal_controller.js
+  var modal_controller_default = class extends Controller {
+    connect() {
+      this.escapeHandler = (e) => {
+        if (e.key === "Escape") this.closeAll();
+      };
+      document.addEventListener("keydown", this.escapeHandler);
+      this.element.querySelectorAll("[data-modal-backdrop]").forEach((el) => {
+        el.addEventListener("click", (e) => {
+          if (e.target === el) {
+            const modal = el.closest("[data-modal]");
+            if (modal) this.hideModal(modal);
+          }
+        });
+      });
+      this.element.querySelectorAll("[data-modal-close]").forEach((el) => {
+        el.addEventListener("click", () => {
+          const modal = el.closest("[data-modal]");
+          if (modal) this.hideModal(modal);
+        });
+      });
+    }
+    disconnect() {
+      document.removeEventListener("keydown", this.escapeHandler);
+    }
+    openBy(event) {
+      const trigger = event.currentTarget;
+      const modalId = trigger.dataset.modalId;
+      if (modalId) {
+        const modal = document.getElementById(modalId);
+        if (modal) this.showModal(modal);
+      }
+    }
+    closeBy(event) {
+      const trigger = event.currentTarget;
+      const modalId = trigger.dataset.modalId;
+      const modal = modalId ? document.getElementById(modalId) : trigger.closest("[data-modal]");
+      if (modal) this.hideModal(modal);
+    }
+    showModal(modal) {
+      modal.classList.remove("hidden");
+      document.body.style.overflow = "hidden";
+      modal.dispatchEvent(new CustomEvent("modal:opened", { bubbles: true, detail: { modal } }));
+    }
+    hideModal(modal) {
+      modal.classList.add("hidden");
+      document.body.style.overflow = "";
+      modal.dispatchEvent(new CustomEvent("modal:closed", { bubbles: true, detail: { modal } }));
+    }
+    closeAll() {
+      document.querySelectorAll("[data-modal]:not(.hidden)").forEach((modal) => {
+        this.hideModal(modal);
+      });
+    }
+  };
+
+  // app/javascript/controllers/nested_form_controller.js
+  var nested_form_controller_default = class extends Controller {
+    static targets = [
+      "materialsContainer",
+      "materialTemplate",
+      "materialsEmpty",
+      "permissionsContainer",
+      "permissionTemplate",
+      "permissionsEmpty"
+    ];
+    connect() {
+      this.updateEmptyState();
+    }
+    addMaterial() {
+      const template = this.materialTemplateTarget.content.cloneNode(true);
+      const newId = `material_${Date.now()}`;
+      template.innerHTML = template.innerHTML.replace(/NEW_MATERIAL_ID/g, newId);
+      this.materialsContainerTarget.appendChild(template);
+      this.updateEmptyState();
+    }
+    addPermission() {
+      const template = this.permissionTemplateTarget.content.cloneNode(true);
+      const newId = `permission_${Date.now()}`;
+      template.innerHTML = template.innerHTML.replace(/NEW_PERMISSION_ID/g, newId);
+      this.permissionsContainerTarget.appendChild(template);
+      this.updateEmptyState();
+    }
+    removeItem(event) {
+      const btn = event.currentTarget;
+      const wrapper = btn.closest("[data-nested-form-item]");
+      if (wrapper) {
+        const destroyInput = wrapper.querySelector("input[name$='[_destroy]']");
+        if (destroyInput) {
+          destroyInput.value = "1";
+          wrapper.classList.add("hidden");
+        } else {
+          wrapper.remove();
+        }
+        this.updateEmptyState();
+      }
+    }
+    updateEmptyState() {
+      if (this.hasMaterialsContainerTarget && this.hasMaterialsEmptyTarget) {
+        const visible = this.materialsContainerTarget.querySelectorAll(
+          ":scope > div:not(.hidden)"
+        ).length === 0;
+        this.materialsEmptyTarget.classList.toggle("hidden", !visible);
+      }
+      if (this.hasPermissionsContainerTarget && this.hasPermissionsEmptyTarget) {
+        const visible = this.permissionsContainerTarget.querySelectorAll(
+          ":scope > div:not(.hidden)"
+        ).length === 0;
+        this.permissionsEmptyTarget.classList.toggle("hidden", !visible);
+      }
+    }
+  };
+
   // app/javascript/controllers/index.js
   var import_meta = {};
   var application = Application.start();
@@ -13284,6 +13397,8 @@
   application.register("tom-select", tom_select_controller_default);
   application.register("inline-edit", inline_edit_controller_default);
   application.register("tabs", tabs_controller_default);
+  application.register("modal", modal_controller_default);
+  application.register("nested-form", nested_form_controller_default);
   if (import_meta.hot) {
     import_meta.hot.accept(application);
   }

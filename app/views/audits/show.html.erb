@@ -137,9 +137,8 @@
                 </div>
                 <% if policy(@audit).upload_evidence? && !@audit.archived? && !@audit.rejected? %>
                   <button type="button"
-                    data-controller="modal"
-                    data-action="click->modal#open"
-                    data-modal-target="evidenceModal"
+                    data-action="click->modal#openBy"
+                    data-modal-id="evidenceModal"
                     class="inline-flex items-center px-3 py-2 rounded text-sm font-semibold bg-blue-600 text-white hover:bg-blue-700 transition-colors">
                     <svg class="w-4 h-4 mr-1.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                       <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4"></path>
@@ -149,6 +148,7 @@
                 <% end %>
               </div>
 
+              <div id="evidence_list">
               <% if @evidence_attachments.any? %>
                 <div class="grid grid-cols-1 md:grid-cols-2 gap-3">
                   <% @evidence_attachments.each do |evidence| %>
@@ -171,7 +171,7 @@
                             <% if evidence.evidence_type.present? %>
                               <span class="inline-flex items-center px-2 py-0.5 rounded bg-slate-100"><%= type_labels[evidence.evidence_type.to_sym] || evidence.evidence_type %></span>
                             <% end %>
-                            <span><%= evidence.file_size_human || evidence.file.attached? ? ActiveSupport::NumberHelper.number_to_human_size(evidence.file.blob.byte_size) : '-' %></span>
+                            <span><%= evidence.file_size_human || (evidence.file.attached? ? ActiveSupport::NumberHelper.number_to_human_size(evidence.file.blob.byte_size) : '-') %></span>
                           </div>
                           <p class="mt-1 text-xs text-slate-400">
                             <%= evidence.uploader&.name %> 上传于 <%= evidence.created_at.strftime("%Y-%m-%d %H:%M") %>
@@ -208,6 +208,7 @@
                   <p class="mt-1 text-sm text-slate-500">点击右上角「上传证据」开始上传审计证据</p>
                 </div>
               <% end %>
+              </div>
             </div>
 
           <% elsif current_tab == "checklist" %>
@@ -376,10 +377,10 @@
   </div>
 
   <% if policy(@audit).transition? %>
-    <div id="rejectModal" class="hidden fixed inset-0 z-50 overflow-y-auto" data-controller="modal">
+    <div id="rejectModal" data-modal class="hidden fixed inset-0 z-50 overflow-y-auto">
       <div class="flex items-end justify-center min-h-screen pt-4 px-4 pb-20 text-center sm:block sm:p-0">
-        <div class="fixed inset-0 transition-opacity bg-slate-500/50" data-action="click->modal#close"></div>
-        <div class="inline-block align-bottom bg-white rounded-lg text-left overflow-hidden shadow-xl transform transition-all sm:my-8 sm:align-middle sm:max-w-lg sm:w-full" data-modal-target="content">
+        <div data-modal-backdrop class="fixed inset-0 transition-opacity bg-slate-500/50"></div>
+        <div class="inline-block align-bottom bg-white rounded-lg text-left overflow-hidden shadow-xl transform transition-all sm:my-8 sm:align-middle sm:max-w-lg sm:w-full">
           <div class="bg-white px-5 pt-5 pb-4">
             <div class="flex items-start gap-3">
               <div class="w-10 h-10 rounded-full bg-red-100 flex items-center justify-center flex-shrink-0">
@@ -399,7 +400,7 @@
                 <%= f.text_area :rejection_reason, rows: 4, required: true, class: "w-full px-3 py-2 border border-slate-300 rounded focus:outline-none focus:ring-2 focus:ring-red-500 focus:border-red-500 text-sm", placeholder: "请详细说明驳回原因..." %>
               </div>
               <div class="mt-5 flex justify-end gap-2">
-                <button type="button" data-action="click->modal#close" class="px-4 py-2 rounded text-sm font-medium bg-white border border-slate-300 text-slate-700 hover:bg-slate-50 transition-colors">取消</button>
+                <button type="button" data-modal-close class="px-4 py-2 rounded text-sm font-medium bg-white border border-slate-300 text-slate-700 hover:bg-slate-50 transition-colors">取消</button>
                 <%= f.submit "确认驳回", class: "px-4 py-2 rounded text-sm font-semibold bg-red-600 text-white hover:bg-red-700 transition-colors" %>
               </div>
             <% end %>
@@ -410,13 +411,13 @@
   <% end %>
 
   <% if policy(@audit).upload_evidence? && !@audit.archived? && !@audit.rejected? %>
-    <div id="evidenceModal" class="hidden fixed inset-0 z-50 overflow-y-auto" data-controller="modal">
+    <div id="evidenceModal" data-modal class="hidden fixed inset-0 z-50 overflow-y-auto">
       <div class="flex items-end justify-center min-h-screen pt-4 px-4 pb-20 text-center sm:block sm:p-0">
-        <div class="fixed inset-0 transition-opacity bg-slate-500/50" data-action="click->modal#close"></div>
-        <div class="inline-block align-bottom bg-white rounded-lg text-left overflow-hidden shadow-xl transform transition-all sm:my-8 sm:align-middle sm:max-w-lg sm:w-full" data-modal-target="content">
+        <div data-modal-backdrop class="fixed inset-0 transition-opacity bg-slate-500/50"></div>
+        <div class="inline-block align-bottom bg-white rounded-lg text-left overflow-hidden shadow-xl transform transition-all sm:my-8 sm:align-middle sm:max-w-lg sm:w-full">
           <div class="bg-white px-5 pt-5 pb-4">
             <h3 class="text-lg font-semibold text-slate-900 mb-4">上传证据附件</h3>
-            <%= form_with url: evidence_audit_path(@audit), method: :post, local: true, class: "space-y-4", html: { multipart: true } do |f| %>
+            <%= form_with url: evidence_audit_path(@audit), method: :post, local: false, class: "space-y-4", html: { multipart: true } do |f| %>
               <div>
                 <%= f.label :name, "证据名称", class: "block text-sm font-medium text-slate-700 mb-1" %>
                 <%= f.text_field :name, required: true, class: "w-full px-3 py-2 border border-slate-300 rounded focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 text-sm", placeholder: "例如：2024年度质量认证证书" %>
@@ -435,7 +436,7 @@
                 <%= f.text_area :description, rows: 2, class: "w-full px-3 py-2 border border-slate-300 rounded focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 text-sm", placeholder: "可选：补充说明该证据的用途或其他信息" %>
               </div>
               <div class="pt-2 flex justify-end gap-2">
-                <button type="button" data-action="click->modal#close" class="px-4 py-2 rounded text-sm font-medium bg-white border border-slate-300 text-slate-700 hover:bg-slate-50 transition-colors">取消</button>
+                <button type="button" data-modal-close class="px-4 py-2 rounded text-sm font-medium bg-white border border-slate-300 text-slate-700 hover:bg-slate-50 transition-colors">取消</button>
                 <%= f.submit "上传", class: "px-4 py-2 rounded text-sm font-semibold bg-blue-600 text-white hover:bg-blue-700 transition-colors" %>
               </div>
             <% end %>

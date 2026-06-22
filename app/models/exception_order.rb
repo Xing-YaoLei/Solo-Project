@@ -57,33 +57,37 @@ class ExceptionOrder < ApplicationRecord
 
   def assign_to(user, remark = nil)
     return false unless can_transition_to?(:assigned)
+    prev_status = status
     update!(status: :assigned, handler: user)
-    log_transition(user, status, :assigned, remark, { action: "assign" })
+    log_transition(user, prev_status, :assigned, remark, { action: "assign" })
     true
   end
 
   def start_progress(user, remark = nil)
     return false unless can_transition_to?(:in_progress)
+    prev_status = status
     update!(status: :in_progress)
-    log_transition(user, status, :in_progress, remark, { action: "start_progress" })
+    log_transition(user, prev_status, :in_progress, remark, { action: "start_progress" })
     true
   end
 
   def resolve(user, conclusion, remark = nil)
     return false unless can_transition_to?(:resolved)
+    prev_status = status
     update!(
       status: :resolved,
       conclusion: conclusion,
       resolved_at: Time.current
     )
-    log_transition(user, status, :resolved, remark, { action: "resolve", conclusion: conclusion })
+    log_transition(user, prev_status, :resolved, remark, { action: "resolve", conclusion: conclusion })
     true
   end
 
   def close(user, remark = nil)
     return false unless can_transition_to?(:closed)
+    prev_status = status
     update!(status: :closed)
-    log_transition(user, status, :closed, remark, { action: "close" })
+    log_transition(user, prev_status, :closed, remark, { action: "close" })
     true
   end
 

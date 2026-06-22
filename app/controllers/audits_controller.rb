@@ -1,6 +1,6 @@
 class AuditsController < ApplicationController
   before_action :set_audit, only: [
-    :show, :edit, :update, :transition, :checklist,
+    :show, :edit, :update, :transition, :evidence, :checklist,
     :update_checklist, :destroy_evidence, :generate_notification, :export
   ]
 
@@ -119,6 +119,44 @@ class AuditsController < ApplicationController
         format.html { redirect_to @audit, alert: message }
         format.turbo_stream do
           render turbo_stream: render_turbo_flash(alert: message)
+        end
+      end
+    end
+  end
+
+  def evidence
+    authorize @audit, :upload_evidence?
+
+    evidence_params = params.require(:evidence_attachment).permit(
+      :name, :evidence_type, :description, :file
+    )
+    @evidence = @audit.evidence_attachments.new(evidence_params)
+    @evidence.uploader = current_user
+    @evidence.file_type = @evidence.file&.content_type
+
+    respond_to do |format|
+      if @evidence.save
+        detection = EvidenceMissingDetectionService.call(@audit, auto_create_exception: false)
+        @audit.reload
+
+        format.html do
+          redirect_to @audit, notice: "证据附件上传成功"
+        end
+        format.turbo_stream do
+          render turbo_stream: [
+            turbo_stream.replace("evidence_list", partial: "audits/evidence_list", locals: { audit: @audit, evidence_attachments: @audit.evidence_attachments.order(created_at: :desc) }),
+            turbo_stream.replace("evidence_count", partial: "audits/evidence_count", locals: { audit: @audit }),
+            turbo_stream.replace("evidence_completeness", partial: "audits/evidence_completeness", locals: { audit: @audit, detection: detection }),
+            *render_turbo_flash(notice: "证据附件上传成功")
+          ]
+        end
+      else
+        message = @evidence.errors.full_messages.join("，")
+        format.html do
+          redirect_to @audit, alert: "上传失败：#{message}"
+        end
+        format.turbo_stream do
+          render turbo_stream: render_turbo_flash(alert: "上传失败：#{message}")
         end
       end
     end

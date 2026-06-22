@@ -54,6 +54,9 @@ class SuppliersController < ApplicationController
   def edit
     authorize @supplier
 
+    @supplier.permission_configs.build if @supplier.permission_configs.empty?
+    @supplier.materials.build if @supplier.materials.empty?
+
     add_breadcrumb "供应商管理", suppliers_path
     add_breadcrumb @supplier.name, supplier_path(@supplier)
     add_breadcrumb "编辑", nil
@@ -144,7 +147,7 @@ class SuppliersController < ApplicationController
       :name, :code, :contact_person, :phone, :email,
       :status, :description,
       materials_attributes: [:id, :material_type, :name, :status, :expire_at, :remark, :_destroy],
-      permission_configs_attributes: [:id, :permission_type, :is_active, :_destroy, access_scope: {}]
+      permission_configs_attributes: [:id, :permission_type, :is_active, :_destroy, :data_range, :expires_at]
     )
   end
 end

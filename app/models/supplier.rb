@@ -9,6 +9,14 @@ class Supplier < ApplicationRecord
   has_many :permission_configs, dependent: :destroy
   has_many :audits, dependent: :destroy
 
+  accepts_nested_attributes_for :materials,
+    allow_destroy: true,
+    reject_if: ->(attrs) { attrs[:name].blank? && attrs[:material_type].blank? }
+
+  accepts_nested_attributes_for :permission_configs,
+    allow_destroy: true,
+    reject_if: ->(attrs) { attrs[:permission_type].blank? }
+
   has_paper_trail only: [:name, :code, :contact_person, :phone, :email, :status, :description]
 
   validates :name, presence: true, length: { maximum: 200 }
