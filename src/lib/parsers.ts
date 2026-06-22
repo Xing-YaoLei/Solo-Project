@@ -106,21 +106,7 @@ export function parsePermissionLogs(
   options?: { batchId?: string; idPrefix?: string },
 ): ParsedPermissionLog[] {
   const text = (raw ?? '').trim();
-  if (!text) {
-    return PERM_SAMPLE_ACTIONS.map((action, i) => ({
-      userId: `u-sample-${i + 1}`,
-      userName: ['钱进', '李华', '孙丽', '周凯', '陈伟', '刘洋', '赵敏', '王芳'][i % 8],
-      action,
-      resource: [
-        '/api/customer/export', 'root@erp-node', 'FIN-PAY-*',
-        '/confidential/pricing.xlsx', 'GL-ACCT-6601', 'IAM-POLICY-ADMIN',
-        '/hr/salary/2026.xlsx', 'audit-log:switch-off',
-      ][i],
-      ipAddress: `10.10.${i + 1}.${20 + i}`,
-      riskLevel: classifyRisk(action),
-      happenedAt: parseDate(undefined, i),
-    }));
-  }
+  if (!text) return [];
 
   const lines = text.split(/\r?\n/).filter((l) => l.trim());
   if (lines.length === 0) return [];
@@ -217,19 +203,7 @@ export interface ParsedErpRecord {
 
 export function parseErpRecords(raw: string): ParsedErpRecord[] {
   const text = (raw ?? '').trim();
-  if (!text) {
-    return ERP_SAMPLE_TYPES.map((t, i) => ({
-      documentNo: `${t.no}-2026-${String(1000 + i * 7 + Math.floor(Math.random() * 100))}`,
-      documentType: t.type,
-      amount: 100000 + Math.floor(Math.random() * 5000000),
-      department: ['采购部', '财务部', '市场部', '行政部', '法务部'][i % 5],
-      operator: ['李华', '陈伟', '刘洋', '王磊', '周敏'][i % 5],
-      approver: ['财务总监', 'CEO', '审计经理', '技术总监', '法务经理'][i % 5],
-      riskLevel: classifyRisk(t.title),
-      happenedAt: parseDate(undefined, i),
-      _title: t.title,
-    }));
-  }
+  if (!text) return [];
 
   const lines = text.split(/\r?\n/).filter((l) => l.trim());
   if (lines.length === 0) return [];
@@ -320,16 +294,7 @@ export interface ParsedEmail {
 
 export function parseEmailMaterials(raw: string): ParsedEmail[] {
   const text = (raw ?? '').trim();
-  if (!text) {
-    return EMAIL_SAMPLE.map((e, i) => ({
-      subject: e.subj,
-      sender: e.sender,
-      recipients: JSON.stringify(['management@company.com', 'reviewer@company.com']),
-      summary: e.summary,
-      riskLevel: e.risk,
-      sentAt: parseDate(undefined, i + 1),
-    }));
-  }
+  if (!text) return [];
 
   const blocks = text
     .split(/\n\s*\n/)
@@ -362,11 +327,10 @@ export function parseEmailMaterials(raw: string): ParsedEmail[] {
 
     if (!subject) {
       const firstLine = block.split('\n')[0].trim();
-      subject = firstLine.slice(0, 60) || EMAIL_SAMPLE[i % EMAIL_SAMPLE.length].subj;
+      subject = firstLine.slice(0, 60) || '';
     }
-    if (!sender) {
-      sender = EMAIL_SAMPLE[i % EMAIL_SAMPLE.length].sender;
-    }
+    if (!subject) continue;
+    if (!sender) continue;
     if (!recipients) {
       recipients = JSON.stringify(['management@company.com', 'reviewer@company.com']);
     }
@@ -377,7 +341,7 @@ export function parseEmailMaterials(raw: string): ParsedEmail[] {
       : block.replace(/^(Subject|主题|From|发件人|To|收件人|Date|日期)[:：][^\n]*\n?/gim, '').trim().slice(0, 200);
 
     if (!summary) {
-      summary = EMAIL_SAMPLE[i % EMAIL_SAMPLE.length].summary;
+      summary = subject;
     }
 
     const fullText = subject + ' ' + summary;
@@ -394,12 +358,5 @@ export function parseEmailMaterials(raw: string): ParsedEmail[] {
     });
   }
 
-  return results.length > 0 ? results : EMAIL_SAMPLE.map((e, i) => ({
-    subject: e.subj,
-    sender: e.sender,
-    recipients: JSON.stringify(['management@company.com', 'reviewer@company.com']),
-    summary: e.summary,
-    riskLevel: e.risk,
-    sentAt: parseDate(undefined, i + 1),
-  }));
+  return results;
 }

@@ -63,13 +63,30 @@ const EMAIL_TEMPLATES = [
 
 export async function previewParse(input: CreateBatchInput) {
   await requireUser(['MANAGEMENT', 'REVIEWER']);
-  const permLogs = parsePermissionLogs(input.permissionCsv ?? '');
-  const erpRows = parseErpRecords(input.erpCsv ?? '');
-  const emRows = parseEmailMaterials(input.emailEmlPack ?? '');
+
+  const allowedPerm = input.sourceType === 'PERMISSION_LOG' || input.sourceType === 'COMBINED';
+  const allowedErp = input.sourceType === 'ERP_EXPORT' || input.sourceType === 'COMBINED';
+  const allowedEmail = input.sourceType === 'EMAIL_MATERIAL' || input.sourceType === 'COMBINED';
+
+  const permLogs = allowedPerm ? parsePermissionLogs(input.permissionCsv ?? '') : [];
+  const erpRows = allowedErp ? parseErpRecords(input.erpCsv ?? '') : [];
+  const emRows = allowedEmail ? parseEmailMaterials(input.emailEmlPack ?? '') : [];
 
   const permCount = permLogs.length;
   const erpCount = erpRows.length;
   const emailCount = emRows.length;
+  const total = permCount + erpCount + emailCount;
+
+  if (total === 0) {
+    return {
+      ok: false,
+      error: '当前选择的数据源类型没有解析到任何有效记录，请粘贴内容或上传文件。',
+      counts: { permission: 0, erp: 0, email: 0, total: 0 },
+      sourceType: input.sourceType,
+      riskBreakdown: { HIGH: 0, MEDIUM: 0, LOW: 0 },
+      preview: { permission: [], erp: [], email: [] },
+    };
+  }
 
   const riskBreakdown = {
     HIGH: 0,
@@ -80,19 +97,10 @@ export async function previewParse(input: CreateBatchInput) {
   for (const e of erpRows) riskBreakdown[e.riskLevel]++;
   for (const m of emRows) riskBreakdown[m.riskLevel]++;
 
-  const sourceType: SourceType =
-    permCount > 0 && erpCount > 0 && emailCount > 0
-      ? 'COMBINED'
-      : permCount > 0
-        ? 'PERMISSION_LOG'
-        : erpCount > 0
-          ? 'ERP_EXPORT'
-          : 'EMAIL_MATERIAL';
-
   return {
     ok: true,
-    counts: { permission: permCount, erp: erpCount, email: emailCount, total: permCount + erpCount + emailCount },
-    sourceType,
+    counts: { permission: permCount, erp: erpCount, email: emailCount, total },
+    sourceType: input.sourceType,
     riskBreakdown,
     preview: {
       permission: permLogs.slice(0, 3),
@@ -107,12 +115,16 @@ export async function createAuditBatch(input: CreateBatchInput) {
   const log: Array<{ t: string; step: string; msg: string }> = [];
   const push = (step: string, msg: string) => log.push({ t: new Date().toISOString(), step, msg });
 
+  const allowedPerm = input.sourceType === 'PERMISSION_LOG' || input.sourceType === 'COMBINED';
+  const allowedErp = input.sourceType === 'ERP_EXPORT' || input.sourceType === 'COMBINED';
+  const allowedEmail = input.sourceType === 'EMAIL_MATERIAL' || input.sourceType === 'COMBINED';
+
   push('1', '创建导入批次...');
   const batchId = uid('batch');
   const no = batchNo();
 
   push('2', '解析权限日志...');
-  const parsedPerm = parsePermissionLogs(input.permissionCsv ?? '');
+  const parsedPerm = allowedPerm ? parsePermissionLogs(input.permissionCsv ?? '') : [];
   const permLogs = parsedPerm.map((p) => ({
     id: uid('pl'),
     batchId,
@@ -128,7 +140,7 @@ export async function createAuditBatch(input: CreateBatchInput) {
   push('2.1', `权限日志解析完成：${permLogs.length} 条（H=${permLogs.filter((p) => p.riskLevel === 'HIGH').length} M=${permLogs.filter((p) => p.riskLevel === 'MEDIUM').length}）`);
 
   push('3', '解析 ERP 导出...');
-  const parsedErp = parseErpRecords(input.erpCsv ?? '');
+  const parsedErp = allowedErp ? parseErpRecords(input.erpCsv ?? '') : [];
   const erpRows = parsedErp.map((e) => ({
     id: uid('erp'),
     batchId,
@@ -146,7 +158,7 @@ export async function createAuditBatch(input: CreateBatchInput) {
   push('3.1', `ERP 导出解析完成：${erpRows.length} 条（H=${erpRows.filter((p) => p.riskLevel === 'HIGH').length} M=${erpRows.filter((p) => p.riskLevel === 'MEDIUM').length}）`);
 
   push('4', '解析邮件材料...');
-  const parsedEm = parseEmailMaterials(input.emailEmlPack ?? '');
+  const parsedEm = allowedEmail ? parseEmailMaterials(input.emailEmlPack ?? '') : [];
   const emRows = parsedEm.map((m) => ({
     id: uid('em'),
     batchId,
@@ -165,14 +177,12 @@ export async function createAuditBatch(input: CreateBatchInput) {
   const emailCount = emRows.length;
   const totalRaw = permCount + erpCount + emailCount;
 
-  const sourceType: SourceType =
-    permCount > 0 && erpCount > 0 && emailCount > 0
-      ? 'COMBINED'
-      : permCount > 0
-        ? 'PERMISSION_LOG'
-        : erpCount > 0
-          ? 'ERP_EXPORT'
-          : 'EMAIL_MATERIAL';
+  if (totalRaw === 0) {
+    push('ERR', '未解析到任何有效记录，请检查输入内容是否符合格式要求');
+    throw new Error('未解析到任何有效记录，请检查输入内容是否符合格式要求');
+  }
+
+  const sourceType: SourceType = input.sourceType;
 
   const batch = await prisma.importBatch.create({
     data: {

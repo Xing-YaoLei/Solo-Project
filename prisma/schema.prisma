@@ -1,13 +1,14 @@
-// 双 provider：根据 DATABASE_URL 前缀自动切换
-// SQLite:   "file:./dev.db"          -> 本地开发，开箱即用
-// Postgres: "postgresql://..."       -> Supabase / 生产环境
+// 单 provider：PostgreSQL（与 Supabase 100% 兼容）
+// DATABASE_URL="postgresql://postgres@localhost:5432/audit_app"  本地
+// DATABASE_URL="postgresql://postgres:PASSWORD@db.xxx.supabase.co:5432/postgres"  生产 / Supabase
 generator client {
   provider = "prisma-client-js"
 }
 
 datasource db {
-  provider = "sqlite"
-  url      = env("DATABASE_URL")
+  provider  = "postgresql"
+  url       = env("DATABASE_URL")
+  directUrl = env("DIRECT_URL")
 }
 
 model User {
