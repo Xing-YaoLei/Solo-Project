@@ -17,7 +17,7 @@ import { cn } from '@/lib/utils'
 const navItems = [
   { href: '/', label: '仪表盘', icon: LayoutDashboard },
   { href: '/filter', label: '筛选查询', icon: Filter },
-  { href: '/kanban', label: '看板视图', icon: Kanban },
+  { href: '/board', label: '看板视图', icon: Kanban },
   { href: '/upload', label: '数据导入', icon: Upload },
   { href: '/reports', label: '报告生成', icon: FileText },
   { href: '/tasks', label: '整改任务', icon: ListTodo },
