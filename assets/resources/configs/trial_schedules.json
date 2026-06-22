@@ -1,0 +1,142 @@
+{
+  "case_001": [
+    {
+      "day": 1,
+      "stage": "acceptance",
+      "event": "接待当事人，了解案件情况，办理委托手续",
+      "durationHours": 3,
+      "courtRoom": "",
+      "judgeId": ""
+    },
+    {
+      "day": 2,
+      "stage": "investigation",
+      "event": "收集证据，调查案件事实",
+      "durationHours": 8,
+      "courtRoom": "",
+      "judgeId": ""
+    },
+    {
+      "day": 5,
+      "stage": "investigation",
+      "event": "整理证据材料，准备起诉",
+      "durationHours": 6,
+      "courtRoom": "",
+      "judgeId": ""
+    },
+    {
+      "day": 8,
+      "stage": "pleading",
+      "event": "向法院提交起诉状及证据材料",
+      "durationHours": 4,
+      "courtRoom": "市中级人民法院立案庭",
+      "judgeId": ""
+    },
+    {
+      "day": 12,
+      "stage": "pleading",
+      "event": "收到被告答辩状",
+      "durationHours": 2,
+      "courtRoom": "",
+      "judgeId": ""
+    },
+    {
+      "day": 15,
+      "stage": "pleading",
+      "event": "庭前会议，交换证据",
+      "durationHours": 3,
+      "courtRoom": "第三法庭",
+      "judgeId": "judge_zhang"
+    },
+    {
+      "day": 20,
+      "stage": "trial",
+      "event": "第一次开庭审理",
+      "durationHours": 4,
+      "courtRoom": "第二法庭",
+      "judgeId": "judge_zhang"
+    },
+    {
+      "day": 25,
+      "stage": "trial",
+      "event": "第二次开庭，伤残鉴定意见质证",
+      "durationHours": 3,
+      "courtRoom": "第二法庭",
+      "judgeId": "judge_zhang"
+    },
+    {
+      "day": 30,
+      "stage": "judgment",
+      "event": "法院作出一审判决",
+      "durationHours": 2,
+      "courtRoom": "第二法庭",
+      "judgeId": "judge_zhang"
+    },
+    {
+      "day": 35,
+      "stage": "closed",
+      "event": "判决生效，案件终结",
+      "durationHours": 1,
+      "courtRoom": "",
+      "judgeId": ""
+    }
+  ],
+  "case_002": [
+    {
+      "day": 1,
+      "stage": "acceptance",
+      "event": "接待咨询，了解劳动争议情况",
+      "durationHours": 2,
+      "courtRoom": "",
+      "judgeId": ""
+    },
+    {
+      "day": 3,
+      "stage": "investigation",
+      "event": "收集劳动合同、工资、考勤等证据",
+      "durationHours": 6,
+      "courtRoom": "",
+      "judgeId": ""
+    },
+    {
+      "day": 7,
+      "stage": "pleading",
+      "event": "向劳动争议仲裁委员会申请仲裁",
+      "durationHours": 3,
+      "courtRoom": "劳动人事争议仲裁院",
+      "judgeId": "arbitrator_li"
+    },
+    {
+      "day": 10,
+      "stage": "pleading",
+      "event": "收到仲裁受理通知书",
+      "durationHours": 1,
+      "courtRoom": "",
+      "judgeId": ""
+    },
+    {
+      "day": 15,
+      "stage": "trial",
+      "event": "仲裁开庭审理",
+      "durationHours": 4,
+      "courtRoom": "仲裁第一庭",
+      "judgeId": "arbitrator_li"
+    },
+    {
+      "day": 20,
+      "stage": "judgment",
+      "event": "仲裁委员会作出裁决",
+      "durationHours": 2,
+      "courtRoom": "仲裁第一庭",
+      "judgeId": "arbitrator_li"
+    },
+    {
+      "day": 25,
+      "stage": "closed",
+      "event": "裁决生效，案件终结",
+      "durationHours": 1,
+      "courtRoom": "",
+      "judgeId": ""
+    }
+  ]
+}

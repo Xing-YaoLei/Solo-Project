@@ -1,0 +1,102 @@
+[
+  {
+    "id": "tutorial_intro",
+    "name": "新手入门教程",
+    "triggerCondition": "first_game_start",
+    "steps": [
+      {
+        "id": "step_1",
+        "title": "欢迎来到法律模拟游戏",
+        "content": "在这里，你将扮演一名律师，通过处理各种案件来提升自己的法律实务能力。",
+        "highlightNode": "",
+        "nextStepId": "step_2",
+        "prevStepId": ""
+      },
+      {
+        "id": "step_2",
+        "title": "案件流程",
+        "content": "每个案件分为多个阶段：案件受理、调查取证、诉辩阶段、庭审阶段、判决阶段。",
+        "highlightNode": "stage_display",
+        "nextStepId": "step_3",
+        "prevStepId": "step_1"
+      },
+      {
+        "id": "step_3",
+        "title": "收集线索",
+        "content": "在每个阶段，你需要收集各种线索和证据。点击'线索'按钮可以查看已发现的线索。",
+        "highlightNode": "clue_button",
+        "nextStepId": "step_4",
+        "prevStepId": "step_2"
+      },
+      {
+        "id": "step_4",
+        "title": "选择行动",
+        "content": "根据已有的线索，选择合适的处理动作。正确的动作会增加得分，错误的动作会扣分。",
+        "highlightNode": "action_panel",
+        "nextStepId": "step_5",
+        "prevStepId": "step_3"
+      },
+      {
+        "id": "step_5",
+        "title": "材料缺页",
+        "content": "有些线索可能存在材料缺页问题，会影响你的得分。注意仔细审查每份证据材料。",
+        "highlightNode": "",
+        "nextStepId": "",
+        "prevStepId": "step_4"
+      }
+    ]
+  },
+  {
+    "id": "tutorial_evidence",
+    "name": "证据收集教程",
+    "triggerCondition": "level_2_unlock",
+    "steps": [
+      {
+        "id": "step_1",
+        "title": "证据的重要性",
+        "content": "在劳动争议案件中，证据是胜诉的关键。特别是考勤记录和工资发放记录。",
+        "highlightNode": "",
+        "nextStepId": "step_2",
+        "prevStepId": ""
+      },
+      {
+        "id": "step_2",
+        "title": "举证责任",
+        "content": "某些证据的举证责任在用人单位，如考勤记录、工资支付凭证等。",
+        "highlightNode": "",
+        "nextStepId": "",
+        "prevStepId": "step_1"
+      }
+    ]
+  },
+  {
+    "id": "tutorial_advanced",
+    "name": "高级诉讼技巧",
+    "triggerCondition": "level_3_unlock",
+    "steps": [
+      {
+        "id": "step_1",
+        "title": "商事案件特点",
+        "content": "商事案件通常涉及金额较大，证据材料较多，需要更加细致的准备。",
+        "highlightNode": "",
+        "nextStepId": "",
+        "prevStepId": ""
+      }
+    ]
+  },
+  {
+    "id": "tutorial_expert",
+    "name": "专家级案件处理",
+    "triggerCondition": "level_4_unlock",
+    "steps": [
+      {
+        "id": "step_1",
+        "title": "复杂案件处理",
+        "content": "高难度案件涉及复杂的法律关系和更多的利益相关方，需要综合运用各种法律技能。",
+        "highlightNode": "",
+        "nextStepId": "",
+        "prevStepId": ""
+      }
+    ]
+  }
+]

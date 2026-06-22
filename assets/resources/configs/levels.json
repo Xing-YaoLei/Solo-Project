@@ -1,0 +1,38 @@
+[
+  {
+    "id": "level_1",
+    "name": "实习律师",
+    "description": "初入律所，从简单的民事案件开始学习法律实务。",
+    "caseIds": ["case_001"],
+    "requiredScore": 0,
+    "reward": "解锁基础案件",
+    "tutorialId": "tutorial_intro"
+  },
+  {
+    "id": "level_2",
+    "name": "执业律师",
+    "description": "处理更多类型的案件，积累诉讼经验。",
+    "caseIds": ["case_002"],
+    "requiredScore": 100,
+    "reward": "解锁劳动争议案件",
+    "tutorialId": "tutorial_evidence"
+  },
+  {
+    "id": "level_3",
+    "name": "资深律师",
+    "description": "处理复杂商事案件，考验综合能力。",
+    "caseIds": ["case_003", "case_004"],
+    "requiredScore": 250,
+    "reward": "解锁合同纠纷案件",
+    "tutorialId": "tutorial_advanced"
+  },
+  {
+    "id": "level_4",
+    "name": "合伙人律师",
+    "description": "处理高难度、高社会关注度的重大案件。",
+    "caseIds": ["case_005", "case_006"],
+    "requiredScore": 500,
+    "reward": "解锁名人案件和遗产继承",
+    "tutorialId": "tutorial_expert"
+  }
+]

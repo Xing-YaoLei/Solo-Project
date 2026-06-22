@@ -1,0 +1,134 @@
+[
+  {
+    "id": "icon_testimony",
+    "path": "icons/icon_testimony",
+    "type": "sprite",
+    "bundle": "icons"
+  },
+  {
+    "id": "icon_physical",
+    "path": "icons/icon_physical",
+    "type": "sprite",
+    "bundle": "icons"
+  },
+  {
+    "id": "icon_document",
+    "path": "icons/icon_document",
+    "type": "sprite",
+    "bundle": "icons"
+  },
+  {
+    "id": "icon_digital",
+    "path": "icons/icon_digital",
+    "type": "sprite",
+    "bundle": "icons"
+  },
+  {
+    "id": "icon_expert",
+    "path": "icons/icon_expert",
+    "type": "sprite",
+    "bundle": "icons"
+  },
+  {
+    "id": "icon_interrogate",
+    "path": "icons/icon_interrogate",
+    "type": "sprite",
+    "bundle": "icons"
+  },
+  {
+    "id": "icon_evidence",
+    "path": "icons/icon_evidence",
+    "type": "sprite",
+    "bundle": "icons"
+  },
+  {
+    "id": "icon_consult",
+    "path": "icons/icon_consult",
+    "type": "sprite",
+    "bundle": "icons"
+  },
+  {
+    "id": "icon_objection",
+    "path": "icons/icon_objection",
+    "type": "sprite",
+    "bundle": "icons"
+  },
+  {
+    "id": "icon_settlement",
+    "path": "icons/icon_settlement",
+    "type": "sprite",
+    "bundle": "icons"
+  },
+  {
+    "id": "avatar_client_1",
+    "path": "avatars/avatar_client_1",
+    "type": "sprite",
+    "bundle": "avatars"
+  },
+  {
+    "id": "avatar_client_2",
+    "path": "avatars/avatar_client_2",
+    "type": "sprite",
+    "bundle": "avatars"
+  },
+  {
+    "id": "avatar_client_3",
+    "path": "avatars/avatar_client_3",
+    "type": "sprite",
+    "bundle": "avatars"
+  },
+  {
+    "id": "avatar_client_4",
+    "path": "avatars/avatar_client_4",
+    "type": "sprite",
+    "bundle": "avatars"
+  },
+  {
+    "id": "map_courtroom",
+    "path": "tiled/courtroom",
+    "type": "tiled",
+    "bundle": "maps"
+  },
+  {
+    "id": "map_office",
+    "path": "tiled/office",
+    "type": "tiled",
+    "bundle": "maps"
+  },
+  {
+    "id": "map_street",
+    "path": "tiled/street",
+    "type": "tiled",
+    "bundle": "maps"
+  },
+  {
+    "id": "bg_music_main",
+    "path": "audio/bg_music_main",
+    "type": "audio",
+    "bundle": "audio"
+  },
+  {
+    "id": "bg_music_court",
+    "path": "audio/bg_music_court",
+    "type": "audio",
+    "bundle": "audio"
+  },
+  {
+    "id": "sfx_click",
+    "path": "audio/sfx_click",
+    "type": "audio",
+    "bundle": "audio"
+  },
+  {
+    "id": "sfx_success",
+    "path": "audio/sfx_success",
+    "type": "audio",
+    "bundle": "audio"
+  },
+  {
+    "id": "sfx_error",
+    "path": "audio/sfx_error",
+    "type": "audio",
+    "bundle": "audio"
+  }
+]

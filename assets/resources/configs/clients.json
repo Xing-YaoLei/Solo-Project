@@ -1,0 +1,54 @@
+[
+  {
+    "id": "client_1",
+    "name": "张伟",
+    "avatar": "avatar_client_1",
+    "description": "普通上班族，因交通事故引发的人身损害赔偿案件首次寻求法律援助。",
+    "occupation": "公司职员",
+    "age": 32,
+    "background": "在一家互联网公司做产品经理，收入中等，法律知识较少。",
+    "personality": ["谨慎", "焦虑", "务实"],
+    "trustLevel": 50,
+    "unlocked": true,
+    "caseIds": ["case_001", "case_002"]
+  },
+  {
+    "id": "client_2",
+    "name": "李芳",
+    "avatar": "avatar_client_2",
+    "description": "创业者，涉及多起合同纠纷案件，对法律程序有一定了解。",
+    "occupation": "企业创始人",
+    "age": 40,
+    "background": "创办了一家小型科技公司，有多次商业合作经历。",
+    "personality": ["果断", "精明", "好胜"],
+    "trustLevel": 40,
+    "unlocked": false,
+    "caseIds": ["case_003", "case_004"]
+  },
+  {
+    "id": "client_3",
+    "name": "王建国",
+    "avatar": "avatar_client_3",
+    "description": "退休工人，涉及劳动争议和遗产继承案件，情绪容易激动。",
+    "occupation": "退休工人",
+    "age": 62,
+    "background": "在工厂工作了35年后退休，退休金是主要生活来源。",
+    "personality": ["固执", "朴实", "敏感"],
+    "trustLevel": 60,
+    "unlocked": false,
+    "caseIds": ["case_005"]
+  },
+  {
+    "id": "client_4",
+    "name": "陈小雨",
+    "avatar": "avatar_client_4",
+    "description": "知名博主，涉及名誉权侵权案件，案件社会关注度高。",
+    "occupation": "自媒体人",
+    "age": 28,
+    "background": "在社交平台拥有百万粉丝，内容涉及生活方式分享。",
+    "personality": ["敏感", "追求完美", "公关意识强"],
+    "trustLevel": 30,
+    "unlocked": false,
+    "caseIds": ["case_006"]
+  }
+]
