@@ -1,0 +1,47 @@
+<div id="checklist_progress" class="bg-white rounded-lg border border-slate-200 p-5">
+  <div class="flex items-center justify-between mb-3">
+    <h3 class="text-sm font-semibold text-slate-500 uppercase tracking-wider">检查清单进度</h3>
+    <span class="text-2xl font-bold font-mono text-slate-900"><%= audit.checklist_progress %>%</span>
+  </div>
+
+  <div class="w-full h-2.5 bg-slate-100 rounded-full overflow-hidden mb-4">
+    <div class="h-full bg-gradient-to-r from-purple-500 to-purple-600 rounded-full transition-all duration-500"
+      style="width: <%= audit.checklist_progress %>%"></div>
+  </div>
+
+  <%
+    total = audit.checklist_items.count
+    completed = audit.checklist_items.where(status: "completed").count
+    rejected = audit.checklist_items.where(status: "rejected").count
+    pending = audit.checklist_items.where(status: "pending").count
+    na = audit.checklist_items.where(status: "not_applicable").count
+  %>
+
+  <div class="grid grid-cols-4 gap-2 text-center">
+    <div class="p-2 rounded bg-slate-50">
+      <p class="text-lg font-bold font-mono text-slate-900"><%= total %></p>
+      <p class="text-xs text-slate-500">总项数</p>
+    </div>
+    <div class="p-2 rounded bg-green-50">
+      <p class="text-lg font-bold font-mono text-green-700"><%= completed %></p>
+      <p class="text-xs text-green-600">已通过</p>
+    </div>
+    <div class="p-2 rounded bg-red-50">
+      <p class="text-lg font-bold font-mono text-red-700"><%= rejected %></p>
+      <p class="text-xs text-red-600">不通过</p>
+    </div>
+    <div class="p-2 rounded bg-amber-50">
+      <p class="text-lg font-bold font-mono text-amber-700"><%= pending %></p>
+      <p class="text-xs text-amber-600">待处理</p>
+    </div>
+  </div>
+
+  <% if total > 0 %>
+    <%= link_to checklist_audit_path(audit), class: "mt-4 w-full inline-flex items-center justify-center px-3 py-2 rounded text-sm font-medium bg-slate-50 text-slate-700 hover:bg-slate-100 transition-colors" do %>
+      查看完整清单
+      <svg class="w-4 h-4 ml-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7"></path>
+      </svg>
+    <% end %>
+  <% end %>
+</div>

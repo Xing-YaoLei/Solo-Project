@@ -1,0 +1,168 @@
+<%= form_with model: supplier, local: true, data: { controller: "nested-form" },
+  class: "space-y-8" do |f| %>
+
+  <% if supplier.errors.any? %>
+    <div class="rounded-xl border border-red-200 bg-red-50 p-4">
+      <div class="flex items-start gap-3">
+        <div class="flex-shrink-0">
+          <svg class="h-5 w-5 text-red-400 mt-0.5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" />
+          </svg>
+        </div>
+        <div>
+          <h3 class="text-sm font-medium text-red-800">
+            表单包含 <%= supplier.errors.count %> 个错误，请检查后重试：
+          </h3>
+          <ul class="mt-2 text-sm text-red-700 list-disc list-inside space-y-1">
+            <% supplier.errors.full_messages.each do |msg| %>
+              <li><%= msg %></li>
+            <% end %>
+          </ul>
+        </div>
+      </div>
+    </div>
+  <% end %>
+
+  <div class="rounded-xl border border-gray-200 bg-white shadow-sm overflow-hidden">
+    <div class="border-b border-gray-200 px-6 py-4">
+      <h2 class="text-lg font-semibold text-gray-900">基本信息</h2>
+      <p class="mt-1 text-sm text-gray-500">供应商的核心身份信息</p>
+    </div>
+    <div class="p-6 grid grid-cols-1 md:grid-cols-2 gap-6">
+      <div>
+        <%= f.label :name, "供应商名称", class: "block text-sm font-medium text-gray-700 mb-1" %>
+        <span class="text-xs text-red-500">*</span>
+        <%= f.text_field :name,
+          class: "mt-1 block w-full rounded-lg border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500 transition",
+          placeholder: "请输入供应商全称", required: true %>
+      </div>
+
+      <div>
+        <%= f.label :code, "供应商编码", class: "block text-sm font-medium text-gray-700 mb-1" %>
+        <span class="text-xs text-red-500">*</span>
+        <%= f.text_field :code,
+          class: "mt-1 block w-full rounded-lg border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500 font-mono transition",
+          placeholder: "例如：SUP-2024-0001", required: true %>
+      </div>
+
+      <div>
+        <%= f.label :status, "状态", class: "block text-sm font-medium text-gray-700 mb-1" %>
+        <%= f.select :status,
+          Supplier.status.options.map { |text, value| [text, value] },
+          {},
+          class: "mt-1 block w-full rounded-lg border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500 transition" %>
+      </div>
+
+      <div>
+        <%= f.label :contact_person, "联系人", class: "block text-sm font-medium text-gray-700 mb-1" %>
+        <%= f.text_field :contact_person,
+          class: "mt-1 block w-full rounded-lg border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500 transition",
+          placeholder: "联系人姓名" %>
+      </div>
+
+      <div>
+        <%= f.label :phone, "联系电话", class: "block text-sm font-medium text-gray-700 mb-1" %>
+        <%= f.telephone_field :phone,
+          class: "mt-1 block w-full rounded-lg border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500 transition",
+          placeholder: "座机或手机号码" %>
+      </div>
+
+      <div>
+        <%= f.label :email, "电子邮箱", class: "block text-sm font-medium text-gray-700 mb-1" %>
+        <%= f.email_field :email,
+          class: "mt-1 block w-full rounded-lg border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500 transition",
+          placeholder: "supplier@example.com" %>
+      </div>
+
+      <div class="md:col-span-2">
+        <%= f.label :description, "描述备注", class: "block text-sm font-medium text-gray-700 mb-1" %>
+        <%= f.text_area :description,
+          rows: 4,
+          class: "mt-1 block w-full rounded-lg border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500 transition",
+          placeholder: "供应商的补充说明信息、业务范围等..." %>
+      </div>
+    </div>
+  </div>
+
+  <div class="rounded-xl border border-gray-200 bg-white shadow-sm overflow-hidden">
+    <div class="border-b border-gray-200 px-6 py-4 flex items-center justify-between">
+      <div>
+        <h2 class="text-lg font-semibold text-gray-900">资质材料</h2>
+        <p class="mt-1 text-sm text-gray-500">可在此预录入供应商资质材料信息</p>
+      </div>
+      <button type="button"
+        data-action="nested-form#addMaterial"
+        class="inline-flex items-center px-3 py-1.5 border border-dashed border-gray-300 text-sm font-medium rounded-lg text-gray-600 hover:bg-gray-50 hover:border-gray-400 transition">
+        <svg class="-ml-1 mr-1.5 h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+          <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4" />
+        </svg>
+        添加材料
+      </button>
+    </div>
+    <div class="p-6">
+      <div data-nested-form-target="materialsContainer" class="space-y-4">
+        <%= f.fields_for :materials do |material_form| %>
+          <%= render partial: "suppliers/material_fields", locals: { f: material_form } %>
+        <% end %>
+      </div>
+
+      <template data-nested-form-target="materialTemplate">
+        <%= f.fields_for :materials, SupplierMaterial.new, child_index: "NEW_MATERIAL_ID" do |material_form| %>
+          <%= render partial: "suppliers/material_fields", locals: { f: material_form } %>
+        <% end %>
+      </template>
+
+      <div data-nested-form-target="materialsEmpty" class="hidden text-center py-8 text-gray-400">
+        <svg class="mx-auto h-10 w-10 mb-3" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+          <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
+        </svg>
+        <p>暂无材料，点击上方「添加材料」开始录入</p>
+      </div>
+    </div>
+  </div>
+
+  <div class="rounded-xl border border-gray-200 bg-white shadow-sm overflow-hidden">
+    <div class="border-b border-gray-200 px-6 py-4 flex items-center justify-between">
+      <div>
+        <h2 class="text-lg font-semibold text-gray-900">权限配置</h2>
+        <p class="mt-1 text-sm text-gray-500">配置供应商在系统中的访问权限</p>
+      </div>
+      <button type="button"
+        data-action="nested-form#addPermission"
+        class="inline-flex items-center px-3 py-1.5 border border-dashed border-gray-300 text-sm font-medium rounded-lg text-gray-600 hover:bg-gray-50 hover:border-gray-400 transition">
+        <svg class="-ml-1 mr-1.5 h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+          <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4" />
+        </svg>
+        添加权限
+      </button>
+    </div>
+    <div class="p-6">
+      <div data-nested-form-target="permissionsContainer" class="space-y-4">
+        <%= f.fields_for :permission_configs do |perm_form| %>
+          <%= render partial: "suppliers/permission_fields", locals: { f: perm_form } %>
+        <% end %>
+      </div>
+
+      <template data-nested-form-target="permissionTemplate">
+        <%= f.fields_for :permission_configs, PermissionConfig.new, child_index: "NEW_PERMISSION_ID" do |perm_form| %>
+          <%= render partial: "suppliers/permission_fields", locals: { f: perm_form } %>
+        <% end %>
+      </template>
+
+      <div data-nested-form-target="permissionsEmpty" class="hidden text-center py-8 text-gray-400">
+        <svg class="mx-auto h-10 w-10 mb-3" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+          <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zm10-10V7a4 4 0 00-8 0v4h8z" />
+        </svg>
+        <p>暂无权限配置</p>
+      </div>
+    </div>
+  </div>
+
+  <div class="flex items-center justify-end gap-3 px-4 py-6 bg-gray-50 rounded-xl border border-gray-200">
+    <%= link_to suppliers_path,
+      class: "inline-flex items-center px-4 py-2 border border-gray-300 text-sm font-medium rounded-lg shadow-sm text-gray-700 bg-white hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500 transition" do %>
+      取消
+    <% end %>
+    <%= f.submit class: "inline-flex items-center px-6 py-2 border border-transparent text-sm font-medium rounded-lg shadow-sm text-white bg-blue-600 hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500 transition" %>
+  </div>
+<% end %>

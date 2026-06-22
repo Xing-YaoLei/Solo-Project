@@ -1,0 +1,125 @@
+<div class="space-y-6">
+  <%= render "layouts/breadcrumbs" %>
+
+  <div class="bg-white rounded-lg border border-gray-200 shadow-sm overflow-hidden">
+    <div class="px-6 py-5 border-b border-gray-100 flex items-center justify-between">
+      <div class="flex items-center gap-4">
+        <div class="w-12 h-12 rounded-xl bg-gray-100 flex items-center justify-center">
+          <svg class="w-6 h-6 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"/>
+          </svg>
+        </div>
+        <div>
+          <h1 class="text-xl font-semibold text-gray-900"><%= @export_record.file_name || "未命名导出" %></h1>
+          <div class="flex items-center gap-3 mt-1">
+            <span class="text-sm text-gray-500">ID: <%= @export_record.id.first(12) %></span>
+            <span class="text-gray-300">·</span>
+            <span class="inline-flex items-center px-2 py-0.5 rounded text-xs font-medium bg-gray-100 text-gray-700">
+              <%= @export_record.export_type.humanize %>
+            </span>
+          </div>
+        </div>
+      </div>
+      <div class="flex items-center gap-3">
+        <% if @export_record.downloadable? %>
+          <%= link_to download_report_path(@export_record), class: "px-4 py-2 bg-indigo-600 text-white text-sm font-medium rounded-lg hover:bg-indigo-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500 transition-colors" do %>
+            <span class="inline-flex items-center gap-2">
+              <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4"/>
+              </svg>
+              下载文件
+            </span>
+          <% end %>
+        <% end %>
+        <% if policy(@export_record).destroy? %>
+          <%= button_to export_record_path(@export_record), method: :delete, class: "px-4 py-2 bg-white text-red-600 border border-red-200 text-sm font-medium rounded-lg hover:bg-red-50 transition-colors", data: { turbo_confirm: "确认删除此导出记录？" } do %>
+            删除记录
+          <% end %>
+        <% end %>
+      </div>
+    </div>
+
+    <div class="grid grid-cols-2 lg:grid-cols-4 gap-px bg-gray-200">
+      <div class="bg-white px-6 py-5">
+        <div class="text-xs font-medium text-gray-500 uppercase tracking-wider">状态</div>
+        <div class="mt-2">
+          <% status_classes = {
+            "completed" => "bg-green-100 text-green-700",
+            "processing" => "bg-blue-100 text-blue-700",
+            "pending" => "bg-yellow-100 text-yellow-700",
+            "failed" => "bg-red-100 text-red-700"
+          } %>
+          <span class="inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-sm font-medium <%= status_classes[@export_record.status] %>">
+            <%= @export_record.status.humanize %>
+          </span>
+        </div>
+      </div>
+      <div class="bg-white px-6 py-5">
+        <div class="text-xs font-medium text-gray-500 uppercase tracking-wider">操作人</div>
+        <div class="mt-2 text-sm font-medium text-gray-900"><%= @export_record.user&.name %></div>
+      </div>
+      <div class="bg-white px-6 py-5">
+        <div class="text-xs font-medium text-gray-500 uppercase tracking-wider">文件大小</div>
+        <div class="mt-2 text-sm font-medium text-gray-900"><%= @export_record.file_size_human || "-" %></div>
+      </div>
+      <div class="bg-white px-6 py-5">
+        <div class="text-xs font-medium text-gray-500 uppercase tracking-wider">过期时间</div>
+        <div class="mt-2">
+          <% if @export_record.expired_at.present? %>
+            <span class="text-sm font-medium <%= @export_record.expired? ? "text-red-600" : "text-gray-900" %>">
+              <%= @export_record.expired_at.strftime("%Y-%m-%d") %>
+            </span>
+          <% else %>
+            <span class="text-sm text-gray-500">-</span>
+          <% end %>
+        </div>
+      </div>
+      <div class="bg-white px-6 py-5">
+        <div class="text-xs font-medium text-gray-500 uppercase tracking-wider">创建时间</div>
+        <div class="mt-2 text-sm font-medium text-gray-900"><%= @export_record.created_at.strftime("%Y-%m-%d %H:%M:%S" %></div>
+      </div>
+      <div class="bg-white px-6 py-5">
+        <div class="text-xs font-medium text-gray-500 uppercase tracking-wider">完成时间</div>
+        <div class="mt-2 text-sm font-medium text-gray-900"><%= @export_record.updated_at.strftime("%Y-%m-%d %H:%M:%S") %></div>
+      </div>
+    </div>
+
+    <% if @export_record.criteria.present? %>
+      <div class="border-t border-gray-200 px-6 py-5">
+        <h3 class="text-sm font-semibold text-gray-900 mb-3">导出条件</h3>
+        <div class="grid grid-cols-2 gap-4 text-sm">
+          <% if @export_record.start_date.present? && @export_record.end_date.present? %>
+            <div>
+              <span class="text-gray-500">日期范围：</span>
+              <span class="text-gray-900 font-medium"><%= @export_record.start_date %> 至 <%= @export_record.end_date %></span>
+            </div>
+          <% end %>
+          <% if @export_record.supplier_ids.present? %>
+            <div>
+              <span class="text-gray-500">供应商：</span>
+              <span class="text-gray-900 font-medium"><%= @export_record.supplier_ids.count %> 家</span>
+            </div>
+          <% end %>
+          <% if @export_record.audit_types.present? %>
+            <div>
+              <span class="text-gray-500">审计类型：</span>
+              <span class="text-gray-900 font-medium"><%= @export_record.audit_types.map(&:humanize).join("、") %></span>
+            </div>
+          <% end %>
+        </div>
+      </div>
+    <% end %>
+
+    <% if @export_record.caliber_note.present? %>
+      <div class="border-t border-gray-200 bg-amber-50 px-6 py-5">
+      <h3 class="text-sm font-semibold text-amber-900 mb-2 flex items-center gap-2">
+        <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+          <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"/>
+        </svg>
+        <%= @export_record.failed? ? "错误信息" : "口径说明" %>
+      </h3>
+      <pre class="text-xs text-amber-800 whitespace-pre-wrap font-sans leading-relaxed"><%= @export_record.caliber_note %></pre>
+    </div>
+    <% end %>
+  </div>
+</div>

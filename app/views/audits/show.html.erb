@@ -1,0 +1,447 @@
+<div class="space-y-6 pb-28">
+  <div class="flex items-start justify-between">
+    <div>
+      <div class="flex items-center gap-2 mb-2">
+        <% type_map = {
+          routine_audit: "常规审计",
+          special_audit: "专项审计",
+          compliance_audit: "合规审计",
+          quality_audit: "质量审计",
+          safety_audit: "安全审计",
+          financial_audit: "财务审计"
+        } %>
+        <span class="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-slate-100 text-slate-700">
+          <%= type_map[@audit.audit_type.to_sym] || @audit.audit_type.humanize %>
+        </span>
+        <% if @audit.overdue? %>
+          <span class="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-red-100 text-red-700">
+            已逾期
+          </span>
+        <% end %>
+      </div>
+      <h1 class="text-2xl font-bold text-slate-900"><%= @audit.title %></h1>
+      <p class="mt-1 text-sm text-slate-500">
+        编号：AUD-<%= @audit.id.to_s.rjust(6, '0') %> · 创建于 <%= @audit.created_at.strftime("%Y-%m-%d %H:%M") %> · 创建人 <%= @audit.creator&.name %>
+      </p>
+    </div>
+    <div class="flex items-center gap-2">
+      <%= link_to audits_path, class: "inline-flex items-center px-3 py-2 rounded text-sm font-medium bg-white border border-slate-300 text-slate-700 hover:bg-slate-50 transition-colors" do %>
+        <svg class="w-4 h-4 mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+          <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10 19l-7-7m0 0l7-7m-7 7h18"></path>
+        </svg>
+        返回列表
+      <% end %>
+    </div>
+  </div>
+
+  <%= render partial: "status_progress", locals: { audit: @audit } %>
+
+  <div class="grid grid-cols-1 lg:grid-cols-3 gap-6">
+    <div class="space-y-6">
+      <%= render partial: "status_card", locals: { audit: @audit } %>
+
+      <div class="bg-white rounded-lg border border-slate-200 p-5">
+        <h3 class="text-sm font-semibold text-slate-500 uppercase tracking-wider mb-4">基本信息</h3>
+        <dl class="space-y-4 text-sm">
+          <div>
+            <dt class="text-slate-500 mb-1">供应商</dt>
+            <dd class="font-medium text-slate-900">
+              <%= link_to @audit.supplier&.name, supplier_path(@audit.supplier), class: "text-blue-600 hover:text-blue-700" %>
+            </dd>
+            <% if @audit.supplier&.code.present? %>
+              <dd class="text-xs text-slate-400 mt-0.5">编码：<%= @audit.supplier.code %></dd>
+            <% end %>
+          </div>
+          <div>
+            <dt class="text-slate-500 mb-1">通报模板</dt>
+            <dd class="font-medium text-slate-900"><%= @audit.template&.name || "未选择" %></dd>
+          </div>
+          <div>
+            <dt class="text-slate-500 mb-1">创建人</dt>
+            <dd class="font-medium text-slate-900"><%= @audit.creator&.name %></dd>
+          </div>
+          <% if @audit.conclusion.present? %>
+            <div class="pt-4 border-t border-slate-100">
+              <dt class="text-slate-500 mb-1">审计结论</dt>
+              <dd class="font-medium text-slate-900 whitespace-pre-wrap"><%= @audit.conclusion %></dd>
+            </div>
+          <% end %>
+        </dl>
+      </div>
+
+      <%= render partial: "evidence_completeness", locals: { audit: @audit, detection: @evidence_detection_result } %>
+      <%= render partial: "checklist_progress", locals: { audit: @audit } %>
+    </div>
+
+    <div class="lg:col-span-2 space-y-6">
+      <% if @audit.has_pending_exceptions? %>
+        <div class="bg-red-50 border border-red-200 rounded-lg p-4">
+          <div class="flex items-start gap-3">
+            <svg class="w-5 h-5 text-red-600 mt-0.5 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z"></path>
+            </svg>
+            <div class="flex-1">
+              <h4 class="text-sm font-semibold text-red-800">存在 <%= @audit.pending_exceptions_count %> 个待处理异常单</h4>
+              <p class="mt-1 text-sm text-red-700">请优先处理异常单，确保整改完成后再推进审计流程</p>
+            </div>
+            <%= link_to audit_exception_orders_path(@audit), class: "inline-flex items-center px-3 py-1.5 rounded text-xs font-semibold bg-red-600 text-white hover:bg-red-700 transition-colors" do %>
+              查看异常单
+              <svg class="w-3.5 h-3.5 ml-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7"></path>
+              </svg>
+            <% end %>
+          </div>
+        </div>
+      <% end %>
+
+      <div class="bg-white rounded-lg border border-slate-200 overflow-hidden">
+        <div class="border-b border-slate-200">
+          <nav class="flex -mb-px" aria-label="Tabs">
+            <% tabs = [
+              { id: "evidence", label: "证据附件", icon: "paperclip" },
+              { id: "checklist", label: "检查清单", icon: "check-square" },
+              { id: "exceptions", label: "异常单", icon: "alert-triangle", badge: @audit.exception_orders.count },
+              { id: "logs", label: "流程日志", icon: "activity" }
+            ] %>
+            <% tabs.each_with_index do |tab, i| %>
+              <% active = (params[:tab] == tab[:id]) || (params[:tab].blank? && i == 0) %>
+              <%= link_to audit_path(@audit, tab: tab[:id]),
+                class: "inline-flex items-center px-6 py-4 text-sm font-medium border-b-2 transition-colors #{active ? 'border-blue-600 text-blue-600' : 'border-transparent text-slate-500 hover:text-slate-700 hover:border-slate-300'}" do %>
+                <% if tab[:icon] == "paperclip" %>
+                  <svg class="w-4 h-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15.172 7l-6.586 6.586a2 2 0 102.828 2.828l6.414-6.586a4 4 0 00-5.656-5.656l-6.415 6.585a6 6 0 108.486 8.486L20.5 13"></path></svg>
+                <% elsif tab[:icon] == "check-square" %>
+                  <svg class="w-4 h-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z"></path></svg>
+                <% elsif tab[:icon] == "alert-triangle" %>
+                  <svg class="w-4 h-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z"></path></svg>
+                <% else %>
+                  <svg class="w-4 h-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 10V3L4 14h7v7l9-11h-7z"></path></svg>
+                <% end %>
+                <%= tab[:label] %>
+                <% if tab[:badge].present? && tab[:badge] > 0 %>
+                  <span class="ml-1.5 px-2 py-0.5 rounded-full text-xs font-semibold bg-slate-100 text-slate-600"><%= tab[:badge] %></span>
+                <% end %>
+              <% end %>
+            <% end %>
+          </nav>
+        </div>
+
+        <% current_tab = params[:tab] || "evidence" %>
+
+        <turbo-frame id="tab_content_frame" target="_top">
+          <% if current_tab == "evidence" %>
+            <div class="p-6" data-turbo-frame="tab_content">
+              <div class="flex items-center justify-between mb-4">
+                <div class="flex items-center gap-3">
+                  <h3 class="text-sm font-semibold text-slate-700">证据附件列表</h3>
+                  <%= render partial: "evidence_count", locals: { audit: @audit } %>
+                </div>
+                <% if policy(@audit).upload_evidence? && !@audit.archived? && !@audit.rejected? %>
+                  <button type="button"
+                    data-controller="modal"
+                    data-action="click->modal#open"
+                    data-modal-target="evidenceModal"
+                    class="inline-flex items-center px-3 py-2 rounded text-sm font-semibold bg-blue-600 text-white hover:bg-blue-700 transition-colors">
+                    <svg class="w-4 h-4 mr-1.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4"></path>
+                    </svg>
+                    上传证据
+                  </button>
+                <% end %>
+              </div>
+
+              <% if @evidence_attachments.any? %>
+                <div class="grid grid-cols-1 md:grid-cols-2 gap-3">
+                  <% @evidence_attachments.each do |evidence| %>
+                    <% evidence_icon_cls = evidence.image? ? 'bg-green-100' : evidence.pdf? ? 'bg-red-100' : 'bg-slate-100' %>
+                    <div id="<%= dom_id(evidence) %>" class="border border-slate-200 rounded-lg p-4 hover:border-slate-300 transition-colors">
+                      <div class="flex items-start gap-3">
+                        <div class="w-10 h-10 rounded-lg flex items-center justify-center flex-shrink-0 <%= evidence_icon_cls %>">
+                          <% if evidence.image? %>
+                            <svg class="w-5 h-5 text-green-600" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z"></path></svg>
+                          <% elsif evidence.pdf? %>
+                            <svg class="w-5 h-5 text-red-600" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M7 21h10a2 2 0 002-2V9.414a1 1 0 00-.293-.707l-5.414-5.414A1 1 0 0012.586 3H7a2 2 0 00-2 2v14a2 2 0 002 2z"></path></svg>
+                          <% else %>
+                            <svg class="w-5 h-5 text-slate-600" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"></path></svg>
+                          <% end %>
+                        </div>
+                        <div class="flex-1 min-w-0">
+                          <p class="text-sm font-medium text-slate-900 truncate"><%= evidence.name %></p>
+                          <div class="mt-1 flex items-center gap-2 text-xs text-slate-500">
+                            <% type_labels = { contract: "合同", invoice: "发票", report: "报告", certificate: "证书", screenshot: "截图", email: "邮件", meeting_minutes: "会议纪要", other: "其他" } %>
+                            <% if evidence.evidence_type.present? %>
+                              <span class="inline-flex items-center px-2 py-0.5 rounded bg-slate-100"><%= type_labels[evidence.evidence_type.to_sym] || evidence.evidence_type %></span>
+                            <% end %>
+                            <span><%= evidence.file_size_human || evidence.file.attached? ? ActiveSupport::NumberHelper.number_to_human_size(evidence.file.blob.byte_size) : '-' %></span>
+                          </div>
+                          <p class="mt-1 text-xs text-slate-400">
+                            <%= evidence.uploader&.name %> 上传于 <%= evidence.created_at.strftime("%Y-%m-%d %H:%M") %>
+                          </p>
+                        </div>
+                        <div class="flex items-center gap-1 flex-shrink-0">
+                          <% if evidence.file_url.present? %>
+                            <%= link_to evidence.file_url, target: "_blank", class: "p-2 text-slate-400 hover:text-blue-600 hover:bg-blue-50 rounded transition-colors" do %>
+                              <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10 6H6a2 2 0 00-2 2v10a2 2 0 002 2h10a2 2 0 002-2v-4M14 4h6m0 0v6m0-6L10 14"></path></svg>
+                            <% end %>
+                          <% end %>
+                          <% if policy(@audit).upload_evidence? && !@audit.archived? && !@audit.rejected? %>
+                            <%= button_to destroy_evidence_audit_path(@audit, evidence),
+                              method: :delete,
+                              class: "p-2 text-slate-400 hover:text-red-600 hover:bg-red-50 rounded transition-colors",
+                              data: { turbo_confirm: "确认删除该证据附件？" } do %>
+                              <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"></path></svg>
+                            <% end %>
+                          <% end %>
+                        </div>
+                      </div>
+                      <% if evidence.description.present? %>
+                        <p class="mt-3 text-xs text-slate-500 p-2 bg-slate-50 rounded"><%= evidence.description %></p>
+                      <% end %>
+                    </div>
+                  <% end %>
+                </div>
+              <% else %>
+                <div class="text-center py-12">
+                  <svg class="mx-auto h-12 w-12 text-slate-300" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M15.172 7l-6.586 6.586a2 2 0 102.828 2.828l6.414-6.586a4 4 0 00-5.656-5.656l-6.415 6.585a6 6 0 108.486 8.486L20.5 13"></path>
+                  </svg>
+                  <h3 class="mt-2 text-sm font-medium text-slate-900">暂无证据附件</h3>
+                  <p class="mt-1 text-sm text-slate-500">点击右上角「上传证据」开始上传审计证据</p>
+                </div>
+              <% end %>
+            </div>
+
+          <% elsif current_tab == "checklist" %>
+            <div class="p-6">
+              <div class="flex items-center justify-between mb-4">
+                <h3 class="text-sm font-semibold text-slate-700">检查清单预览</h3>
+                <%= link_to checklist_audit_path(@audit), class: "inline-flex items-center px-3 py-2 rounded text-sm font-medium bg-slate-100 text-slate-700 hover:bg-slate-200 transition-colors" do %>
+                  打开完整清单
+                  <svg class="w-4 h-4 ml-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10 6H6a2 2 0 00-2 2v10a2 2 0 002 2h10a2 2 0 002-2v-4M14 4h6m0 0v6m0-6L10 14"></path>
+                  </svg>
+                <% end %>
+              </div>
+
+              <% if @checklist_items.any? %>
+                <div class="border border-slate-200 rounded-lg divide-y divide-slate-100 overflow-hidden">
+                  <% @checklist_items.limit(15).each do |item| %>
+                    <%
+                      preview_badge_cls = if item.completed? then 'bg-green-100 text-green-700'
+                                          elsif item.rejected? then 'bg-red-100 text-red-700'
+                                          elsif item.not_applicable? then 'bg-slate-100 text-slate-500'
+                                          else 'bg-amber-100 text-amber-700' end
+                      preview_badge_content = if item.completed? then '✓'
+                                              elsif item.rejected? then '✕'
+                                              elsif item.not_applicable? then 'N/A'
+                                              else item.sort_order.presence || '•' end
+                    %>
+                    <div class="p-4 hover:bg-slate-50 transition-colors">
+                      <div class="flex items-start gap-3">
+                        <span class="inline-flex items-center justify-center w-6 h-6 rounded text-xs font-bold flex-shrink-0 <%= preview_badge_cls %>">
+                          <%= preview_badge_content %>
+                        </span>
+                        <div class="flex-1 min-w-0">
+                          <div class="flex items-center gap-2">
+                            <span class="text-xs font-mono text-slate-400"><%= item.item_code %></span>
+                            <% if item.requires_evidence? %>
+                              <span class="inline-flex items-center px-1.5 py-0.5 rounded text-xs bg-blue-50 text-blue-700 font-medium">需证据</span>
+                            <% end %>
+                          </div>
+                          <p class="mt-1 text-sm text-slate-900"><%= item.content %></p>
+                          <% if item.remark.present? %>
+                            <p class="mt-1 text-xs text-slate-500 p-2 bg-slate-50 rounded"><%= item.remark %></p>
+                          <% end %>
+                        </div>
+                        <% status_labels = { pending: "待处理", completed: "已通过", rejected: "不通过", not_applicable: "不适用" } %>
+                        <% status_classes = { pending: "bg-amber-100 text-amber-700", completed: "bg-green-100 text-green-700", rejected: "bg-red-100 text-red-700", not_applicable: "bg-slate-100 text-slate-600" } %>
+                        <span class="inline-flex items-center px-2 py-0.5 rounded-full text-xs font-semibold <%= status_classes[item.status.to_sym] %>">
+                          <%= status_labels[item.status.to_sym] || item.status.humanize %>
+                        </span>
+                      </div>
+                    </div>
+                  <% end %>
+                </div>
+                <% if @checklist_items.count > 15 %>
+                  <div class="mt-4 text-center">
+                    <%= link_to "查看全部 #{@checklist_items.count} 项", checklist_audit_path(@audit), class: "text-sm font-medium text-blue-600 hover:text-blue-700" %>
+                  </div>
+                <% end %>
+              <% else %>
+                <div class="text-center py-12">
+                  <svg class="mx-auto h-12 w-12 text-slate-300" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z"></path>
+                  </svg>
+                  <h3 class="mt-2 text-sm font-medium text-slate-900">暂无检查清单</h3>
+                  <p class="mt-1 text-sm text-slate-500">请联系管理员配置检查清单模板</p>
+                </div>
+              <% end %>
+            </div>
+
+          <% elsif current_tab == "exceptions" %>
+            <div class="p-6">
+              <div class="flex items-center justify-between mb-4">
+                <h3 class="text-sm font-semibold text-slate-700">关联异常单</h3>
+                <% if policy(ExceptionOrder).create? && !@audit.archived? %>
+                  <%= link_to new_audit_exception_order_path(@audit), class: "inline-flex items-center px-3 py-2 rounded text-sm font-semibold bg-red-600 text-white hover:bg-red-700 transition-colors" do %>
+                    <svg class="w-4 h-4 mr-1.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4"></path>
+                    </svg>
+                    创建异常单
+                  <% end %>
+                <% end %>
+              </div>
+
+              <% if @exception_orders.any? %>
+                <div class="space-y-3">
+                  <% @exception_orders.each do |eo| %>
+                    <% severity_config = {
+                      critical: { cls: "bg-red-100 text-red-700 border-red-200", label: "严重" },
+                      high: { cls: "bg-orange-100 text-orange-700 border-orange-200", label: "高" },
+                      medium: { cls: "bg-yellow-100 text-yellow-700 border-yellow-200", label: "中" },
+                      low: { cls: "bg-blue-100 text-blue-700 border-blue-200", label: "低" }
+                    } %>
+                    <% status_config = {
+                      open: { cls: "bg-red-100 text-red-700", label: "待分派" },
+                      assigned: { cls: "bg-orange-100 text-orange-700", label: "已分派" },
+                      in_progress: { cls: "bg-amber-100 text-amber-700", label: "处理中" },
+                      resolved: { cls: "bg-green-100 text-green-700", label: "已解决" },
+                      closed: { cls: "bg-slate-100 text-slate-600", label: "已关闭" }
+                    } %>
+                    <% sev = severity_config[eo.severity.to_sym] || severity_config[:medium] %>
+                    <% st = status_config[eo.status.to_sym] || { cls: "bg-slate-100 text-slate-600", label: eo.status.humanize } %>
+                    <%= link_to exception_order_path(eo), class: "block border border-slate-200 rounded-lg p-4 hover:border-slate-300 hover:shadow-sm transition-all" do %>
+                      <div class="flex items-start justify-between gap-4">
+                        <div class="flex-1 min-w-0">
+                          <div class="flex items-center gap-2 mb-1">
+                            <span class="inline-flex items-center px-2 py-0.5 rounded text-xs font-bold border <%= sev[:cls] %>"><%= sev[:label] %></span>
+                            <span class="inline-flex items-center px-2 py-0.5 rounded-full text-xs font-semibold <%= st[:cls] %>"><%= st[:label] %></span>
+                            <% if eo.overdue? %>
+                              <span class="inline-flex items-center px-2 py-0.5 rounded text-xs font-medium bg-red-100 text-red-700">已逾期</span>
+                            <% end %>
+                          </div>
+                          <h4 class="text-sm font-semibold text-slate-900"><%= eo.title %></h4>
+                          <% if eo.impact_scope.present? %>
+                            <p class="mt-1 text-xs text-slate-500 line-clamp-2"><%= eo.impact_scope %></p>
+                          <% end %>
+                        </div>
+                        <div class="text-right flex-shrink-0">
+                          <p class="text-xs text-slate-400">处理人</p>
+                          <p class="text-sm font-medium text-slate-700 mt-0.5"><%= eo.handler&.name || "未分派" %></p>
+                          <% if eo.due_at.present? %>
+                            <p class="text-xs text-slate-400 mt-2">截止：<%= eo.due_at.strftime("%Y-%m-%d") %></p>
+                          <% end %>
+                        </div>
+                      </div>
+                    <% end %>
+                  <% end %>
+                </div>
+              <% else %>
+                <div class="text-center py-12">
+                  <svg class="mx-auto h-12 w-12 text-slate-300" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z"></path>
+                  </svg>
+                  <h3 class="mt-2 text-sm font-medium text-slate-900">暂无异常单</h3>
+                  <p class="mt-1 text-sm text-slate-500">证据缺失或发现问题时可创建异常单进行跟踪</p>
+                </div>
+              <% end %>
+            </div>
+
+          <% else %>
+            <div class="p-6">
+              <div id="transition_timeline">
+                <h3 class="text-sm font-semibold text-slate-700 mb-4">状态流转记录</h3>
+                <% if @transition_logs.any? %>
+                  <%= render partial: "shared/transition_timeline", locals: { logs: @transition_logs } %>
+                <% else %>
+                  <div class="text-center py-12">
+                    <svg class="mx-auto h-12 w-12 text-slate-300" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M13 10V3L4 14h7v7l9-11h-7z"></path>
+                    </svg>
+                    <h3 class="mt-2 text-sm font-medium text-slate-900">暂无流转记录</h3>
+                    <p class="mt-1 text-sm text-slate-500">推进流程后将在此显示完整的审计轨迹</p>
+                  </div>
+                <% end %>
+              </div>
+            </div>
+          <% end %>
+        </turbo-frame>
+      </div>
+    </div>
+  </div>
+
+  <div class="fixed bottom-0 left-0 right-0 z-40 border-t border-slate-200 bg-white/95 backdrop-blur shadow-lg">
+    <div class="max-w-7xl mx-auto px-6 py-4">
+      <%= render partial: "action_buttons", locals: { audit: @audit } %>
+    </div>
+  </div>
+
+  <% if policy(@audit).transition? %>
+    <div id="rejectModal" class="hidden fixed inset-0 z-50 overflow-y-auto" data-controller="modal">
+      <div class="flex items-end justify-center min-h-screen pt-4 px-4 pb-20 text-center sm:block sm:p-0">
+        <div class="fixed inset-0 transition-opacity bg-slate-500/50" data-action="click->modal#close"></div>
+        <div class="inline-block align-bottom bg-white rounded-lg text-left overflow-hidden shadow-xl transform transition-all sm:my-8 sm:align-middle sm:max-w-lg sm:w-full" data-modal-target="content">
+          <div class="bg-white px-5 pt-5 pb-4">
+            <div class="flex items-start gap-3">
+              <div class="w-10 h-10 rounded-full bg-red-100 flex items-center justify-center flex-shrink-0">
+                <svg class="w-5 h-5 text-red-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z"></path>
+                </svg>
+              </div>
+              <div class="flex-1">
+                <h3 class="text-lg font-semibold text-slate-900">驳回审计</h3>
+                <p class="mt-1 text-sm text-slate-500">请填写驳回原因，以便创建人进行整改</p>
+              </div>
+            </div>
+            <%= form_with url: transition_audit_path(@audit), method: :patch, class: "mt-5" do |f| %>
+              <%= f.hidden_field :target_state, value: :rejected %>
+              <div>
+                <%= f.label :rejection_reason, "驳回原因", class: "block text-sm font-medium text-slate-700 mb-1" %>
+                <%= f.text_area :rejection_reason, rows: 4, required: true, class: "w-full px-3 py-2 border border-slate-300 rounded focus:outline-none focus:ring-2 focus:ring-red-500 focus:border-red-500 text-sm", placeholder: "请详细说明驳回原因..." %>
+              </div>
+              <div class="mt-5 flex justify-end gap-2">
+                <button type="button" data-action="click->modal#close" class="px-4 py-2 rounded text-sm font-medium bg-white border border-slate-300 text-slate-700 hover:bg-slate-50 transition-colors">取消</button>
+                <%= f.submit "确认驳回", class: "px-4 py-2 rounded text-sm font-semibold bg-red-600 text-white hover:bg-red-700 transition-colors" %>
+              </div>
+            <% end %>
+          </div>
+        </div>
+      </div>
+    </div>
+  <% end %>
+
+  <% if policy(@audit).upload_evidence? && !@audit.archived? && !@audit.rejected? %>
+    <div id="evidenceModal" class="hidden fixed inset-0 z-50 overflow-y-auto" data-controller="modal">
+      <div class="flex items-end justify-center min-h-screen pt-4 px-4 pb-20 text-center sm:block sm:p-0">
+        <div class="fixed inset-0 transition-opacity bg-slate-500/50" data-action="click->modal#close"></div>
+        <div class="inline-block align-bottom bg-white rounded-lg text-left overflow-hidden shadow-xl transform transition-all sm:my-8 sm:align-middle sm:max-w-lg sm:w-full" data-modal-target="content">
+          <div class="bg-white px-5 pt-5 pb-4">
+            <h3 class="text-lg font-semibold text-slate-900 mb-4">上传证据附件</h3>
+            <%= form_with url: evidence_audit_path(@audit), method: :post, local: true, class: "space-y-4", html: { multipart: true } do |f| %>
+              <div>
+                <%= f.label :name, "证据名称", class: "block text-sm font-medium text-slate-700 mb-1" %>
+                <%= f.text_field :name, required: true, class: "w-full px-3 py-2 border border-slate-300 rounded focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 text-sm", placeholder: "例如：2024年度质量认证证书" %>
+              </div>
+              <div>
+                <%= f.label :evidence_type, "证据类型", class: "block text-sm font-medium text-slate-700 mb-1" %>
+                <%= f.select :evidence_type, EvidenceAttachment.evidence_type_options, include_blank: "请选择类型", class: "w-full px-3 py-2 border border-slate-300 rounded focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 text-sm" %>
+              </div>
+              <div>
+                <%= f.label :file, "选择文件", class: "block text-sm font-medium text-slate-700 mb-1" %>
+                <%= f.file_field :file, required: true, class: "block w-full text-sm text-slate-500 file:mr-4 file:py-2 file:px-4 file:rounded file:border-0 file:text-sm file:font-semibold file:bg-blue-50 file:text-blue-700 hover:file:bg-blue-100" %>
+                <p class="mt-1 text-xs text-slate-400">支持 PDF、Word、Excel、图片等格式，单个文件不超过 50MB</p>
+              </div>
+              <div>
+                <%= f.label :description, "描述说明", class: "block text-sm font-medium text-slate-700 mb-1" %>
+                <%= f.text_area :description, rows: 2, class: "w-full px-3 py-2 border border-slate-300 rounded focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 text-sm", placeholder: "可选：补充说明该证据的用途或其他信息" %>
+              </div>
+              <div class="pt-2 flex justify-end gap-2">
+                <button type="button" data-action="click->modal#close" class="px-4 py-2 rounded text-sm font-medium bg-white border border-slate-300 text-slate-700 hover:bg-slate-50 transition-colors">取消</button>
+                <%= f.submit "上传", class: "px-4 py-2 rounded text-sm font-semibold bg-blue-600 text-white hover:bg-blue-700 transition-colors" %>
+              </div>
+            <% end %>
+          </div>
+        </div>
+      </div>
+    </div>
+  <% end %>
+</div>

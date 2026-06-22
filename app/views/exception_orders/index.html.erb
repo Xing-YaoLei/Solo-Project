@@ -1,0 +1,215 @@
+<div class="space-y-6">
+  <div class="flex items-center justify-between">
+    <div>
+      <h1 class="text-2xl font-bold text-slate-900">异常单中心</h1>
+      <p class="mt-1 text-sm text-slate-500">跟踪证据缺失、质量问题等异常处理，确保整改闭环</p>
+    </div>
+  </div>
+
+  <%
+    severity_summary = [
+      { key: :critical, label: "严重", count: @severity_counts["critical"] || 0, cls: "bg-red-50 border-red-200 text-red-700" },
+      { key: :high, label: "高", count: @severity_counts["high"] || 0, cls: "bg-orange-50 border-orange-200 text-orange-700" },
+      { key: :medium, label: "中", count: @severity_counts["medium"] || 0, cls: "bg-yellow-50 border-yellow-200 text-yellow-700" },
+      { key: :low, label: "低", count: @severity_counts["low"] || 0, cls: "bg-blue-50 border-blue-200 text-blue-700" }
+    ]
+  %>
+  <div class="grid grid-cols-2 md:grid-cols-4 gap-4">
+    <% severity_summary.each do |item| %>
+      <%
+        link_params = params.permit(:q, :page).merge("q[severity_eq]" => item[:key])
+        link_url = exception_orders_path(link_params)
+      %>
+      <%= link_to link_url, class: "rounded-lg border p-4 hover:shadow-sm transition-all #{item[:cls]}" do %>
+        <p class="text-sm font-medium opacity-80"><%= item[:label] %></p>
+        <p class="mt-1 text-3xl font-bold font-mono"><%= item[:count] %></p>
+      <% end %>
+    <% end %>
+  </div>
+
+  <% status_tabs = [
+    { key: :all, label: "全部", count: @exception_orders.total_count, statuses: nil },
+    { key: :open, label: "待处理", count: (@status_counts["open"] || 0) + (@status_counts["assigned"] || 0) + (@status_counts["in_progress"] || 0), statuses: %w[open assigned in_progress] },
+    { key: :resolved, label: "已处理", count: (@status_counts["resolved"] || 0) + (@status_counts["closed"] || 0), statuses: %w[resolved closed] },
+    { key: :overdue, label: "已逾期", count: ExceptionOrder.overdue.count, scope: :overdue }
+  ] %>
+  <div class="bg-white rounded-lg border border-slate-200 p-1 inline-flex gap-1 flex-wrap">
+    <% status_tabs.each do |tab|
+      active = (params[:status_scope] == tab[:key].to_s || (params[:status_scope].blank? && tab[:key] == :all))
+    %>
+      <%= link_to exception_orders_path(params.permit(:q, :page).merge(status_scope: active ? nil : tab[:key])),
+        class: "inline-flex items-center px-4 py-2 rounded text-sm font-medium transition-colors #{active ? 'bg-red-50 text-red-700' : 'text-slate-600 hover:bg-slate-50'}" do %>
+        <%= tab[:label] %>
+        <span class="ml-1.5 px-2 py-0.5 rounded-full text-xs font-semibold #{active ? 'bg-red-100 text-red-700' : 'bg-slate-100 text-slate-600'}"><%= tab[:count] %></span>
+      <% end %>
+    <% end %>
+  </div>
+
+  <%= search_form_for @q, url: exception_orders_path, method: :get, class: "bg-white rounded-lg border border-slate-200 p-4", html: { data: { turbo_frame: "_top" } } do |f| %>
+    <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
+      <div>
+        <%= f.label :title_cont, class: "block text-sm font-medium text-slate-700 mb-1" do %>异常标题<% end %>
+        <%= f.search_field :title_cont, class: "w-full px-3 py-2 border border-slate-300 rounded focus:outline-none focus:ring-2 focus:ring-red-500 focus:border-red-500 text-sm", placeholder: "输入标题关键词" %>
+      </div>
+      <div>
+        <%= f.label :severity_eq, class: "block text-sm font-medium text-slate-700 mb-1" do %>严重等级<% end %>
+        <%= f.select :severity_eq, ExceptionOrder.severity_options, include_blank: "全部等级", class: "w-full px-3 py-2 border border-slate-300 rounded focus:outline-none focus:ring-2 focus:ring-red-500 focus:border-red-500 text-sm" %>
+      </div>
+      <div>
+        <%= f.label :status_in, class: "block text-sm font-medium text-slate-700 mb-1" do %>处理状态<% end %>
+        <%= f.select :status_in, ExceptionOrder.status_options, { include_blank: "全部状态", multiple: true }, { class: "w-full px-3 py-2 border border-slate-300 rounded focus:outline-none focus:ring-2 focus:ring-red-500 focus:border-red-500 text-sm", size: 1 } %>
+      </div>
+      <div>
+        <%= f.label :handler_id_eq, class: "block text-sm font-medium text-slate-700 mb-1" do %>处理人<% end %>
+        <% handler_options = User.active.order(:name).pluck(:name, :id) %>
+        <%= f.select :handler_id_eq, handler_options, include_blank: "全部处理人", class: "w-full px-3 py-2 border border-slate-300 rounded focus:outline-none focus:ring-2 focus:ring-red-500 focus:border-red-500 text-sm" %>
+      </div>
+    </div>
+    <div class="mt-4 flex items-center justify-between">
+      <div class="flex items-center gap-3">
+        <div>
+          <%= f.label :created_at_gteq, class: "block text-sm font-medium text-slate-700 mb-1" do %>创建起<% end %>
+          <%= f.date_field :created_at_gteq, class: "px-3 py-2 border border-slate-300 rounded focus:outline-none focus:ring-2 focus:ring-red-500 focus:border-red-500 text-sm" %>
+        </div>
+        <span class="text-slate-400 mt-5">至</span>
+        <div>
+          <%= f.label :created_at_lteq, class: "block text-sm font-medium text-slate-700 mb-1" do %>创建止<% end %>
+          <%= f.date_field :created_at_lteq, class: "px-3 py-2 border border-slate-300 rounded focus:outline-none focus:ring-2 focus:ring-red-500 focus:border-red-500 text-sm" %>
+        </div>
+      </div>
+      <div class="flex items-center gap-2">
+        <%= link_to "重置", exception_orders_path, class: "px-4 py-2 rounded text-sm font-medium bg-slate-100 text-slate-700 hover:bg-slate-200 transition-colors" %>
+        <%= f.submit "筛选", class: "px-4 py-2 rounded text-sm font-semibold bg-red-600 text-white hover:bg-red-700 transition-colors" %>
+      </div>
+    </div>
+  <% end %>
+
+  <div class="bg-white rounded-lg border border-slate-200 overflow-hidden">
+    <div class="overflow-x-auto">
+      <table class="min-w-full divide-y divide-slate-200">
+        <thead class="bg-slate-50">
+          <tr>
+            <th class="px-6 py-3 text-left text-xs font-semibold text-slate-500 uppercase tracking-wider">异常单</th>
+            <th class="px-6 py-3 text-left text-xs font-semibold text-slate-500 uppercase tracking-wider">关联审计</th>
+            <th class="px-6 py-3 text-left text-xs font-semibold text-slate-500 uppercase tracking-wider">等级</th>
+            <th class="px-6 py-3 text-left text-xs font-semibold text-slate-500 uppercase tracking-wider">状态</th>
+            <th class="px-6 py-3 text-left text-xs font-semibold text-slate-500 uppercase tracking-wider">处理人</th>
+            <th class="px-6 py-3 text-left text-xs font-semibold text-slate-500 uppercase tracking-wider">截止日期</th>
+            <th class="px-6 py-3 text-right text-xs font-semibold text-slate-500 uppercase tracking-wider">操作</th>
+          </tr>
+        </thead>
+        <tbody class="bg-white divide-y divide-slate-200">
+          <% @exception_orders.each do |eo| %>
+            <%
+              severity_config = {
+                critical: { cls: "bg-red-100 text-red-700 border-red-200", label: "严重", dot: "bg-red-500" },
+                high: { cls: "bg-orange-100 text-orange-700 border-orange-200", label: "高", dot: "bg-orange-500" },
+                medium: { cls: "bg-yellow-100 text-yellow-700 border-yellow-200", label: "中", dot: "bg-yellow-500" },
+                low: { cls: "bg-blue-100 text-blue-700 border-blue-200", label: "低", dot: "bg-blue-500" }
+              }
+              status_config = {
+                open: { cls: "bg-red-100 text-red-700", label: "待分派" },
+                assigned: { cls: "bg-orange-100 text-orange-700", label: "已分派" },
+                in_progress: { cls: "bg-amber-100 text-amber-700", label: "处理中" },
+                resolved: { cls: "bg-green-100 text-green-700", label: "已解决" },
+                closed: { cls: "bg-slate-100 text-slate-600", label: "已关闭" }
+              }
+              sev = severity_config[eo.severity.to_sym] || severity_config[:medium]
+              st = status_config[eo.status.to_sym] || { cls: "bg-slate-100 text-slate-600", label: eo.status.humanize }
+            %>
+            <tr id="<%= dom_id(eo) %>" class="hover:bg-slate-50 transition-colors">
+              <td class="px-6 py-4">
+                <%= link_to exception_order_path(eo), class: "block" do %>
+                  <div class="text-sm font-semibold text-slate-900 hover:text-red-600"><%= eo.title %></div>
+                  <div class="mt-1 flex items-center gap-2">
+                    <span class="text-xs text-slate-400">#EXC-<%= eo.id.to_s.rjust(6, '0') %></span>
+                    <% if eo.overdue? && !eo.resolved? && !eo.closed? %>
+                      <span class="inline-flex items-center px-2 py-0.5 rounded text-xs font-medium bg-red-100 text-red-700">已逾期</span>
+                    <% end %>
+                  </div>
+                <% end %>
+              </td>
+              <td class="px-6 py-4 whitespace-nowrap">
+                <% if eo.audit.present? %>
+                  <%= link_to audit_path(eo.audit), class: "text-sm text-blue-600 hover:text-blue-700" do %>
+                    <span class="truncate block max-w-[180px]"><%= eo.audit.title %></span>
+                    <span class="text-xs text-slate-400 block mt-0.5"><%= eo.audit.supplier&.name %></span>
+                  <% end %>
+                <% else %>
+                  <span class="text-sm text-slate-400">未关联</span>
+                <% end %>
+              </td>
+              <td class="px-6 py-4 whitespace-nowrap">
+                <span class="inline-flex items-center px-2.5 py-0.5 rounded text-xs font-bold border <%= sev[:cls] %>">
+                  <span class="w-1.5 h-1.5 rounded-full mr-1.5 <%= sev[:dot] %>"></span>
+                  <%= sev[:label] %>
+                </span>
+              </td>
+              <td class="px-6 py-4 whitespace-nowrap">
+                <span class="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-semibold <%= st[:cls] %>">
+                  <%= st[:label] %>
+                </span>
+              </td>
+              <td class="px-6 py-4 whitespace-nowrap">
+                <% if eo.handler.present? %>
+                  <div class="flex items-center gap-2">
+                    <div class="w-6 h-6 rounded-full bg-gradient-to-br from-blue-500 to-indigo-600 flex items-center justify-center text-white text-xs font-bold">
+                      <%= eo.handler.name.first %>
+                    </div>
+                    <span class="text-sm text-slate-900"><%= eo.handler.name %></span>
+                  </div>
+                <% else %>
+                  <span class="inline-flex items-center px-2 py-0.5 rounded text-xs font-medium bg-slate-100 text-slate-500">未分派</span>
+                <% end %>
+              </td>
+              <td class="px-6 py-4 whitespace-nowrap">
+                <% if eo.due_at.present? %>
+                  <span class="text-sm <%= eo.overdue? && !eo.resolved? && !eo.closed? ? 'text-red-600 font-semibold' : 'text-slate-900' %>">
+                    <%= eo.due_at.strftime("%Y-%m-%d") %>
+                  </span>
+                  <% if !eo.overdue? && eo.days_remaining.present? && !eo.resolved? && !eo.closed? %>
+                    <span class="text-xs block mt-0.5 <%= eo.days_remaining <= 3 ? 'text-amber-600' : 'text-slate-400' %>">
+                      剩 <%= eo.days_remaining %> 天
+                    </span>
+                  <% end %>
+                <% else %>
+                  <span class="text-sm text-slate-400">—</span>
+                <% end %>
+              </td>
+              <td class="px-6 py-4 whitespace-nowrap text-right text-sm font-medium">
+                <div class="flex items-center justify-end gap-2">
+                  <%= link_to "查看", exception_order_path(eo), class: "text-blue-600 hover:text-blue-700 font-medium" %>
+                  <% if policy(eo).update? && !eo.closed? %>
+                    <%= link_to "编辑", edit_exception_order_path(eo), class: "text-slate-600 hover:text-slate-700 font-medium" %>
+                  <% end %>
+                </div>
+              </td>
+            </tr>
+          <% end %>
+          <% if @exception_orders.empty? %>
+            <tr>
+              <td colspan="7" class="px-6 py-16 text-center">
+                <svg class="mx-auto h-12 w-12 text-slate-300" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" />
+                </svg>
+                <h3 class="mt-2 text-sm font-medium text-slate-900">暂无异常单</h3>
+                <p class="mt-1 text-sm text-slate-500">审计过程中发现问题将在此处创建异常单跟踪处理</p>
+              </td>
+            </tr>
+          <% end %>
+        </tbody>
+      </table>
+    </div>
+
+    <% if @exception_orders.total_pages > 1 %>
+      <div class="px-6 py-4 border-t border-slate-200 flex items-center justify-between">
+        <div class="text-sm text-slate-500">
+          显示第 <%= @exception_orders.offset_value + 1 %> - <%= [@exception_orders.offset_value + @exception_orders.limit_value, @exception_orders.total_count].min %> 条，共 <%= @exception_orders.total_count %> 条
+        </div>
+        <div>
+          <%= paginate @exception_orders, window: 2, outer_window: 1, theme: "tailwind" %>
+        </div>
+      </div>
+    <% end %>
+  </div>
+</div>

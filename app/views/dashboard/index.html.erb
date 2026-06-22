@@ -1,0 +1,342 @@
+<div class="space-y-6">
+  <div class="flex items-center justify-between">
+    <div>
+      <h1 class="text-2xl font-bold text-gray-900">数据概览</h1>
+      <p class="mt-1 text-sm text-gray-500">今日概览与关键指标追踪</p>
+    </div>
+    <div class="flex items-center gap-3">
+      <span class="text-sm text-gray-500">最后更新：<%= Time.current.strftime("%Y-%m-%d %H:%M") %></span>
+    </div>
+  </div>
+
+  <div class="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-4">
+    <%= link_to audits_path(status: "pending"), class: "group block rounded-xl border border-gray-200 bg-white p-6 shadow-sm transition hover:border-blue-300 hover:shadow-md" do %>
+      <div class="flex items-center justify-between">
+        <div>
+          <p class="text-sm font-medium text-gray-500">待处理审计</p>
+          <p class="mt-2 text-3xl font-bold text-gray-900 group-hover:text-blue-600"><%= @stats[:pending_audits] %></p>
+        </div>
+        <div class="flex h-12 w-12 items-center justify-center rounded-full bg-blue-50 group-hover:bg-blue-100">
+          <svg class="h-6 w-6 text-blue-600" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2m-6 9l2 2 4-4" />
+          </svg>
+        </div>
+      </div>
+      <div class="mt-4 flex items-center text-sm">
+        <span class="text-blue-600 font-medium">查看详情</span>
+        <svg class="ml-1 h-4 w-4 text-blue-600" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+          <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7" />
+        </svg>
+      </div>
+    <% end %>
+
+    <%= link_to audits_path(status: "in_progress"), class: "group block rounded-xl border border-gray-200 bg-white p-6 shadow-sm transition hover:border-amber-300 hover:shadow-md" do %>
+      <div class="flex items-center justify-between">
+        <div>
+          <p class="text-sm font-medium text-gray-500">进行中审计</p>
+          <p class="mt-2 text-3xl font-bold text-gray-900 group-hover:text-amber-600"><%= @stats[:in_progress_audits] %></p>
+        </div>
+        <div class="flex h-12 w-12 items-center justify-center rounded-full bg-amber-50 group-hover:bg-amber-100">
+          <svg class="h-6 w-6 text-amber-600" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" />
+          </svg>
+        </div>
+      </div>
+      <div class="mt-4 flex items-center text-sm">
+        <span class="text-amber-600 font-medium">查看详情</span>
+        <svg class="ml-1 h-4 w-4 text-amber-600" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+          <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7" />
+        </svg>
+      </div>
+    <% end %>
+
+    <%= link_to exception_orders_path(status: "open"), class: "group block rounded-xl border border-gray-200 bg-white p-6 shadow-sm transition hover:border-red-300 hover:shadow-md" do %>
+      <div class="flex items-center justify-between">
+        <div>
+          <p class="text-sm font-medium text-gray-500">开放异常单</p>
+          <p class="mt-2 text-3xl font-bold text-gray-900 group-hover:text-red-600"><%= @stats[:open_exceptions] %></p>
+        </div>
+        <div class="flex h-12 w-12 items-center justify-center rounded-full bg-red-50 group-hover:bg-red-100">
+          <svg class="h-6 w-6 text-red-600" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" />
+          </svg>
+        </div>
+      </div>
+      <div class="mt-4 flex items-center text-sm">
+        <span class="text-red-600 font-medium">查看详情</span>
+        <svg class="ml-1 h-4 w-4 text-red-600" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+          <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7" />
+        </svg>
+      </div>
+    <% end %>
+
+    <div class="rounded-xl border border-gray-200 bg-white p-6 shadow-sm">
+      <div class="flex items-center justify-between">
+        <div>
+          <p class="text-sm font-medium text-gray-500">整改完成率</p>
+          <p class="mt-2 text-3xl font-bold text-gray-900"><%= number_to_percentage @stats[:rectification_rate], precision: 1 %></p>
+        </div>
+        <div class="flex h-12 w-12 items-center justify-center rounded-full bg-emerald-50">
+          <svg class="h-6 w-6 text-emerald-600" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z" />
+          </svg>
+        </div>
+      </div>
+      <div class="mt-4">
+        <div class="w-full bg-gray-200 rounded-full h-2">
+          <div class="bg-emerald-500 h-2 rounded-full transition-all duration-500" style="width: <%= @stats[:rectification_rate] %>%"></div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <div class="grid grid-cols-1 gap-6 lg:grid-cols-3">
+    <div class="rounded-xl border border-gray-200 bg-white p-6 shadow-sm lg:col-span-2">
+      <div class="flex items-center justify-between mb-6">
+        <div>
+          <h2 class="text-lg font-semibold text-gray-900">30天整改完成率趋势</h2>
+          <% if @rectification_caliber.present? %>
+            <p class="mt-1 text-xs text-gray-500"><%= @rectification_caliber %></p>
+          <% end %>
+        </div>
+      </div>
+      <% if @rectification_trend.present? %>
+        <%= line_chart [
+          { name: "累计完成率", data: @rectification_trend.map { |d| [d[:date], d[:rate]] } },
+          { name: "每日新增", data: @rectification_trend.map { |d| [d[:date], d[:total]] } },
+          { name: "每日解决", data: @rectification_trend.map { |d| [d[:date], d[:resolved]] } }
+        ], library: {
+          chart: { height: 320, toolbar: { show: false } },
+          colors: ["#10b981", "#6366f1", "#f59e0b"],
+          stroke: { curve: "smooth", width: [3, 2, 2] },
+          legend: { position: "top" },
+          grid: { borderColor: "#f1f5f9" },
+          yaxis: [
+            { title: { text: "完成率(%)" }, max: 100, min: 0 },
+            { opposite: true, title: { text: "数量" } }
+          ],
+          tooltip: { shared: true }
+        } %>
+      <% else %>
+        <div class="flex h-64 items-center justify-center text-gray-400">
+          <div class="text-center">
+            <svg class="mx-auto h-12 w-12 mb-3" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z" />
+            </svg>
+            <p>暂无趋势数据</p>
+          </div>
+        </div>
+      <% end %>
+    </div>
+
+    <div class="rounded-xl border border-gray-200 bg-white shadow-sm overflow-hidden">
+      <div class="border-b border-gray-200 p-6">
+        <h2 class="text-lg font-semibold text-gray-900">待办任务</h2>
+        <p class="mt-1 text-sm text-gray-500">按优先级和截止时间排序</p>
+      </div>
+      <div class="max-h-[480px] overflow-y-auto" id="pending_tasks_list">
+        <% if @pending_tasks.present? %>
+          <ul class="divide-y divide-gray-100">
+            <% @pending_tasks.each do |task| %>
+              <li class="p-4 hover:bg-gray-50 transition">
+                <%= link_to task[:path], class: "block" do %>
+                  <div class="flex items-start justify-between gap-3">
+                    <div class="flex-1 min-w-0">
+                      <div class="flex items-center gap-2">
+                        <% if task[:type] == :exception %>
+                          <span class="inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium bg-red-100 text-red-800">异常</span>
+                          <% severity_classes = { critical: "bg-red-600", high: "bg-orange-500", medium: "bg-yellow-500", low: "bg-blue-500" } %>
+                          <span class="inline-flex items-center px-2 py-0.5 rounded text-xs font-medium text-white <%= severity_classes[task[:severity]&.to_sym] || "bg-gray-500" %>">
+                            <%= task[:severity]&.humanize %>
+                          </span>
+                        <% else %>
+                          <span class="inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium bg-blue-100 text-blue-800">审计</span>
+                        <% end %>
+                      </div>
+                      <p class="mt-2 text-sm font-medium text-gray-900 truncate"><%= task[:title] %></p>
+                    </div>
+                    <% if task[:due_at].present? %>
+                      <div class="text-right shrink-0">
+                        <% days = (task[:due_at].to_date - Date.today).to_i %>
+                        <% if days < 0 %>
+                          <span class="text-xs font-medium text-red-600">逾期 <%= days.abs %> 天</span>
+                        <% elsif days <= 3 %>
+                          <span class="text-xs font-medium text-amber-600">剩余 <%= days %> 天</span>
+                        <% else %>
+                          <span class="text-xs text-gray-500"><%= task[:due_at].strftime("%m-%d") %></span>
+                        <% end %>
+                      </div>
+                    <% end %>
+                  </div>
+                <% end %>
+              </li>
+            <% end %>
+          </ul>
+        <% else %>
+          <div class="flex h-64 items-center justify-center text-gray-400">
+            <div class="text-center">
+              <svg class="mx-auto h-12 w-12 mb-3" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2" />
+              </svg>
+              <p>暂无待办任务</p>
+            </div>
+          </div>
+        <% end %>
+      </div>
+    </div>
+  </div>
+
+  <div class="grid grid-cols-1 gap-6 lg:grid-cols-2">
+    <div class="rounded-xl border border-gray-200 bg-white shadow-sm overflow-hidden">
+      <div class="border-b border-gray-200 px-6 py-4 flex items-center justify-between">
+        <div>
+          <h2 class="text-lg font-semibold text-gray-900">最近审计项目</h2>
+          <p class="mt-1 text-sm text-gray-500">最新创建的审计任务</p>
+        </div>
+        <%= link_to audits_path, class: "text-sm font-medium text-blue-600 hover:text-blue-700" do %>
+          查看全部
+          <svg class="inline ml-1 h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7" />
+          </svg>
+        <% end %>
+      </div>
+      <div class="overflow-x-auto">
+        <table class="min-w-full divide-y divide-gray-200">
+          <thead class="bg-gray-50">
+            <tr>
+              <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">项目名称</th>
+              <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">供应商</th>
+              <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">状态</th>
+              <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">截止日期</th>
+            </tr>
+          </thead>
+          <tbody class="bg-white divide-y divide-gray-100">
+            <% @recent_audits.each do |audit| %>
+              <tr class="hover:bg-gray-50 transition">
+                <td class="px-6 py-4 whitespace-nowrap">
+                  <%= link_to audit_path(audit), class: "text-sm font-medium text-gray-900 hover:text-blue-600" do %>
+                    <%= audit.title %>
+                  <% end %>
+                </td>
+                <td class="px-6 py-4 whitespace-nowrap">
+                  <%= link_to supplier_path(audit.supplier), class: "text-sm text-gray-600 hover:text-blue-600" do %>
+                    <%= audit.supplier&.name %>
+                  <% end %>
+                </td>
+                <td class="px-6 py-4 whitespace-nowrap">
+                  <% status_colors = {
+                    draft: "bg-gray-100 text-gray-800",
+                    pending_materials: "bg-orange-100 text-orange-800",
+                    in_progress: "bg-blue-100 text-blue-800",
+                    pending_evidence: "bg-yellow-100 text-yellow-800",
+                    pending_checklist: "bg-yellow-100 text-yellow-800",
+                    pending_notification: "bg-yellow-100 text-yellow-800",
+                    pending_approval: "bg-purple-100 text-purple-800",
+                    approved: "bg-emerald-100 text-emerald-800",
+                    rejected: "bg-red-100 text-red-800",
+                    archived: "bg-gray-100 text-gray-600"
+                  } %>
+                  <span class="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium <%= status_colors[audit.status.to_sym] || "bg-gray-100 text-gray-800" %>">
+                    <%= audit.status.text %>
+                  </span>
+                </td>
+                <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
+                  <%= audit.end_at&.strftime("%Y-%m-%d") || "-" %>
+                </td>
+              </tr>
+            <% end %>
+            <% if @recent_audits.empty? %>
+              <tr>
+                <td colspan="4" class="px-6 py-12 text-center text-gray-400">
+                  <svg class="mx-auto h-10 w-10 mb-3" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
+                  </svg>
+                  <p>暂无审计项目</p>
+                </td>
+              </tr>
+            <% end %>
+          </tbody>
+        </table>
+      </div>
+    </div>
+
+    <div class="rounded-xl border border-gray-200 bg-white shadow-sm overflow-hidden">
+      <div class="border-b border-gray-200 px-6 py-4 flex items-center justify-between">
+        <div>
+          <h2 class="text-lg font-semibold text-gray-900">最近异常单</h2>
+          <p class="mt-1 text-sm text-gray-500">需要处理的异常事项</p>
+        </div>
+        <%= link_to exception_orders_path, class: "text-sm font-medium text-blue-600 hover:text-blue-700" do %>
+          查看全部
+          <svg class="inline ml-1 h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7" />
+          </svg>
+        <% end %>
+      </div>
+      <div class="overflow-x-auto">
+        <table class="min-w-full divide-y divide-gray-200">
+          <thead class="bg-gray-50">
+            <tr>
+              <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">异常标题</th>
+              <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">严重度</th>
+              <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">状态</th>
+              <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">截止日期</th>
+            </tr>
+          </thead>
+          <tbody class="bg-white divide-y divide-gray-100">
+            <% @recent_exceptions.each do |ex| %>
+              <tr class="hover:bg-gray-50 transition">
+                <td class="px-6 py-4 whitespace-nowrap">
+                  <%= link_to exception_order_path(ex), class: "text-sm font-medium text-gray-900 hover:text-blue-600" do %>
+                    <%= ex.title %>
+                  <% end %>
+                  <p class="text-xs text-gray-500 mt-1">
+                    关联审计：<%= ex.audit&.title %>
+                  </p>
+                </td>
+                <td class="px-6 py-4 whitespace-nowrap">
+                  <% severity_badges = {
+                    critical: { class: "bg-red-600 text-white", text: "严重" },
+                    high: { class: "bg-orange-500 text-white", text: "高" },
+                    medium: { class: "bg-yellow-500 text-white", text: "中" },
+                    low: { class: "bg-blue-500 text-white", text: "低" }
+                  } %>
+                  <% badge = severity_badges[ex.severity.to_sym] || { class: "bg-gray-500 text-white", text: ex.severity } %>
+                  <span class="inline-flex items-center px-2.5 py-0.5 rounded text-xs font-medium <%= badge[:class] %>">
+                    <%= badge[:text] %>
+                  </span>
+                </td>
+                <td class="px-6 py-4 whitespace-nowrap">
+                  <% status_badges = {
+                    open: { class: "bg-red-100 text-red-800", text: "待处理" },
+                    assigned: { class: "bg-orange-100 text-orange-800", text: "已分配" },
+                    in_progress: { class: "bg-yellow-100 text-yellow-800", text: "处理中" },
+                    resolved: { class: "bg-emerald-100 text-emerald-800", text: "已解决" },
+                    closed: { class: "bg-gray-100 text-gray-600", text: "已关闭" }
+                  } %>
+                  <% badge = status_badges[ex.status.to_sym] || { class: "bg-gray-100 text-gray-800", text: ex.status } %>
+                  <span class="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium <%= badge[:class] %>">
+                    <%= badge[:text] %>
+                  </span>
+                </td>
+                <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
+                  <%= ex.due_at&.strftime("%Y-%m-%d") || "-" %>
+                </td>
+              </tr>
+            <% end %>
+            <% if @recent_exceptions.empty? %>
+              <tr>
+                <td colspan="4" class="px-6 py-12 text-center text-gray-400">
+                  <svg class="mx-auto h-10 w-10 mb-3" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" />
+                  </svg>
+                  <p>暂无异常单</p>
+                </td>
+              </tr>
+            <% end %>
+          </tbody>
+        </table>
+      </div>
+    </div>
+  </div>
+</div>

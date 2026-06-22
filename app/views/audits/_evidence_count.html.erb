@@ -1,0 +1,26 @@
+<div id="evidence_count" class="flex items-center gap-6">
+  <div class="flex items-center gap-2">
+    <svg class="w-5 h-5 text-slate-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+      <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15.172 7l-6.586 6.586a2 2 0 102.828 2.828l6.414-6.586a4 4 0 00-5.656-5.656l-6.415 6.585a6 6 0 108.486 8.486L20.5 13"></path>
+    </svg>
+    <span class="text-sm text-slate-600">
+      证据附件：
+      <span class="font-semibold text-slate-900 font-mono"><%= audit.evidence_attachments.count %></span>
+      个文件
+    </span>
+  </div>
+
+  <%
+    size = audit.evidence_attachments.sum { |e| e.file.attached? ? e.file.blob.byte_size : 0 }
+    size_human = if size > 0 then ActiveSupport::NumberHelper.number_to_human_size(size) else "0 B" end
+  %>
+  <div class="flex items-center gap-2">
+    <svg class="w-5 h-5 text-slate-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+      <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 7v10c0 2.21 3.582 4 8 4s8-1.79 8-4V7M4 7c0 2.21 3.582 4 8 4s8-1.79 8-4M4 7c0-2.21 3.582-4 8-4s8 1.79 8 4"></path>
+    </svg>
+    <span class="text-sm text-slate-600">
+      总大小：
+      <span class="font-semibold text-slate-900 font-mono"><%= size_human %></span>
+    </span>
+  </div>
+</div>

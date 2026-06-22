@@ -1,0 +1,25 @@
+<div class="space-y-6">
+  <div class="flex items-center justify-between">
+    <div>
+      <%= render "layouts/breadcrumbs" %>
+      <h1 class="text-2xl font-bold text-gray-900 mt-2 flex items-center gap-3">
+        消息通知
+        <%= render "notifications/unread_badge", count: @unread_count %>
+      </h1>
+      <p class="text-sm text-gray-500 mt-1">查看系统消息和业务通知</p>
+    </div>
+    <div class="flex items-center gap-3">
+      <% if @unread_count > 0 %>
+        <%= button_to mark_all_read_notifications_path, method: :post, params: { redirect_to: "list" }, class: "px-4 py-2 bg-white text-gray-700 text-sm font-medium border border-gray-300 rounded-lg hover:bg-gray-50 transition-colors" do %>
+          全部标记已读
+        <% end %>
+      <% end %>
+    </div>
+  </div>
+
+  <div class="bg-white rounded-lg border border-gray-200 shadow-sm overflow-hidden">
+    <div id="notifications_list">
+      <%= render "notifications/list", notifications: @notifications %>
+    </div>
+  </div>
+</div>

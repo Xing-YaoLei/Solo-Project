@@ -1,0 +1,47 @@
+<div id="handler_info" class="bg-white rounded-lg border border-slate-200 p-5">
+  <h3 class="text-sm font-semibold text-slate-500 uppercase tracking-wider mb-4">处理人信息</h3>
+
+  <% if exception_order.handler.present? %>
+    <div class="flex items-center gap-4 mb-4">
+      <div class="w-12 h-12 rounded-full bg-gradient-to-br from-blue-500 to-indigo-600 flex items-center justify-center text-white font-bold text-lg">
+        <%= exception_order.handler.name.first %>
+      </div>
+      <div>
+        <p class="font-semibold text-slate-900"><%= exception_order.handler.name %></p>
+        <div class="mt-0.5 text-xs text-slate-500">
+          <% role_labels = { auditor: "审计专员", supervisor: "审计主管", admin: "系统管理员" } %>
+          <%= role_labels[exception_order.handler.role.to_sym] || exception_order.handler.role.humanize %>
+        </div>
+        <p class="mt-0.5 text-xs text-slate-400"><%= exception_order.handler.email %></p>
+      </div>
+    </div>
+
+    <% if policy(exception_order).assign? %>
+      <button type="button"
+        data-controller="modal"
+        data-action="click->modal#open"
+        data-modal-target="assignModal"
+        class="w-full mt-3 inline-flex items-center justify-center px-3 py-2 rounded text-sm font-medium bg-slate-50 text-slate-700 hover:bg-slate-100 border border-slate-200 transition-colors">
+        <svg class="w-4 h-4 mr-1.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15"></path></svg>
+        更换处理人
+      </button>
+    <% end %>
+  <% else %>
+    <div class="text-center py-4">
+      <svg class="mx-auto h-10 w-10 text-slate-300" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z"></path>
+      </svg>
+      <p class="mt-2 text-sm text-slate-500">暂未分派处理人</p>
+      <% if policy(exception_order).assign? %>
+        <button type="button"
+          data-controller="modal"
+          data-action="click->modal#open"
+          data-modal-target="assignModal"
+          class="w-full mt-3 inline-flex items-center justify-center px-3 py-2 rounded text-sm font-semibold bg-blue-600 text-white hover:bg-blue-700 transition-colors">
+          <svg class="w-4 h-4 mr-1.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4"></path></svg>
+          立即分派
+        </button>
+      <% end %>
+    </div>
+  <% end %>
+</div>

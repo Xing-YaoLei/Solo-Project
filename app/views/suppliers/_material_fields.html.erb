@@ -1,0 +1,53 @@
+<div data-nested-form-target="materialRow" class="rounded-lg border border-gray-200 bg-gray-50 p-4">
+  <div class="flex items-start justify-between mb-3">
+    <h4 class="text-sm font-medium text-gray-900">材料信息</h4>
+    <button type="button"
+      data-action="nested-form#removeMaterial"
+      class="inline-flex items-center p-1 text-gray-400 hover:text-red-600 rounded-md transition">
+      <svg class="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12" />
+      </svg>
+    </button>
+  </div>
+
+  <%= f.hidden_field :id, data: { nested_form_target: "materialId" } %>
+  <%= f.hidden_field :_destroy, value: false, data: { nested_form_target: "materialDestroy" } %>
+
+  <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
+    <div>
+      <%= f.label :material_type, "材料类型", class: "block text-xs font-medium text-gray-600 mb-1" %>
+      <%= f.select :material_type,
+        SupplierMaterial.material_type_options,
+        {},
+        class: "block w-full rounded-md border-gray-300 text-sm shadow-sm focus:border-blue-500 focus:ring-blue-500" %>
+    </div>
+
+    <div class="lg:col-span-2">
+      <%= f.label :name, "材料名称", class: "block text-xs font-medium text-gray-600 mb-1" %>
+      <%= f.text_field :name,
+        class: "block w-full rounded-md border-gray-300 text-sm shadow-sm focus:border-blue-500 focus:ring-blue-500",
+        placeholder: "请输入材料名称" %>
+    </div>
+
+    <div>
+      <%= f.label :status, "状态", class: "block text-xs font-medium text-gray-600 mb-1" %>
+      <%= f.select :status,
+        SupplierMaterial.status.options.map { |text, value| [text, value] },
+        {},
+        class: "block w-full rounded-md border-gray-300 text-sm shadow-sm focus:border-blue-500 focus:ring-blue-500" %>
+    </div>
+
+    <div>
+      <%= f.label :expire_at, "有效期至", class: "block text-xs font-medium text-gray-600 mb-1" %>
+      <%= f.date_field :expire_at,
+        class: "block w-full rounded-md border-gray-300 text-sm shadow-sm focus:border-blue-500 focus:ring-blue-500" %>
+    </div>
+
+    <div class="md:col-span-3">
+      <%= f.label :remark, "备注", class: "block text-xs font-medium text-gray-600 mb-1" %>
+      <%= f.text_field :remark,
+        class: "block w-full rounded-md border-gray-300 text-sm shadow-sm focus:border-blue-500 focus:ring-blue-500",
+        placeholder: "可选备注" %>
+    </div>
+  </div>
+</div>

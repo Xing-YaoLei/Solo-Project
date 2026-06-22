@@ -1,0 +1,157 @@
+<tr id="<%= dom_id(material) %>" class="hover:bg-gray-50 transition group" data-controller="inline-edit">
+  <td class="px-4 py-3 whitespace-nowrap">
+    <div class="flex items-center gap-2">
+      <div data-inline-edit-target="display">
+        <% type_labels = {
+          business_license: "营业执照",
+          tax_certificate: "税务登记证",
+          quality_certification: "质量认证",
+          safety_certification: "安全认证",
+          insurance_certificate: "保险凭证",
+          financial_statement: "财务报表",
+          contract: "合同协议",
+          other: "其他材料"
+        } %>
+        <span class="text-sm text-gray-900"><%= type_labels[material.material_type.to_sym] || material.material_type %></span>
+      </div>
+      <div data-inline-edit-target="form" class="hidden">
+        <%= form_with model: material, url: supplier_material_path(material.supplier, material), method: :patch,
+          data: { action: "inline-edit#submit", turbo_stream: true },
+          class: "flex items-center gap-2" do |f| %>
+          <%= f.select :material_type,
+            SupplierMaterial.material_type_options,
+            {},
+            class: "block w-full rounded-lg border-gray-300 text-sm focus:border-blue-500 focus:ring-blue-500" %>
+        <% end %>
+      </div>
+    </div>
+  </td>
+
+  <td class="px-4 py-3">
+    <div data-inline-edit-target="display" class="text-sm text-gray-900"><%= material.name %></div>
+    <div data-inline-edit-target="form" class="hidden">
+      <%= form_with model: material, url: supplier_material_path(material.supplier, material), method: :patch,
+        data: { action: "inline-edit#submit", turbo_stream: true },
+        class: "flex items-center gap-2" do |f| %>
+        <%= f.text_field :name,
+          class: "block w-full rounded-lg border-gray-300 text-sm focus:border-blue-500 focus:ring-blue-500",
+          data: { action: "keydown.esc@window->inline-edit#cancel" } %>
+      <% end %>
+    </div>
+  </td>
+
+  <td class="px-4 py-3 whitespace-nowrap">
+    <div data-inline-edit-target="display">
+      <% status_configs = {
+        pending: { class: "bg-yellow-100 text-yellow-800 border-yellow-200", text: "待审核", icon: "⏳" },
+        approved: { class: "bg-emerald-100 text-emerald-800 border-emerald-200", text: "已通过", icon: "✓" },
+        expired: { class: "bg-red-100 text-red-800 border-red-200", text: "已过期", icon: "!" },
+        rejected: { class: "bg-gray-100 text-gray-800 border-gray-200", text: "已拒绝", icon: "✗" }
+      } %>
+      <% config = status_configs[material.status.to_sym] || { class: "bg-gray-100 text-gray-800 border-gray-200", text: material.status.text, icon: "" } %>
+      <span class="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-xs font-medium border <%= config[:class] %>">
+        <span><%= config[:icon] %></span>
+        <%= config[:text] %>
+      </span>
+      <% if material.expire_warning_level == :critical && material.approved? %>
+        <span class="ml-1 inline-flex items-center px-2 py-0.5 rounded text-xs font-medium bg-red-600 text-white animate-pulse">
+          即将过期
+        </span>
+      <% elsif material.expire_warning_level == :warning && material.approved? %>
+        <span class="ml-1 inline-flex items-center px-2 py-0.5 rounded text-xs font-medium bg-amber-500 text-white">
+          临期
+        </span>
+      <% elsif material.expire_warning_level == :expired %>
+        <span class="ml-1 inline-flex items-center px-2 py-0.5 rounded text-xs font-medium bg-red-600 text-white">
+          已过期
+        </span>
+      <% end %>
+    </div>
+    <div data-inline-edit-target="form" class="hidden">
+      <%= form_with model: material, url: supplier_material_path(material.supplier, material), method: :patch,
+        data: { action: "inline-edit#submit", turbo_stream: true },
+        class: "flex items-center gap-2" do |f| %>
+        <%= f.select :status,
+          SupplierMaterial.status.options.map { |text, value| [text, value] },
+          {},
+          class: "block w-full rounded-lg border-gray-300 text-sm focus:border-blue-500 focus:ring-blue-500" %>
+      <% end %>
+    </div>
+  </td>
+
+  <td class="px-4 py-3 whitespace-nowrap">
+    <div data-inline-edit-target="display" class="text-sm text-gray-900">
+      <% if material.expire_at.present? %>
+        <span class="<%= material.expire_warning_level == :expired ? 'text-red-600 font-medium' : material.expire_warning_level == :critical ? 'text-amber-600 font-medium' : '' %>">
+          <%= material.expire_at.strftime("%Y-%m-%d") %>
+        </span>
+        <% if material.expire_at.present? && material.approved? %>
+          <% days = (material.expire_at.to_date - Date.today).to_i %>
+          <% if days >= 0 %>
+            <span class="text-xs text-gray-500">(<%= days %>天后)</span>
+          <% else %>
+            <span class="text-xs text-red-500">(已过期<%= days.abs %>天)</span>
+          <% end %>
+        <% end %>
+      <% else %>
+        <span class="text-gray-400">-</span>
+      <% end %>
+    </div>
+    <div data-inline-edit-target="form" class="hidden">
+      <%= form_with model: material, url: supplier_material_path(material.supplier, material), method: :patch,
+        data: { action: "inline-edit#submit", turbo_stream: true },
+        class: "flex items-center gap-2" do |f| %>
+        <%= f.date_field :expire_at,
+          class: "block w-full rounded-lg border-gray-300 text-sm focus:border-blue-500 focus:ring-blue-500" %>
+      <% end %>
+    </div>
+  </td>
+
+  <td class="px-4 py-3">
+    <div data-inline-edit-target="display" class="text-sm text-gray-600 max-w-[200px] truncate" title="<%= material.remark %>">
+      <%= material.remark.presence || "-" %>
+    </div>
+    <div data-inline-edit-target="form" class="hidden">
+      <%= form_with model: material, url: supplier_material_path(material.supplier, material), method: :patch,
+        data: { action: "inline-edit#submit", turbo_stream: true },
+        class: "flex items-center gap-2" do |f| %>
+        <%= f.text_field :remark,
+          class: "block w-full rounded-lg border-gray-300 text-sm focus:border-blue-500 focus:ring-blue-500",
+          placeholder: "添加备注..." %>
+      <% end %>
+    </div>
+  </td>
+
+  <td class="px-4 py-3 whitespace-nowrap text-right text-sm">
+    <div class="flex items-center justify-end gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
+      <button type="button"
+        data-action="inline-edit#toggleEdit"
+        data-inline-edit-target="editBtn"
+        class="inline-flex items-center px-2 py-1 text-gray-600 hover:text-blue-600 hover:bg-blue-50 rounded-md transition">
+        <svg class="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+          <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z" />
+        </svg>
+      </button>
+      <%= button_to supplier_material_path(material.supplier, material),
+        method: :delete,
+        data: { turbo_confirm: "确定要删除这份材料吗？", turbo_stream: true },
+        class: "inline-flex items-center px-2 py-1 text-gray-600 hover:text-red-600 hover:bg-red-50 rounded-md transition" do %>
+        <svg class="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+          <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
+        </svg>
+      <% end %>
+    </div>
+    <div data-inline-edit-target="actions" class="hidden flex items-center justify-end gap-1">
+      <button type="button"
+        data-action="inline-edit#save"
+        class="inline-flex items-center px-2 py-1 text-emerald-600 hover:text-emerald-700 hover:bg-emerald-50 rounded-md transition font-medium">
+        保存
+      </button>
+      <button type="button"
+        data-action="inline-edit#cancel"
+        class="inline-flex items-center px-2 py-1 text-gray-600 hover:text-gray-700 hover:bg-gray-100 rounded-md transition">
+        取消
+      </button>
+    </div>
+  </td>
+</tr>

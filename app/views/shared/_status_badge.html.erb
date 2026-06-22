@@ -1,0 +1,32 @@
+<%
+  status_color_mapping = {
+    "draft" => { bg: "bg-slate-100", text: "text-slate-700", ring: "ring-slate-500/20", dot: "bg-slate-500" },
+    "pending_materials" => { bg: "bg-sky-100", text: "text-sky-700", ring: "ring-sky-500/20", dot: "bg-sky-500" },
+    "in_progress" => { bg: "bg-blue-100", text: "text-blue-700", ring: "ring-blue-500/20", dot: "bg-blue-500" },
+    "pending_evidence" => { bg: "bg-indigo-100", text: "text-indigo-700", ring: "ring-indigo-500/20", dot: "bg-indigo-500" },
+    "pending_checklist" => { bg: "bg-violet-100", text: "text-violet-700", ring: "ring-violet-500/20", dot: "bg-violet-500" },
+    "pending_notification" => { bg: "bg-purple-100", text: "text-purple-700", ring: "ring-purple-500/20", dot: "bg-purple-500" },
+    "pending_approval" => { bg: "bg-amber-100", text: "text-amber-700", ring: "ring-amber-500/20", dot: "bg-amber-500" },
+    "approved" => { bg: "bg-green-100", text: "text-green-700", ring: "ring-green-500/20", dot: "bg-green-500" },
+    "rejected" => { bg: "bg-red-100", text: "text-red-700", ring: "ring-red-500/20", dot: "bg-red-500" },
+    "archived" => { bg: "bg-slate-100", text: "text-slate-600", ring: "ring-slate-500/20", dot: "bg-slate-400" },
+    "open" => { bg: "bg-red-100", text: "text-red-700", ring: "ring-red-500/20", dot: "bg-red-500" },
+    "assigned" => { bg: "bg-orange-100", text: "text-orange-700", ring: "ring-orange-500/20", dot: "bg-orange-500" },
+    "resolved" => { bg: "bg-green-100", text: "text-green-700", ring: "ring-green-500/20", dot: "bg-green-500" },
+    "closed" => { bg: "bg-slate-100", text: "text-slate-600", ring: "ring-slate-500/20", dot: "bg-slate-400" },
+    "expired" => { bg: "bg-red-100", text: "text-red-700", ring: "ring-red-500/20", dot: "bg-red-500" },
+    "pending" => { bg: "bg-amber-100", text: "text-amber-700", ring: "ring-amber-500/20", dot: "bg-amber-500" },
+    "completed" => { bg: "bg-green-100", text: "text-green-700", ring: "ring-green-500/20", dot: "bg-green-500" }
+  }
+
+  status_key = status.respond_to?(:to_s) ? status.to_s : status
+  style = status_color_mapping[status_key] || { bg: "bg-slate-100", text: "text-slate-700", ring: "ring-slate-500/20", dot: "bg-slate-500" }
+
+  display_text = defined?(text) && text.present? ? text : I18n.t("activerecord.attributes.#{defined?(model_key) ? model_key : 'common'}.statuses.#{status_key}", default: I18n.t("audit_statuses.#{status_key}", default: status_key.humanize))
+  size_class = defined?(size) && size == :sm ? "text-xs px-2 py-0.5" : "text-xs px-2.5 py-1"
+%>
+
+<span class="inline-flex items-center rounded-full ring-1 ring-inset <%= style[:bg] %> <%= style[:text] %> <%= style[:ring] %> <%= size_class %> font-medium">
+  <span class="w-1.5 h-1.5 rounded-full <%= style[:dot] %> mr-1.5"></span>
+  <%= display_text %>
+</span>

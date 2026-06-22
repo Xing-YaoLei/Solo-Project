@@ -1,0 +1,70 @@
+<%
+  evidence_pct = audit.evidence_completeness
+  evidence_text_cls = if evidence_pct >= 100 then 'text-green-700'
+                      elsif evidence_pct >= 70 then 'text-amber-700'
+                      else 'text-red-700' end
+  evidence_bar_cls = if evidence_pct >= 100 then 'bg-gradient-to-r from-green-500 to-green-600'
+                     elsif evidence_pct >= 70 then 'bg-gradient-to-r from-amber-500 to-amber-600'
+                     else 'bg-gradient-to-r from-red-500 to-red-600' end
+%>
+<div id="evidence_completeness" class="bg-white rounded-lg border border-slate-200 p-5">
+  <div class="flex items-center justify-between mb-3">
+    <h3 class="text-sm font-semibold text-slate-500 uppercase tracking-wider">证据完整度</h3>
+    <span class="text-2xl font-bold font-mono <%= evidence_text_cls %>">
+      <%= audit.evidence_completeness %>%
+    </span>
+  </div>
+
+  <div class="w-full h-2.5 bg-slate-100 rounded-full overflow-hidden mb-4">
+    <div class="h-full rounded-full transition-all duration-500 <%= evidence_bar_cls %>"
+      style="width: <%= audit.evidence_completeness %>%"></div>
+  </div>
+
+  <%
+    required = audit.checklist_items.requiring_evidence.count
+    uploaded = audit.evidence_attachments.count
+    missing = [required - uploaded, 0].max
+  %>
+
+  <div class="space-y-2 text-sm">
+    <div class="flex items-center justify-between">
+      <span class="flex items-center text-slate-600">
+        <svg class="w-4 h-4 mr-1.5 text-blue-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+          <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"></path>
+        </svg>
+        需证据项
+      </span>
+      <span class="font-semibold font-mono text-slate-900"><%= required %></span>
+    </div>
+    <div class="flex items-center justify-between">
+      <span class="flex items-center text-slate-600">
+        <svg class="w-4 h-4 mr-1.5 text-green-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+          <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M7 16a4 4 0 01-.88-7.903A5 5 0 1115.9 6L16 6a5 5 0 011 9.9M15 13l-3-3m0 0l-3 3m3-3v12"></path>
+        </svg>
+        已上传
+      </span>
+      <span class="font-semibold font-mono text-green-700"><%= uploaded %></span>
+    </div>
+    <% if missing > 0 %>
+      <div class="flex items-center justify-between">
+        <span class="flex items-center text-slate-600">
+          <svg class="w-4 h-4 mr-1.5 text-red-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z"></path>
+          </svg>
+          缺失
+        </span>
+        <span class="font-semibold font-mono text-red-700"><%= missing %></span>
+      </div>
+    <% end %>
+  </div>
+
+  <% if detection.present? && detection.is_a?(Hash) && detection[:missing_items].present? %>
+    <%= link_to new_audit_exception_order_path(audit, missing_items: detection[:missing_items].to_json, severity: missing > 3 ? :high : :medium),
+      class: "mt-4 w-full inline-flex items-center justify-center px-3 py-2 rounded text-sm font-medium bg-red-50 text-red-700 hover:bg-red-100 border border-red-200 transition-colors" do %>
+      <svg class="w-4 h-4 mr-1.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z"></path>
+      </svg>
+      生成异常单 (<%= detection[:missing_items].count %> 项缺失)
+    <% end %>
+  <% end %>
+</div>

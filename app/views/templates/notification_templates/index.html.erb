@@ -1,0 +1,101 @@
+<div class="space-y-6">
+  <div class="flex items-center justify-between">
+    <div>
+      <%= render "layouts/breadcrumbs" %>
+      <h1 class="text-2xl font-bold text-gray-900 mt-2">通报模板管理</h1>
+      <p class="text-sm text-gray-500 mt-1">管理审计项目的通报模板，支持变量配置</p>
+    </div>
+    <div class="flex items-center gap-3">
+      <%= link_to "新建模板", new_templates_notification_template_path, class: "px-4 py-2 bg-indigo-600 text-white text-sm font-medium rounded-lg hover:bg-indigo-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500 transition-colors" %>
+    </div>
+  </div>
+
+  <div class="bg-white rounded-lg border border-gray-200 shadow-sm overflow-hidden">
+    <div class="px-6 py-4 border-b border-gray-100 bg-gray-50">
+      <%= search_form_for @q, url: templates_notification_templates_path, method: :get, class: "flex items-center gap-4" do |f| %>
+        <div class="flex-1 max-w-md">
+          <%= f.search_field :name_or_content_cont, placeholder: "搜索模板名称或内容...", class: "w-full rounded-lg border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500 text-sm" %>
+        </div>
+        <div>
+          <%= f.select :audit_type_eq, [["全部类型", ""]] + NotificationTemplate.audit_type_options, {}, class: "rounded-lg border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500 text-sm" %>
+        </div>
+        <div>
+          <%= f.select :is_active_eq, [["全部状态", ""], ["已启用", "true"], ["已停用", "false"]], {}, class: "rounded-lg border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500 text-sm" %>
+        </div>
+        <div>
+          <%= f.submit "搜索", class: "px-4 py-2 bg-gray-800 text-white text-sm font-medium rounded-lg hover:bg-gray-900 transition-colors" %>
+        </div>
+      <% end %>
+    </div>
+
+    <div class="overflow-x-auto">
+      <table class="w-full text-sm">
+        <thead class="bg-gray-50 border-b border-gray-200">
+          <tr>
+            <th class="px-6 py-3 text-left font-medium text-gray-500 text-xs uppercase tracking-wider">模板名称</th>
+            <th class="px-6 py-3 text-left font-medium text-gray-500 text-xs uppercase tracking-wider">适用审计类型</th>
+            <th class="px-6 py-3 text-left font-medium text-gray-500 text-xs uppercase tracking-wider">变量数</th>
+            <th class="px-6 py-3 text-left font-medium text-gray-500 text-xs uppercase tracking-wider">状态</th>
+            <th class="px-6 py-3 text-left font-medium text-gray-500 text-xs uppercase tracking-wider">创建人</th>
+            <th class="px-6 py-3 text-left font-medium text-gray-500 text-xs uppercase tracking-wider">更新时间</th>
+            <th class="px-6 py-3 text-right font-medium text-gray-500 text-xs uppercase tracking-wider">操作</th>
+          </tr>
+        </thead>
+        <tbody class="divide-y divide-gray-100">
+          <% @templates.each do |template| %>
+            <tr class="hover:bg-gray-50 transition-colors">
+              <td class="px-6 py-4">
+                <%= link_to templates_notification_template_path(template), class: "font-medium text-gray-900 hover:text-indigo-600 transition-colors" do %>
+                  <%= template.name %>
+                <% end %>
+              </td>
+              <td class="px-6 py-4">
+                <span class="inline-flex items-center px-2 py-0.5 rounded text-xs font-medium bg-gray-100 text-gray-700">
+                  <%= template.audit_type.humanize %>
+                </span>
+              </td>
+              <td class="px-6 py-4 text-gray-600"><%= template.variable_count %> 个</td>
+              <td class="px-6 py-4">
+                <% if template.is_active? %>
+                  <span class="inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full text-xs font-medium bg-green-100 text-green-700">
+                    <span class="w-1.5 h-1.5 bg-green-500 rounded-full"></span>
+                    已启用
+                  </span>
+                <% else %>
+                  <span class="inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full text-xs font-medium bg-gray-100 text-gray-600">
+                    <span class="w-1.5 h-1.5 bg-gray-400 rounded-full"></span>
+                    已停用
+                  </span>
+                <% end %>
+              </td>
+              <td class="px-6 py-4 text-gray-600"><%= template.creator&.name %></td>
+              <td class="px-6 py-4 text-gray-500"><%= template.updated_at.strftime("%Y-%m-%d %H:%M") %></td>
+              <td class="px-6 py-4 text-right">
+                <div class="flex items-center justify-end gap-2">
+                  <%= link_to "查看", templates_notification_template_path(template), class: "text-sm text-gray-600 hover:text-indigo-600 transition-colors" %>
+                  <%= link_to "编辑", edit_templates_notification_template_path(template), class: "text-sm text-indigo-600 hover:text-indigo-800 transition-colors" %>
+                  <% if template.is_active? %>
+                    <%= link_to "停用", deactivate_templates_notification_template_path(template), method: :patch, class: "text-sm text-orange-600 hover:text-orange-800 transition-colors" %>
+                  <% else %>
+                    <%= link_to "启用", activate_templates_notification_template_path(template), method: :patch, class: "text-sm text-green-600 hover:text-green-800 transition-colors" %>
+                  <% end %>
+                  <% if policy(template).destroy? %>
+                    <%= button_to templates_notification_template_path(template), method: :delete, class: "text-sm text-red-600 hover:text-red-800 transition-colors", data: { turbo_confirm: "确认删除此模板？" } do %>
+                      删除
+                    <% end %>
+                  <% end %>
+                </div>
+              </td>
+            </tr>
+          <% end %>
+        </tbody>
+      </table>
+    </div>
+
+    <% if @templates.total_pages > 1 %>
+      <div class="px-6 py-4 border-t border-gray-100 bg-gray-50">
+        <%= paginate @templates, theme: "tailwind" %>
+      </div>
+    <% end %>
+  </div>
+</div>

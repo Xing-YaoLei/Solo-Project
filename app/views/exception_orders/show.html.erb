@@ -1,0 +1,209 @@
+<div class="space-y-6 pb-8">
+  <%
+    severity_config = {
+      critical: { banner: "bg-red-600", badge: "bg-red-100 text-red-700 border-red-200", label: "严重" },
+      high: { banner: "bg-orange-500", badge: "bg-orange-100 text-orange-700 border-orange-200", label: "高" },
+      medium: { banner: "bg-amber-500", badge: "bg-yellow-100 text-yellow-700 border-yellow-200", label: "中" },
+      low: { banner: "bg-blue-500", badge: "bg-blue-100 text-blue-700 border-blue-200", label: "低" }
+    }
+    sc = severity_config[@exception_order.severity.to_sym] || severity_config[:medium]
+  %>
+
+  <div class="<%= sc[:banner] %> rounded-lg p-5 text-white">
+    <div class="flex items-start justify-between">
+      <div>
+        <div class="flex items-center gap-3 mb-2">
+          <span class="inline-flex items-center px-2.5 py-0.5 rounded text-xs font-bold border <%= sc[:badge] %>">
+            <svg class="w-3.5 h-3.5 mr-1" fill="currentColor" viewBox="0 0 24 24"><path d="M12 9v2m0 4h.01M10.29 3.86L1.82 18a2 2 0 001.71 3h16.94a2 2 0 001.71-3L13.71 3.86a2 2 0 00-3.42 0z"/></svg>
+            <%= sc[:label] %>级异常
+          </span>
+          <span class="text-sm text-white/80">#EXC-<%= @exception_order.id.to_s.rjust(6, '0') %></span>
+          <% if @exception_order.overdue? && !@exception_order.resolved? && !@exception_order.closed? %>
+            <span class="inline-flex items-center px-2 py-0.5 rounded text-xs font-medium bg-white/20 text-white border border-white/30">已逾期</span>
+          <% end %>
+        </div>
+        <h1 class="text-2xl font-bold"><%= @exception_order.title %></h1>
+      </div>
+      <%= link_to exception_orders_path, class: "inline-flex items-center px-3 py-1.5 rounded text-sm font-medium bg-white/15 hover:bg-white/25 text-white border border-white/30 transition-colors" do %>
+        <svg class="w-4 h-4 mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+          <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10 19l-7-7m0 0l7-7m-7 7h18"></path>
+        </svg>
+        返回列表
+      <% end %>
+    </div>
+  </div>
+
+  <div class="grid grid-cols-1 lg:grid-cols-3 gap-6">
+    <div class="space-y-6">
+      <%= render partial: "status_card", locals: { exception_order: @exception_order } %>
+      <%= render partial: "handler_info", locals: { exception_order: @exception_order } %>
+
+      <div class="bg-white rounded-lg border border-slate-200 p-5">
+        <h3 class="text-sm font-semibold text-slate-500 uppercase tracking-wider mb-4">影响范围</h3>
+        <% if @exception_order.impact_scope.present? %>
+          <div class="p-3 bg-red-50 border border-red-100 rounded-lg">
+            <p class="text-sm text-red-800 whitespace-pre-wrap"><%= @exception_order.impact_scope %></p>
+          </div>
+        <% else %>
+          <p class="text-sm text-slate-400">未描述影响范围</p>
+        <% end %>
+      </div>
+
+      <div class="bg-white rounded-lg border border-slate-200 p-5">
+        <h3 class="text-sm font-semibold text-slate-500 uppercase tracking-wider mb-4">责任认定</h3>
+        <% if @exception_order.responsibility.present? %>
+          <div class="p-3 bg-amber-50 border border-amber-100 rounded-lg">
+            <p class="text-sm text-amber-800 whitespace-pre-wrap"><%= @exception_order.responsibility %></p>
+          </div>
+        <% else %>
+          <p class="text-sm text-slate-400">未认定责任</p>
+        <% end %>
+      </div>
+
+      <% if @audit.present? %>
+        <div class="bg-white rounded-lg border border-slate-200 p-5">
+          <h3 class="text-sm font-semibold text-slate-500 uppercase tracking-wider mb-4">关联审计</h3>
+          <%= link_to audit_path(@audit), class: "block p-3 rounded-lg border border-slate-200 hover:border-blue-300 hover:bg-blue-50/30 transition-all" do %>
+            <p class="text-sm font-semibold text-slate-900"><%= @audit.title %></p>
+            <div class="mt-2 flex items-center gap-3 text-xs text-slate-500">
+              <span><%= @audit.supplier&.name %></span>
+              <span>·</span>
+              <span><%= @audit.created_at.strftime("%Y-%m-%d") %></span>
+            </div>
+          <% end %>
+        </div>
+      <% end %>
+
+      <%= render partial: "conclusion", locals: { exception_order: @exception_order } %>
+    </div>
+
+    <div class="lg:col-span-2 space-y-6">
+      <div class="bg-white rounded-lg border border-slate-200 overflow-hidden">
+        <div class="px-5 py-4 border-b border-slate-100 bg-slate-50">
+          <h3 class="text-sm font-semibold text-slate-500 uppercase tracking-wider">整改时间线</h3>
+        </div>
+        <div class="p-5">
+          <div id="transition_timeline">
+            <%= render partial: "shared/transition_timeline", locals: { logs: @transition_logs } %>
+          </div>
+        </div>
+      </div>
+
+      <div class="bg-white rounded-lg border border-slate-200 p-5">
+        <h3 class="text-sm font-semibold text-slate-500 uppercase tracking-wider mb-4">快捷操作</h3>
+        <div class="grid grid-cols-1 md:grid-cols-2 gap-3">
+          <% if policy(@exception_order).assign? && (@exception_order.open? || @exception_order.assigned?) %>
+            <button type="button"
+              data-controller="modal"
+              data-action="click->modal#open"
+              data-modal-target="assignModal"
+              class="inline-flex items-center justify-center px-4 py-3 rounded text-sm font-semibold bg-blue-50 text-blue-700 border border-blue-200 hover:bg-blue-100 transition-colors">
+              <svg class="w-4 h-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z"></path></svg>
+              <%= @exception_order.handler.present? ? "更换处理人" : "分派处理人" %>
+            </button>
+          <% end %>
+
+          <% if policy(@exception_order).resolve? && @exception_order.in_progress? %>
+            <button type="button"
+              data-controller="modal"
+              data-action="click->modal#open"
+              data-modal-target="resolveModal"
+              class="inline-flex items-center justify-center px-4 py-3 rounded text-sm font-semibold bg-green-50 text-green-700 border border-green-200 hover:bg-green-100 transition-colors">
+              <svg class="w-4 h-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"></path></svg>
+              标记已解决
+            </button>
+          <% end %>
+
+          <% if policy(@exception_order).close? && (@exception_order.resolved?) %>
+            <%= button_to close_exception_order_path(@exception_order),
+              method: :patch,
+              class: "inline-flex items-center justify-center px-4 py-3 rounded text-sm font-semibold bg-slate-50 text-slate-700 border border-slate-200 hover:bg-slate-100 transition-colors",
+              data: { turbo_confirm: "确认关闭该异常单？关闭后将无法继续操作。" } do %>
+              <svg class="w-4 h-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"></path></svg>
+              关闭异常单
+            <% end %>
+          <% end %>
+
+          <% if policy(@exception_order).update? && !@exception_order.closed? %>
+            <%= link_to edit_exception_order_path(@exception_order),
+              class: "inline-flex items-center justify-center px-4 py-3 rounded text-sm font-semibold bg-white text-slate-700 border border-slate-200 hover:bg-slate-50 transition-colors" do %>
+              <svg class="w-4 h-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z"></path></svg>
+              编辑基本信息
+            <% end %>
+          <% end %>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <% if policy(@exception_order).assign? %>
+    <div id="assignModal" class="hidden fixed inset-0 z-50 overflow-y-auto" data-controller="modal">
+      <div class="flex items-end justify-center min-h-screen pt-4 px-4 pb-20 text-center sm:block sm:p-0">
+        <div class="fixed inset-0 transition-opacity bg-slate-500/50" data-action="click->modal#close"></div>
+        <div class="inline-block align-bottom bg-white rounded-lg text-left overflow-hidden shadow-xl transform transition-all sm:my-8 sm:align-middle sm:max-w-lg sm:w-full" data-modal-target="content">
+          <div class="bg-white px-5 pt-5 pb-4">
+            <div class="flex items-start gap-3 mb-5">
+              <div class="w-10 h-10 rounded-full bg-blue-100 flex items-center justify-center flex-shrink-0">
+                <svg class="w-5 h-5 text-blue-600" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z"></path></svg>
+              </div>
+              <div>
+                <h3 class="text-lg font-semibold text-slate-900"><%= @exception_order.handler.present? ? "更换处理人" : "分派处理人" %></h3>
+                <p class="mt-1 text-sm text-slate-500">选择处理人，系统将自动通知其处理</p>
+              </div>
+            </div>
+            <%= form_with url: assign_exception_order_path(@exception_order), method: :patch, class: "space-y-4" do |f| %>
+              <div>
+                <%= f.label :handler_id, "选择处理人", class: "block text-sm font-medium text-slate-700 mb-1" %>
+                <%= f.select :handler_id, @handler_options, {}, { include_blank: "请选择处理人", required: true, class: "w-full px-3 py-2 border border-slate-300 rounded focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 text-sm" } %>
+              </div>
+              <div>
+                <%= f.label :remark, "分派备注", class: "block text-sm font-medium text-slate-700 mb-1" %>
+                <%= f.text_area :remark, rows: 2, class: "w-full px-3 py-2 border border-slate-300 rounded focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 text-sm", placeholder: "可选：说明分派原因或处理要求" %>
+              </div>
+              <div class="pt-2 flex justify-end gap-2">
+                <button type="button" data-action="click->modal#close" class="px-4 py-2 rounded text-sm font-medium bg-white border border-slate-300 text-slate-700 hover:bg-slate-50 transition-colors">取消</button>
+                <%= f.submit "确认分派", class: "px-4 py-2 rounded text-sm font-semibold bg-blue-600 text-white hover:bg-blue-700 transition-colors" %>
+              </div>
+            <% end %>
+          </div>
+        </div>
+      </div>
+    </div>
+  <% end %>
+
+  <% if policy(@exception_order).resolve? %>
+    <div id="resolveModal" class="hidden fixed inset-0 z-50 overflow-y-auto" data-controller="modal">
+      <div class="flex items-end justify-center min-h-screen pt-4 px-4 pb-20 text-center sm:block sm:p-0">
+        <div class="fixed inset-0 transition-opacity bg-slate-500/50" data-action="click->modal#close"></div>
+        <div class="inline-block align-bottom bg-white rounded-lg text-left overflow-hidden shadow-xl transform transition-all sm:my-8 sm:align-middle sm:max-w-lg sm:w-full" data-modal-target="content">
+          <div class="bg-white px-5 pt-5 pb-4">
+            <div class="flex items-start gap-3 mb-5">
+              <div class="w-10 h-10 rounded-full bg-green-100 flex items-center justify-center flex-shrink-0">
+                <svg class="w-5 h-5 text-green-600" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"></path></svg>
+              </div>
+              <div>
+                <h3 class="text-lg font-semibold text-slate-900">标记为已解决</h3>
+                <p class="mt-1 text-sm text-slate-500">请详细填写处理结论，以便后续追溯</p>
+              </div>
+            </div>
+            <%= form_with url: resolve_exception_order_path(@exception_order), method: :patch, class: "space-y-4" do |f| %>
+              <div>
+                <%= f.label :conclusion, "处理结论", class: "block text-sm font-medium text-slate-700 mb-1" %>
+                <span class="text-red-500 text-xs">*</span>
+                <%= text_area_tag :conclusion, nil, required: true, rows: 5, class: "w-full px-3 py-2 border border-slate-300 rounded focus:outline-none focus:ring-2 focus:ring-green-500 focus:border-green-500 text-sm", placeholder: "请详细说明整改措施、验证结果等处理结论..." %>
+              </div>
+              <div>
+                <%= f.label :remark, "补充备注", class: "block text-sm font-medium text-slate-700 mb-1" %>
+                <%= text_area_tag :remark, nil, rows: 2, class: "w-full px-3 py-2 border border-slate-300 rounded focus:outline-none focus:ring-2 focus:ring-green-500 focus:border-green-500 text-sm", placeholder: "可选：其他补充说明" %>
+              </div>
+              <div class="pt-2 flex justify-end gap-2">
+                <button type="button" data-action="click->modal#close" class="px-4 py-2 rounded text-sm font-medium bg-white border border-slate-300 text-slate-700 hover:bg-slate-50 transition-colors">取消</button>
+                <%= f.submit "确认解决", class: "px-4 py-2 rounded text-sm font-semibold bg-green-600 text-white hover:bg-green-700 transition-colors" %>
+              </div>
+            <% end %>
+          </div>
+        </div>
+      </div>
+    </div>
+  <% end %>
+</div>

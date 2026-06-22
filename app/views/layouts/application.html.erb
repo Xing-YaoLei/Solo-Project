@@ -1,0 +1,125 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+  <head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title><%= page_title %></title>
+    <meta name="csrf-param" content="authenticity_token" />
+    <meta name="csrf-token" content="<%= form_authenticity_token %>" />
+    <link rel="icon" type="image/svg+xml" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>🔍</text></svg>">
+
+    <%= stylesheet_link_tag "application", "data-turbo-track": "reload" %>
+    <%= javascript_include_tag "application", "data-turbo-track": "reload", defer: true %>
+    <%= csrf_meta_tags %>
+
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+
+    <script src="https://unpkg.com/lucide@latest/dist/umd/lucide.min.js"></script>
+    <script src="https://unpkg.com/chartkick@5.0.1/dist/chartkick.js"></script>
+
+    <style>
+      :root {
+        --primary: #1E40AF;
+        --primary-light: #3B82F6;
+        --primary-dark: #1E3A8A;
+        --secondary: #F97316;
+        --success: #059669;
+        --danger: #DC2626;
+        --warning: #D97706;
+      }
+      body {
+        font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+      }
+      .sidebar-link.active {
+        background-color: rgba(30, 64, 175, 0.1);
+        border-left: 3px solid #1E40AF;
+        color: #1E40AF;
+        font-weight: 600;
+      }
+      .sidebar-link:hover {
+        background-color: rgba(30, 64, 175, 0.05);
+      }
+      ::-webkit-scrollbar {
+        width: 6px;
+        height: 6px;
+      }
+      ::-webkit-scrollbar-track {
+        background: #f1f5f9;
+      }
+      ::-webkit-scrollbar-thumb {
+        background: #cbd5e1;
+        border-radius: 3px;
+      }
+      ::-webkit-scrollbar-thumb:hover {
+        background: #94a3b8;
+      }
+    </style>
+  </head>
+
+  <body class="bg-slate-50 min-h-screen">
+    <% if user_signed_in? %>
+      <div class="flex h-screen overflow-hidden">
+        <%= render "layouts/sidebar" %>
+
+        <div class="flex-1 flex flex-col overflow-hidden">
+          <%= render "layouts/header" %>
+
+          <main class="flex-1 overflow-y-auto p-6">
+            <% if breadcrumbs.any? %>
+              <nav class="flex mb-4" aria-label="Breadcrumb">
+                <ol class="inline-flex items-center space-x-1 md:space-x-2 rtl:space-x-reverse">
+                  <li class="inline-flex items-center">
+                    <%= link_to dashboard_path, class: "inline-flex items-center text-sm font-medium text-slate-500 hover:text-blue-700" do %>
+                      <i data-lucide="home" class="w-4 h-4 me-2"></i>
+                      首页
+                    <% end %>
+                  </li>
+                  <% breadcrumbs.each_with_index do |crumb, index| %>
+                    <li>
+                      <div class="flex items-center">
+                        <i data-lucide="chevron-right" class="w-4 h-4 text-slate-400 mx-1"></i>
+                        <% if crumb[:path] && index < breadcrumbs.length - 1 %>
+                          <%= link_to crumb[:name], crumb[:path], class: "ms-1 text-sm font-medium text-slate-500 hover:text-blue-700 md:ms-2" %>
+                        <% else %>
+                          <span class="ms-1 text-sm font-medium text-slate-700 md:ms-2"><%= crumb[:name] %></span>
+                        <% end %>
+                      </div>
+                    </li>
+                  <% end %>
+                </ol>
+              </nav>
+            <% end %>
+
+            <div id="flash_messages">
+              <% flash.each do |type, message| %>
+                <% next if message.blank? %>
+                <%= render "shared/flash_message", type: type, message: message %>
+              <% end %>
+            </div>
+
+            <%= yield %>
+          </main>
+        </div>
+      </div>
+    <% else %>
+      <div class="min-h-screen flex items-center justify-center bg-gradient-to-br from-blue-50 to-orange-50">
+        <%= yield %>
+      </div>
+    <% end %>
+
+    <script>
+      document.addEventListener("turbo:load", function() {
+        if (typeof lucide !== 'undefined') {
+          lucide.createIcons();
+        }
+      });
+      document.addEventListener("turbo:frame-load", function() {
+        if (typeof lucide !== 'undefined') {
+          lucide.createIcons();
+        }
+      });
+    </script>
+  </body>
+</html>

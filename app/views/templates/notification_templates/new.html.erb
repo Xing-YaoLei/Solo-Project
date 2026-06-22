@@ -1,0 +1,120 @@
+<div class="space-y-6">
+  <%= render "layouts/breadcrumbs" %>
+
+  <div class="grid grid-cols-1 lg:grid-cols-3 gap-6">
+    <div class="lg:col-span-2">
+      <div class="bg-white rounded-lg border border-gray-200 shadow-sm overflow-hidden">
+        <div class="px-6 py-5 border-b border-gray-100">
+          <h1 class="text-xl font-semibold text-gray-900">新建通报模板</h1>
+          <p class="text-sm text-gray-500 mt-1">创建适用于审计项目的通报模板</p>
+        </div>
+
+        <%= form_with model: [:templates, @template], local: true do |f| %>
+          <% if @template.errors.any? %>
+            <div class="mx-6 mt-6 p-4 bg-red-50 border border-red-200 rounded-lg">
+              <h3 class="text-sm font-semibold text-red-800 mb-2">请修正以下错误：</h3>
+              <ul class="text-sm text-red-700 space-y-1 list-disc list-inside">
+                <% @template.errors.full_messages.each do |msg| %>
+                  <li><%= msg %></li>
+                <% end %>
+              </ul>
+            </div>
+          <% end %>
+
+          <div class="px-6 py-5 space-y-6">
+            <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+              <div>
+                <%= f.label :name, "模板名称", class: "block text-sm font-medium text-gray-700 mb-2" %>
+                <%= f.text_field :name, class: "w-full rounded-lg border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500 text-sm", placeholder: "请输入模板名称" %>
+              </div>
+              <div>
+                <%= f.label :audit_type, "适用审计类型", class: "block text-sm font-medium text-gray-700 mb-2" %>
+                <%= f.select :audit_type, NotificationTemplate.audit_type_options, { prompt: "请选择审计类型" }, class: "w-full rounded-lg border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500 text-sm" %>
+              </div>
+            </div>
+
+            <div>
+              <%= f.label :content, "模板内容", class: "block text-sm font-medium text-gray-700 mb-2" %>
+              <p class="text-xs text-gray-500 mb-2">使用 <code class="px-1 py-0.5 bg-gray-100 rounded text-pink-600">{{变量名}}</code> 格式插入变量，支持的变量见右侧列表</p>
+              <%= f.text_area :content, rows: 16, class: "w-full rounded-lg border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500 text-sm font-mono", placeholder: "请输入模板内容..." %>
+            </div>
+
+            <div class="pt-2 flex items-center gap-3">
+              <label class="flex items-center gap-2 cursor-pointer">
+                <%= f.check_box :is_active, class: "rounded border-gray-300 text-indigo-600 focus:ring-indigo-500" %>
+                <span class="text-sm font-medium text-gray-700">立即可用</span>
+              </label>
+              <span class="text-xs text-gray-500">（关闭后将不会在选择列表中显示）</span>
+            </div>
+          </div>
+
+          <div class="px-6 py-4 border-t border-gray-100 bg-gray-50 flex items-center justify-between">
+            <%= link_to "取消", templates_notification_templates_path, class: "px-4 py-2 text-sm font-medium text-gray-700 bg-white border border-gray-300 rounded-lg hover:bg-gray-50 transition-colors" %>
+            <%= f.submit "创建模板", class: "px-6 py-2 bg-indigo-600 text-white text-sm font-medium rounded-lg hover:bg-indigo-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500 transition-colors" %>
+          </div>
+        <% end %>
+      </div>
+    </div>
+
+    <div class="space-y-6">
+      <div class="bg-white rounded-lg border border-gray-200 shadow-sm overflow-hidden">
+        <div class="px-6 py-4 border-b border-gray-100">
+          <h3 class="text-sm font-semibold text-gray-900">变量配置</h3>
+          <p class="text-xs text-gray-500 mt-1">选择需要启用的变量</p>
+        </div>
+        <div class="px-6 py-4 space-y-3">
+          <label class="flex items-center justify-between p-3 bg-gray-50 rounded-lg cursor-pointer hover:bg-gray-100 transition-colors">
+            <div>
+              <div class="text-sm font-medium text-gray-900">{{supplier_name}}</div>
+              <div class="text-xs text-gray-500">供应商名称</div>
+            </div>
+            <%= check_box_tag "notification_template[variables][supplier_name]", "1", @template.supplier_name, class: "rounded border-gray-300 text-indigo-600 focus:ring-indigo-500" %>
+          </label>
+          <label class="flex items-center justify-between p-3 bg-gray-50 rounded-lg cursor-pointer hover:bg-gray-100 transition-colors">
+            <div>
+              <div class="text-sm font-medium text-gray-900">{{audit_title}}</div>
+              <div class="text-xs text-gray-500">审计项目标题</div>
+            </div>
+            <%= check_box_tag "notification_template[variables][audit_title]", "1", @template.audit_title, class: "rounded border-gray-300 text-indigo-600 focus:ring-indigo-500" %>
+          </label>
+          <label class="flex items-center justify-between p-3 bg-gray-50 rounded-lg cursor-pointer hover:bg-gray-100 transition-colors">
+            <div>
+              <div class="text-sm font-medium text-gray-900">{{audit_type}}</div>
+              <div class="text-xs text-gray-500">审计类型</div>
+            </div>
+            <%= check_box_tag "notification_template[variables][audit_type]", "1", @template.audit_type, class: "rounded border-gray-300 text-indigo-600 focus:ring-indigo-500" %>
+          </label>
+          <label class="flex items-center justify-between p-3 bg-gray-50 rounded-lg cursor-pointer hover:bg-gray-100 transition-colors">
+            <div>
+              <div class="text-sm font-medium text-gray-900">{{deadline}}</div>
+              <div class="text-xs text-gray-500">截止日期</div>
+            </div>
+            <%= check_box_tag "notification_template[variables][deadline]", "1", @template.deadline, class: "rounded border-gray-300 text-indigo-600 focus:ring-indigo-500" %>
+          </label>
+          <label class="flex items-center justify-between p-3 bg-gray-50 rounded-lg cursor-pointer hover:bg-gray-100 transition-colors">
+            <div>
+              <div class="text-sm font-medium text-gray-900">{{handler}}</div>
+              <div class="text-xs text-gray-500">处理人</div>
+            </div>
+            <%= check_box_tag "notification_template[variables][handler]", "1", @template.handler, class: "rounded border-gray-300 text-indigo-600 focus:ring-indigo-500" %>
+          </label>
+        </div>
+      </div>
+
+      <div class="bg-blue-50 border border-blue-200 rounded-lg p-5">
+        <h4 class="text-sm font-semibold text-blue-900 mb-2 flex items-center gap-2">
+          <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"/>
+          </svg>
+          使用说明
+        </h4>
+        <ul class="text-xs text-blue-800 space-y-1.5 list-disc list-inside">
+          <li>在模板内容中使用双大括号包裹变量名</li>
+          <li>生成通报时变量会被自动替换为实际数据</li>
+          <li>未启用的变量将不会被替换</li>
+          <li>建议先保存后在详情页查看预览效果</li>
+        </ul>
+      </div>
+    </div>
+  </div>
+</div>

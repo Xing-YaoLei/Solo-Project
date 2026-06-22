@@ -1,0 +1,67 @@
+<div id="exception_status_card" class="bg-white rounded-lg border border-slate-200 p-5">
+  <div class="flex items-start justify-between mb-4">
+    <h3 class="text-sm font-semibold text-slate-500 uppercase tracking-wider">异常单状态</h3>
+    <% if exception_order.overdue? %>
+      <span class="inline-flex items-center px-2.5 py-0.5 rounded text-xs font-medium bg-red-100 text-red-800 border border-red-200">
+        已逾期
+      </span>
+    <% end %>
+  </div>
+
+  <div class="flex items-center gap-3 mb-4">
+    <% severity_config = {
+      critical: { cls: "bg-red-100 text-red-700 border-red-200", label: "严重" },
+      high: { cls: "bg-orange-100 text-orange-700 border-orange-200", label: "高" },
+      medium: { cls: "bg-yellow-100 text-yellow-700 border-yellow-200", label: "中" },
+      low: { cls: "bg-blue-100 text-blue-700 border-blue-200", label: "低" }
+    } %>
+    <% status_config = {
+      open: { cls: "bg-red-100 text-red-700 border-red-200", label: "待分派", dot: "bg-red-500 animate-pulse" },
+      assigned: { cls: "bg-orange-100 text-orange-700 border-orange-200", label: "已分派", dot: "bg-orange-500 animate-pulse" },
+      in_progress: { cls: "bg-amber-100 text-amber-700 border-amber-200", label: "处理中", dot: "bg-amber-500 animate-pulse" },
+      resolved: { cls: "bg-green-100 text-green-700 border-green-200", label: "已解决", dot: "bg-green-500" },
+      closed: { cls: "bg-slate-100 text-slate-600 border-slate-200", label: "已关闭", dot: "bg-slate-500" }
+    } %>
+
+    <% sev = severity_config[exception_order.severity.to_sym] || severity_config[:medium] %>
+    <% st = status_config[exception_order.status.to_sym] || { cls: "bg-slate-100 text-slate-600 border-slate-200", label: exception_order.status.humanize, dot: "bg-slate-400" } %>
+
+    <span class="inline-flex items-center px-2.5 py-1 rounded text-xs font-bold border <%= sev[:cls] %>">
+      <%= sev[:label] %>
+    </span>
+    <span class="inline-flex items-center px-3 py-1 rounded-lg text-sm font-semibold border <%= st[:cls] %>">
+      <span class="w-2 h-2 rounded-full mr-2 <%= st[:dot] %>"></span>
+      <%= st[:label] %>
+    </span>
+  </div>
+
+  <div class="grid grid-cols-2 gap-4 text-sm">
+    <div>
+      <p class="text-slate-500 mb-1">创建时间</p>
+      <p class="font-medium text-slate-900"><%= exception_order.created_at.strftime("%Y-%m-%d %H:%M") %></p>
+    </div>
+    <div>
+      <p class="text-slate-500 mb-1">截止日期</p>
+      <p class="font-medium <%= exception_order.overdue? ? 'text-red-600' : 'text-slate-900' %>">
+        <%= exception_order.due_at&.strftime("%Y-%m-%d") || "—" %></p>
+    </div>
+  </div>
+
+  <% if exception_order.resolution_time.present? %>
+    <div class="mt-4 pt-4 border-t border-slate-100">
+      <div class="flex items-center justify-between text-sm">
+        <span class="text-slate-500">解决耗时</span>
+        <span class="font-mono font-semibold text-green-700"><%= exception_order.resolution_time %> 天</span>
+      </div>
+    </div>
+  <% elsif exception_order.days_remaining.present? && !exception_order.overdue? && !exception_order.resolved? && !exception_order.closed? %>
+    <div class="mt-4 pt-4 border-t border-slate-100">
+      <div class="flex items-center justify-between text-sm">
+        <span class="text-slate-500">剩余天数</span>
+        <span class="font-mono font-semibold <%= exception_order.days_remaining <= 3 ? 'text-amber-600' : 'text-slate-700' %>">
+          <%= exception_order.days_remaining %> 天
+        </span>
+      </div>
+    </div>
+  <% end %>
+</div>

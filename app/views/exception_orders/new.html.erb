@@ -1,0 +1,145 @@
+<div class="max-w-4xl mx-auto space-y-6">
+  <div class="flex items-center justify-between">
+    <div>
+      <h1 class="text-2xl font-bold text-slate-900">新建异常单</h1>
+      <p class="mt-1 text-sm text-slate-500">登记审计过程中发现的异常问题，跟踪整改处理</p>
+    </div>
+    <% if @audit.present? %>
+      <%= link_to audit_path(@audit, tab: "exceptions"), class: "inline-flex items-center px-3 py-2 rounded text-sm font-medium bg-white border border-slate-300 text-slate-700 hover:bg-slate-50 transition-colors" do %>
+        <svg class="w-4 h-4 mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+          <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10 19l-7-7m0 0l7-7m-7 7h18"></path>
+        </svg>
+        返回审计详情
+      <% end %>
+    <% else %>
+      <%= link_to exception_orders_path, class: "inline-flex items-center px-3 py-2 rounded text-sm font-medium bg-white border border-slate-300 text-slate-700 hover:bg-slate-50 transition-colors" do %>
+        <svg class="w-4 h-4 mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+          <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10 19l-7-7m0 0l7-7m-7 7h18"></path>
+        </svg>
+        返回列表
+      <% end %>
+    <% end %>
+  </div>
+
+  <% if @missing_items.present? && @missing_items.any? %>
+    <div class="bg-amber-50 border border-amber-200 rounded-lg p-4">
+      <div class="flex items-start gap-3">
+        <svg class="w-5 h-5 text-amber-600 mt-0.5 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+          <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z"></path>
+        </svg>
+        <div>
+          <h4 class="text-sm font-semibold text-amber-800">证据缺失检测（<%= @missing_items.count %> 项）</h4>
+          <ul class="mt-2 space-y-1 text-xs text-amber-700">
+            <% @missing_items.each do |item| %>
+              <li class="flex items-start gap-1">
+                <span class="text-amber-500">•</span>
+                <span><%= item["item_code"] %> - <%= item["content"] %></span>
+              </li>
+            <% end %>
+          </ul>
+        </div>
+      </div>
+    </div>
+  <% end %>
+
+  <%= form_with model: @exception_order, url: (@audit.present? ? audit_exception_orders_path(@audit) : exception_orders_path), class: "bg-white rounded-lg border border-slate-200 p-6 space-y-6" do |f| %>
+    <% if @exception_order.errors.any? %>
+      <div class="bg-red-50 border border-red-200 rounded-lg p-4">
+        <h4 class="text-sm font-semibold text-red-800 mb-2">存在以下错误：</h4>
+        <ul class="list-disc list-inside text-sm text-red-700 space-y-1">
+          <% @exception_order.errors.full_messages.each do |msg| %>
+            <li><%= msg %></li>
+          <% end %>
+        </ul>
+      </div>
+    <% end %>
+
+    <% if @missing_items.present? %>
+      <%= f.hidden_field :missing_items_raw, value: @missing_items.to_json %>
+    <% end %>
+
+    <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+      <div class="md:col-span-2">
+        <%= f.label :title, class: "block text-sm font-medium text-slate-700 mb-1" do %>
+          异常标题 <span class="text-red-500">*</span>
+        <% end %>
+        <%= f.text_field :title, required: true, maxlength: 200, class: "w-full px-3 py-2 border border-slate-300 rounded focus:outline-none focus:ring-2 focus:ring-red-500 focus:border-red-500 text-sm", placeholder: "简要描述异常问题" %>
+      </div>
+
+      <div>
+        <%= f.label :severity, class: "block text-sm font-medium text-slate-700 mb-1" do %>
+          严重等级 <span class="text-red-500">*</span>
+        <% end %>
+        <div class="grid grid-cols-4 gap-2">
+          <% [
+            { key: :critical, label: "严重", cls: "border-red-500 text-red-700 bg-red-50" },
+            { key: :high, label: "高", cls: "border-orange-500 text-orange-700 bg-orange-50" },
+            { key: :medium, label: "中", cls: "border-yellow-500 text-yellow-700 bg-yellow-50" },
+            { key: :low, label: "低", cls: "border-blue-500 text-blue-700 bg-blue-50" }
+          ].each do |opt| %>
+            <% checked = f.object.severity.to_sym == opt[:key] %>
+            <label class="relative flex items-center justify-center p-2.5 rounded border-2 cursor-pointer transition-all <%= checked ? opt[:cls] : 'border-slate-200 text-slate-600 hover:border-slate-300' %>">
+              <%= f.radio_button :severity, opt[:key], class: "sr-only peer" %>
+              <span class="text-sm font-semibold"><%= opt[:label] %></span>
+            </label>
+          <% end %>
+        </div>
+      </div>
+
+      <div>
+        <%= f.label :audit_id, class: "block text-sm font-medium text-slate-700 mb-1" do %>
+          关联审计 <span class="text-red-500">*</span>
+        <% end %>
+        <% if @audit.present? %>
+          <div class="px-3 py-2 border border-slate-200 rounded bg-slate-50 text-sm">
+            <p class="font-medium text-slate-900 truncate"><%= @audit.title %></p>
+            <p class="text-xs text-slate-500 mt-0.5"><%= @audit.supplier&.name %></p>
+          </div>
+          <%= f.hidden_field :audit_id, value: @audit.id %>
+        <% else %>
+          <% audit_options = Audit.active.includes(:supplier).order(created_at: :desc).limit(50).map { |a| ["#{a.title} - #{a.supplier&.name}", a.id] } %>
+          <%= f.select :audit_id, audit_options, { include_blank: "请选择关联审计" }, { required: true, class: "w-full px-3 py-2 border border-slate-300 rounded focus:outline-none focus:ring-2 focus:ring-red-500 focus:border-red-500 text-sm" } %>
+        <% end %>
+      </div>
+
+      <div>
+        <%= f.label :handler_id, class: "block text-sm font-medium text-slate-700 mb-1" do %>
+          处理人
+        <% end %>
+        <% handler_options = User.active.where(role: %i[auditor supervisor admin]).order(:name).pluck(:name, :id) %>
+        <%= f.select :handler_id, handler_options, { include_blank: "暂不指定（后续可分派）" }, { class: "w-full px-3 py-2 border border-slate-300 rounded focus:outline-none focus:ring-2 focus:ring-red-500 focus:border-red-500 text-sm" } %>
+      </div>
+
+      <div>
+        <%= f.label :due_at, class: "block text-sm font-medium text-slate-700 mb-1" do %>
+          整改截止日期
+        <% end %>
+        <% default_due = f.object.due_at || 14.days.from_now.to_date %>
+        <%= f.date_field :due_at, value: default_due, class: "w-full px-3 py-2 border border-slate-300 rounded focus:outline-none focus:ring-2 focus:ring-red-500 focus:border-red-500 text-sm" %>
+      </div>
+
+      <div class="md:col-span-2">
+        <%= f.label :impact_scope, class: "block text-sm font-medium text-slate-700 mb-1" do %>
+          影响范围描述
+        <% end %>
+        <%= f.text_area :impact_scope, rows: 3, class: "w-full px-3 py-2 border border-slate-300 rounded focus:outline-none focus:ring-2 focus:ring-red-500 focus:border-red-500 text-sm", placeholder: "描述该异常的影响范围，例如涉及的供应商、影响的审计项、业务影响等" %>
+      </div>
+
+      <div class="md:col-span-2">
+        <%= f.label :responsibility, class: "block text-sm font-medium text-slate-700 mb-1" do %>
+          责任认定
+        <% end %>
+        <%= f.text_area :responsibility, rows: 3, class: "w-full px-3 py-2 border border-slate-300 rounded focus:outline-none focus:ring-2 focus:ring-red-500 focus:border-red-500 text-sm", placeholder: "描述责任方、责任原因等，可选" %>
+      </div>
+    </div>
+
+    <div class="pt-6 border-t border-slate-100 flex items-center justify-end gap-3">
+      <% if @audit.present? %>
+        <%= link_to "取消", audit_path(@audit, tab: "exceptions"), class: "px-4 py-2 rounded text-sm font-medium bg-white border border-slate-300 text-slate-700 hover:bg-slate-50 transition-colors" %>
+      <% else %>
+        <%= link_to "取消", exception_orders_path, class: "px-4 py-2 rounded text-sm font-medium bg-white border border-slate-300 text-slate-700 hover:bg-slate-50 transition-colors" %>
+      <% end %>
+      <%= f.submit "创建异常单", class: "px-5 py-2 rounded text-sm font-semibold bg-red-600 text-white hover:bg-red-700 transition-colors" %>
+    </div>
+  <% end %>
+</div>

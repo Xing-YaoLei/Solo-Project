@@ -1,0 +1,123 @@
+<div class="max-w-4xl mx-auto space-y-6">
+  <div class="flex items-center justify-between">
+    <div>
+      <h1 class="text-2xl font-bold text-slate-900">编辑异常单</h1>
+      <p class="mt-1 text-sm text-slate-500">修改异常单的基本信息</p>
+    </div>
+    <%= link_to exception_order_path(@exception_order), class: "inline-flex items-center px-3 py-2 rounded text-sm font-medium bg-white border border-slate-300 text-slate-700 hover:bg-slate-50 transition-colors" do %>
+      <svg class="w-4 h-4 mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10 19l-7-7m0 0l7-7m-7 7h18"></path>
+      </svg>
+      返回详情
+    <% end %>
+  </div>
+
+  <%= form_with model: @exception_order, class: "bg-white rounded-lg border border-slate-200 p-6 space-y-6" do |f| %>
+    <% if @exception_order.errors.any? %>
+      <div class="bg-red-50 border border-red-200 rounded-lg p-4">
+        <h4 class="text-sm font-semibold text-red-800 mb-2">存在以下错误：</h4>
+        <ul class="list-disc list-inside text-sm text-red-700 space-y-1">
+          <% @exception_order.errors.full_messages.each do |msg| %>
+            <li><%= msg %></li>
+          <% end %>
+        </ul>
+      </div>
+    <% end %>
+
+    <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+      <div class="md:col-span-2">
+        <%= f.label :title, class: "block text-sm font-medium text-slate-700 mb-1" do %>
+          异常标题 <span class="text-red-500">*</span>
+        <% end %>
+        <%= f.text_field :title, required: true, maxlength: 200, class: "w-full px-3 py-2 border border-slate-300 rounded focus:outline-none focus:ring-2 focus:ring-red-500 focus:border-red-500 text-sm" %>
+      </div>
+
+      <div>
+        <%= f.label :severity, class: "block text-sm font-medium text-slate-700 mb-1" do %>
+          严重等级 <span class="text-red-500">*</span>
+        <% end %>
+        <div class="grid grid-cols-4 gap-2">
+          <% [
+            { key: :critical, label: "严重", cls: "border-red-500 text-red-700 bg-red-50" },
+            { key: :high, label: "高", cls: "border-orange-500 text-orange-700 bg-orange-50" },
+            { key: :medium, label: "中", cls: "border-yellow-500 text-yellow-700 bg-yellow-50" },
+            { key: :low, label: "低", cls: "border-blue-500 text-blue-700 bg-blue-50" }
+          ].each do |opt| %>
+            <% checked = f.object.severity.to_sym == opt[:key] %>
+            <label class="relative flex items-center justify-center p-2.5 rounded border-2 cursor-pointer transition-all <%= checked ? opt[:cls] : 'border-slate-200 text-slate-600 hover:border-slate-300' %>">
+              <%= f.radio_button :severity, opt[:key], class: "sr-only peer" %>
+              <span class="text-sm font-semibold"><%= opt[:label] %></span>
+            </label>
+          <% end %>
+        </div>
+      </div>
+
+      <div>
+        <%= f.label :status, class: "block text-sm font-medium text-slate-700 mb-1" do %>
+          处理状态
+        <% end %>
+        <% status_options = %w[open assigned in_progress resolved closed].map { |s| [I18n.t("exception_statuses.#{s}", default: s.humanize), s] } %>
+        <%= f.select :status, status_options, {}, { class: "w-full px-3 py-2 border border-slate-300 rounded focus:outline-none focus:ring-2 focus:ring-red-500 focus:border-red-500 text-sm" } %>
+        <p class="mt-1 text-xs text-slate-400">建议通过详情页的操作按钮变更状态，以便记录完整日志</p>
+      </div>
+
+      <div>
+        <%= f.label :audit_id, class: "block text-sm font-medium text-slate-700 mb-1" do %>
+          关联审计 <span class="text-red-500">*</span>
+        <% end %>
+        <% if @audit.present? %>
+          <div class="px-3 py-2 border border-slate-200 rounded bg-slate-50 text-sm">
+            <p class="font-medium text-slate-900 truncate"><%= @audit.title %></p>
+            <p class="text-xs text-slate-500 mt-0.5"><%= @audit.supplier&.name %></p>
+          </div>
+          <%= f.hidden_field :audit_id %>
+        <% else %>
+          <% audit_options = Audit.active.includes(:supplier).order(created_at: :desc).limit(50).map { |a| ["#{a.title} - #{a.supplier&.name}", a.id] } %>
+          <%= f.select :audit_id, audit_options, {}, { required: true, class: "w-full px-3 py-2 border border-slate-300 rounded focus:outline-none focus:ring-2 focus:ring-red-500 focus:border-red-500 text-sm" } %>
+        <% end %>
+      </div>
+
+      <div>
+        <%= f.label :handler_id, class: "block text-sm font-medium text-slate-700 mb-1" do %>
+          处理人
+        <% end %>
+        <%= f.select :handler_id, @handler_options, { include_blank: "暂不指定" }, { class: "w-full px-3 py-2 border border-slate-300 rounded focus:outline-none focus:ring-2 focus:ring-red-500 focus:border-red-500 text-sm" } %>
+      </div>
+
+      <div>
+        <%= f.label :due_at, class: "block text-sm font-medium text-slate-700 mb-1" do %>
+          整改截止日期
+        <% end %>
+        <%= f.date_field :due_at, class: "w-full px-3 py-2 border border-slate-300 rounded focus:outline-none focus:ring-2 focus:ring-red-500 focus:border-red-500 text-sm" %>
+      </div>
+
+      <div class="md:col-span-2">
+        <%= f.label :impact_scope, class: "block text-sm font-medium text-slate-700 mb-1" do %>
+          影响范围描述
+        <% end %>
+        <%= f.text_area :impact_scope, rows: 3, class: "w-full px-3 py-2 border border-slate-300 rounded focus:outline-none focus:ring-2 focus:ring-red-500 focus:border-red-500 text-sm" %>
+      </div>
+
+      <div class="md:col-span-2">
+        <%= f.label :responsibility, class: "block text-sm font-medium text-slate-700 mb-1" do %>
+          责任认定
+        <% end %>
+        <%= f.text_area :responsibility, rows: 3, class: "w-full px-3 py-2 border border-slate-300 rounded focus:outline-none focus:ring-2 focus:ring-red-500 focus:border-red-500 text-sm" %>
+      </div>
+
+      <% if @exception_order.resolved? || @exception_order.closed? %>
+        <div class="md:col-span-2">
+          <%= f.label :conclusion, class: "block text-sm font-medium text-slate-700 mb-1" do %>
+            处理结论
+          <% end %>
+          <%= f.text_area :conclusion, rows: 4, class: "w-full px-3 py-2 border border-slate-300 rounded focus:outline-none focus:ring-2 focus:ring-red-500 focus:border-red-500 text-sm" %>
+        </div>
+      <% end %>
+    </div>
+
+    <div class="pt-6 border-t border-slate-100 flex items-center justify-end gap-3">
+      <%= link_to "取消", exception_order_path(@exception_order), class: "px-4 py-2 rounded text-sm font-medium bg-white border border-slate-300 text-slate-700 hover:bg-slate-50 transition-colors" %>
+      <%= f.submit "保存修改", class: "px-5 py-2 rounded text-sm font-semibold bg-red-600 text-white hover:bg-red-700 transition-colors" %>
+    </div>
+  <% end %>
+</div>

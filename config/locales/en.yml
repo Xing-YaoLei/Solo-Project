@@ -1,0 +1,126 @@
+en:
+  date:
+    formats:
+      default: "%Y-%m-%d"
+      short: "%b %d, %Y"
+      long: "%B %d, %Y %H:%M"
+  time:
+    formats:
+      default: "%Y-%m-%d %H:%M:%S"
+      short: "%b %d, %H:%M"
+      long: "%B %d, %Y %H:%M:%S"
+
+  audit_statuses:
+    draft: "Draft"
+    pending_materials: "Pending Materials"
+    in_progress: "In Progress"
+    pending_evidence: "Pending Evidence"
+    pending_checklist: "Pending Checklist"
+    pending_notification: "Pending Notification"
+    pending_approval: "Pending Approval"
+    approved: "Approved"
+    rejected: "Rejected"
+    archived: "Archived"
+
+  audit_types:
+    routine_audit: "Routine Audit"
+    special_audit: "Special Audit"
+    compliance_audit: "Compliance Audit"
+    quality_audit: "Quality Audit"
+    safety_audit: "Safety Audit"
+    financial_audit: "Financial Audit"
+
+  user_roles:
+    auditor: "Auditor"
+    supervisor: "Supervisor"
+    admin: "Administrator"
+
+  severities:
+    critical: "Critical"
+    high: "High"
+    medium: "Medium"
+    low: "Low"
+
+  exception_statuses:
+    open: "Open"
+    assigned: "Assigned"
+    in_progress: "In Progress"
+    resolved: "Resolved"
+    closed: "Closed"
+
+  supplier_statuses:
+    active: "Active"
+    inactive: "Inactive"
+    suspended: "Suspended"
+
+  checklist_statuses:
+    pending: "Pending"
+    completed: "Completed"
+    rejected: "Rejected"
+    not_applicable: "Not Applicable"
+
+  supplier_materials:
+    types:
+      business_license: "Business License"
+      tax_certificate: "Tax Certificate"
+      quality_certification: "Quality Certification"
+      safety_certification: "Safety Certification"
+      insurance_certificate: "Insurance Certificate"
+      financial_statement: "Financial Statement"
+      contract: "Contract"
+      other: "Other"
+    statuses:
+      pending: "Pending"
+      approved: "Approved"
+      expired: "Expired"
+      rejected: "Rejected"
+
+  evidence_types:
+    contract: "Contract"
+    invoice: "Invoice"
+    report: "Report"
+    certificate: "Certificate"
+    screenshot: "Screenshot"
+    email: "Email"
+    meeting_minutes: "Meeting Minutes"
+    other: "Other"
+
+  permission_configs:
+    types:
+      data_access: "Data Access"
+      audit_participation: "Audit Participation"
+      document_upload: "Document Upload"
+      report_view: "Report View"
+      exception_handling: "Exception Handling"
+      approval: "Approval"
+    data_ranges:
+      own: "Own Only"
+      department: "Department"
+      all: "All"
+
+  export_types:
+    audit_summary: "Audit Summary Report"
+    exception_summary: "Exception Summary Report"
+    rectification_report: "Rectification Rate Report"
+    supplier_audit: "Supplier Audit Report"
+    full_audit_record: "Full Audit Record"
+
+  notification_types:
+    audit_status_changed: "Audit Status Changed"
+    exception_created: "Exception Created"
+    exception_assigned: "Exception Assigned"
+    exception_resolved: "Exception Resolved"
+    exception_overdue: "Exception Overdue"
+    evidence_missing: "Evidence Missing"
+    export_completed: "Export Completed"
+    export_failed: "Export Failed"
+    material_expiring: "Material Expiring"
+    system_announcement: "System Announcement"
+
+  activerecord:
+    models:
+      user: "User"
+      supplier: "Supplier"
+      audit: "Audit"
+      exception_order: "Exception Order"
+      notification: "Notification"

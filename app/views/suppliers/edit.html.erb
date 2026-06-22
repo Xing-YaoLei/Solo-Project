@@ -1,0 +1,25 @@
+<div class="max-w-4xl mx-auto space-y-6">
+  <div class="flex items-center justify-between">
+    <div>
+      <h1 class="text-2xl font-bold text-gray-900">编辑供应商</h1>
+      <p class="mt-1 text-sm text-gray-500">修改供应商：<%= @supplier.name %></p>
+    </div>
+    <div class="flex items-center gap-3">
+      <%= link_to supplier_path(@supplier), class: "inline-flex items-center px-3 py-2 text-sm font-medium text-gray-700 hover:text-gray-900 transition" do %>
+        <svg class="-ml-1 mr-2 h-5 w-5 text-gray-500" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+          <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
+          <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z" />
+        </svg>
+        查看详情
+      <% end %>
+      <%= link_to suppliers_path, class: "inline-flex items-center px-3 py-2 text-sm font-medium text-gray-700 hover:text-gray-900 transition" do %>
+        <svg class="-ml-1 mr-2 h-5 w-5 text-gray-500" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+          <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10 19l-7-7m0 0l7-7m-7 7h18" />
+        </svg>
+        返回列表
+      <% end %>
+    </div>
+  </div>
+
+  <%= render "form", supplier: @supplier %>
+</div>

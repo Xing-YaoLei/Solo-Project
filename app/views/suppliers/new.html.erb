@@ -1,0 +1,16 @@
+<div class="max-w-4xl mx-auto space-y-6">
+  <div class="flex items-center justify-between">
+    <div>
+      <h1 class="text-2xl font-bold text-gray-900">新增供应商</h1>
+      <p class="mt-1 text-sm text-gray-500">填写供应商基本信息以创建新的供应商档案</p>
+    </div>
+    <%= link_to suppliers_path, class: "inline-flex items-center px-3 py-2 text-sm font-medium text-gray-700 hover:text-gray-900 transition" do %>
+      <svg class="-ml-1 mr-2 h-5 w-5 text-gray-500" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10 19l-7-7m0 0l7-7m-7 7h18" />
+      </svg>
+      返回列表
+    <% end %>
+  </div>
+
+  <%= render "form", supplier: @supplier %>
+</div>

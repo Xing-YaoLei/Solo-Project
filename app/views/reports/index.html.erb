@@ -1,0 +1,135 @@
+<div class="flex h-[calc(100vh-4rem)] overflow-hidden">
+  <aside class="w-80 flex-shrink-0 border-r border-gray-200 bg-white overflow-y-auto">
+    <div class="p-6 space-y-6">
+      <div>
+        <h2 class="text-lg font-semibold text-gray-900 mb-4">筛选条件</h2>
+        <%= form_with url: preview_reports_path, method: :get, data: { turbo_frame: "preview_content", turbo_action: "advance" }, class: "space-y-5" do |f| %>
+          <div>
+            <%= f.label :export_type, "导出类型", class: "block text-sm font-medium text-gray-700 mb-2" %>
+            <%= f.select :export_type, @export_types, { prompt: "请选择导出类型" }, class: "w-full rounded-lg border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500 text-sm" %>
+          </div>
+
+          <div>
+            <%= f.label :date_range, "日期范围", class: "block text-sm font-medium text-gray-700 mb-2" %>
+            <div class="grid grid-cols-2 gap-2">
+              <%= f.date_field :start_date, value: @start_date, class: "w-full rounded-lg border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500 text-sm" %>
+              <%= f.date_field :end_date, value: @end_date, class: "w-full rounded-lg border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500 text-sm" %>
+            </div>
+          </div>
+
+          <div>
+            <%= f.label :supplier_ids, "供应商", class: "block text-sm font-medium text-gray-700 mb-2" %>
+            <div class="max-h-40 overflow-y-auto border border-gray-200 rounded-lg p-2 space-y-1">
+              <% @supplier_options.each do |name, id| %>
+                <label class="flex items-center gap-2 p-1.5 rounded hover:bg-gray-50 cursor-pointer">
+                  <%= check_box_tag "supplier_ids[]", id, @selected_suppliers.include?(id.to_s), class: "rounded border-gray-300 text-indigo-600 focus:ring-indigo-500" %>
+                  <span class="text-sm text-gray-700 truncate"><%= name %></span>
+                </label>
+              <% end %>
+            </div>
+          </div>
+
+          <div>
+            <%= f.label :audit_types, "审计类型", class: "block text-sm font-medium text-gray-700 mb-2" %>
+            <div class="space-y-1">
+              <% @audit_type_options.each do |label, value| %>
+                <label class="flex items-center gap-2 p-1.5 rounded hover:bg-gray-50 cursor-pointer">
+                  <%= check_box_tag "audit_types[]", value, @selected_audit_types.include?(value), class: "rounded border-gray-300 text-indigo-600 focus:ring-indigo-500" %>
+                  <span class="text-sm text-gray-700"><%= label %></span>
+                </label>
+              <% end %>
+            </div>
+          </div>
+
+          <div>
+            <%= f.label :severities, "严重等级", class: "block text-sm font-medium text-gray-700 mb-2" %>
+            <div class="space-y-1">
+              <% @severity_options.each do |label, value| %>
+                <label class="flex items-center gap-2 p-1.5 rounded hover:bg-gray-50 cursor-pointer">
+                  <%= check_box_tag "severities[]", value, @selected_severities.include?(value), class: "rounded border-gray-300 text-indigo-600 focus:ring-indigo-500" %>
+                  <span class="text-sm text-gray-700"><%= label %></span>
+                </label>
+              <% end %>
+            </div>
+          </div>
+
+          <div class="pt-2 space-y-2 border-t border-gray-100">
+            <label class="flex items-center gap-2 cursor-pointer">
+              <%= f.check_box :include_caliber_note, checked: @include_caliber_note, class: "rounded border-gray-300 text-indigo-600 focus:ring-indigo-500" %>
+              <span class="text-sm text-gray-700">包含口径说明</span>
+            </label>
+            <label class="flex items-center gap-2 cursor-pointer">
+              <%= f.check_box :include_audit_details, checked: @include_audit_details, class: "rounded border-gray-300 text-indigo-600 focus:ring-indigo-500" %>
+              <span class="text-sm text-gray-700">包含审计明细</span>
+            </label>
+            <label class="flex items-center gap-2 cursor-pointer">
+              <%= f.check_box :include_exception_details, checked: @include_exception_details, class: "rounded border-gray-300 text-indigo-600 focus:ring-indigo-500" %>
+              <span class="text-sm text-gray-700">包含异常明细</span>
+            </label>
+          </div>
+
+          <div class="flex gap-2 pt-2">
+            <%= f.submit "预览", class: "flex-1 px-4 py-2.5 bg-indigo-600 text-white text-sm font-medium rounded-lg hover:bg-indigo-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500 transition-colors" %>
+            <button type="reset" class="px-4 py-2.5 bg-gray-100 text-gray-700 text-sm font-medium rounded-lg hover:bg-gray-200 transition-colors">重置</button>
+          </div>
+        <% end %>
+      </div>
+    </div>
+  </aside>
+
+  <main class="flex-1 flex flex-col overflow-hidden bg-gray-50">
+    <div class="px-6 py-4 bg-white border-b border-gray-200 flex items-center justify-between">
+      <div>
+        <h1 class="text-xl font-semibold text-gray-900">报告预览</h1>
+        <p class="text-sm text-gray-500 mt-0.5">根据筛选条件预览数据，确认后导出完整报告</p>
+      </div>
+      <div class="flex items-center gap-3">
+        <%= link_to "导出记录", export_records_path, class: "px-4 py-2 text-sm font-medium text-gray-700 bg-white border border-gray-300 rounded-lg hover:bg-gray-50 transition-colors" %>
+        <%= form_with url: export_reports_path, method: :post, data: { turbo_method: :post, turbo_confirm: "确认导出当前筛选条件的数据？" }, local: false do |f| %>
+          <%= hidden_field_tag :export_type, @export_type %>
+          <%= hidden_field_tag :start_date, @start_date %>
+          <%= hidden_field_tag :end_date, @end_date %>
+          <%= hidden_field_tag :include_caliber_note, @include_caliber_note %>
+          <%= hidden_field_tag :include_audit_details, @include_audit_details %>
+          <%= hidden_field_tag :include_exception_details, @include_exception_details %>
+          <% if @selected_suppliers.present? %>
+            <% @selected_suppliers.each do |id| %>
+              <%= hidden_field_tag "supplier_ids[]", id %>
+            <% end %>
+          <% end %>
+          <% if @selected_audit_types.present? %>
+            <% @selected_audit_types.each do |type| %>
+              <%= hidden_field_tag "audit_types[]", type %>
+            <% end %>
+          <% end %>
+          <% if @selected_severities.present? %>
+            <% @selected_severities.each do |s| %>
+              <%= hidden_field_tag "severities[]", s %>
+            <% end %>
+          <% end %>
+          <%= f.submit "导出报告", class: "px-4 py-2 bg-indigo-600 text-white text-sm font-medium rounded-lg hover:bg-indigo-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500 transition-colors" %>
+        <% end %>
+      </div>
+    </div>
+
+    <div class="flex-1 overflow-y-auto p-6">
+      <%= turbo_frame_tag "preview_content" do %>
+        <%= render "reports/preview_content", export_type: @export_type, preview_data: @preview_data, caliber_note: @caliber_note, start_date: @start_date, end_date: @end_date %>
+      <% end %>
+    </div>
+  </main>
+</div>
+
+<div class="border-t border-gray-200 bg-white">
+  <div class="px-6 py-4">
+    <h3 class="text-base font-semibold text-gray-900 mb-4 flex items-center gap-2">
+      <svg class="w-5 h-5 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z"/>
+      </svg>
+      最近导出历史
+    </h3>
+    <div id="recent_exports_list">
+      <%= render "reports/recent_exports", recent_exports: @recent_exports %>
+    </div>
+  </div>
+</div>

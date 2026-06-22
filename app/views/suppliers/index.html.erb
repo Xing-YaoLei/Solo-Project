@@ -1,0 +1,204 @@
+<div class="space-y-6">
+  <div class="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
+    <div>
+      <h1 class="text-2xl font-bold text-gray-900">供应商管理</h1>
+      <p class="mt-1 text-sm text-gray-500">管理供应商信息、资质材料及审计记录</p>
+    </div>
+    <div class="flex items-center gap-3">
+      <%= link_to new_supplier_path, class: "inline-flex items-center px-4 py-2 border border-transparent text-sm font-medium rounded-lg shadow-sm text-white bg-blue-600 hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500 transition" do %>
+        <svg class="-ml-1 mr-2 h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+          <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4" />
+        </svg>
+        新增供应商
+      <% end %>
+    </div>
+  </div>
+
+  <div class="rounded-xl border border-gray-200 bg-white shadow-sm">
+    <div class="border-b border-gray-200 px-6 py-4">
+      <%= search_form_for @q, url: suppliers_path, method: :get, html: { class: "space-y-4", data: { turbo_frame: "_top" } } do |f| %>
+        <div class="grid grid-cols-1 gap-4 md:grid-cols-4">
+          <div class="md:col-span-2">
+            <%= f.label :name_or_code_cont, "关键词搜索", class: "block text-sm font-medium text-gray-700 mb-1" %>
+            <div class="relative">
+              <div class="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
+                <svg class="h-5 w-5 text-gray-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                  <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
+                </svg>
+              </div>
+              <%= f.search_field :name_or_code_cont,
+                class: "block w-full pl-10 pr-3 py-2 border border-gray-300 rounded-lg leading-5 bg-white placeholder-gray-400 focus:outline-none focus:ring-blue-500 focus:border-blue-500 sm:text-sm transition",
+                placeholder: "输入供应商名称或编码..." %>
+            </div>
+          </div>
+          <div>
+            <%= f.label :status_eq, "状态", class: "block text-sm font-medium text-gray-700 mb-1" %>
+            <%= f.select :status_eq,
+              Supplier.status.options.map { |text, value| [text, value] },
+              { include_blank: "全部状态" },
+              class: "block w-full pl-3 pr-10 py-2 border border-gray-300 rounded-lg bg-white focus:outline-none focus:ring-blue-500 focus:border-blue-500 sm:text-sm transition" %>
+          </div>
+          <div class="flex items-end gap-2">
+            <%= f.submit "搜索", class: "flex-1 inline-flex justify-center items-center px-4 py-2 border border-transparent text-sm font-medium rounded-lg shadow-sm text-white bg-blue-600 hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500 transition" %>
+            <%= link_to "重置", suppliers_path, class: "inline-flex items-center px-4 py-2 border border-gray-300 text-sm font-medium rounded-lg text-gray-700 bg-white hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500 transition" %>
+          </div>
+        </div>
+      <% end %>
+    </div>
+
+    <div class="overflow-x-auto">
+      <table class="min-w-full divide-y divide-gray-200" id="suppliers_table">
+        <thead class="bg-gray-50">
+          <tr>
+            <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+              <%= sort_link @q, :name, "供应商名称", default_order: :desc %>
+            </th>
+            <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+              编码
+            </th>
+            <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+              联系人
+            </th>
+            <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+              联系方式
+            </th>
+            <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+              材料完整度
+            </th>
+            <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+              状态
+            </th>
+            <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+              <%= sort_link @q, :created_at, "创建时间", default_order: :desc %>
+            </th>
+            <th class="px-6 py-3 text-right text-xs font-medium text-gray-500 uppercase tracking-wider">
+              操作
+            </th>
+          </tr>
+        </thead>
+        <tbody class="bg-white divide-y divide-gray-100">
+          <% @suppliers.each do |supplier| %>
+            <tr class="hover:bg-gray-50 transition" id="<%= dom_id(supplier) %>">
+              <td class="px-6 py-4 whitespace-nowrap">
+                <div class="flex items-center">
+                  <div class="flex-shrink-0 h-10 w-10">
+                    <div class="h-10 w-10 rounded-lg bg-gradient-to-br from-blue-400 to-indigo-600 flex items-center justify-center text-white font-semibold">
+                      <%= supplier.name[0, 1].upcase %>
+                    </div>
+                  </div>
+                  <div class="ml-4">
+                    <%= link_to supplier_path(supplier), class: "text-sm font-medium text-gray-900 hover:text-blue-600" do %>
+                      <%= supplier.name %>
+                    <% end %>
+                    <% if supplier.pending_materials_count > 0 %>
+                      <p class="text-xs text-amber-600 mt-0.5">
+                        <%= supplier.pending_materials_count %> 份材料待审核
+                      </p>
+                    <% end %>
+                    <% if supplier.expired_materials_count > 0 %>
+                      <p class="text-xs text-red-600 mt-0.5">
+                        <%= supplier.expired_materials_count %> 份材料已过期
+                      </p>
+                    <% end %>
+                  </div>
+                </div>
+              </td>
+              <td class="px-6 py-4 whitespace-nowrap">
+                <span class="text-sm text-gray-600 font-mono"><%= supplier.code %></span>
+              </td>
+              <td class="px-6 py-4 whitespace-nowrap">
+                <span class="text-sm text-gray-900"><%= supplier.contact_person || "-" %></span>
+              </td>
+              <td class="px-6 py-4 whitespace-nowrap">
+                <div class="text-sm text-gray-500">
+                  <% if supplier.phone.present? %>
+                    <p class="flex items-center gap-1">
+                      <svg class="h-3.5 w-3.5 text-gray-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 5a2 2 0 012-2h3.28a1 1 0 01.948.684l1.498 4.493a1 1 0 01-.502 1.21l-2.257 1.13a11.042 11.042 0 005.516 5.516l1.13-2.257a1 1 0 011.21-.502l4.493 1.498a1 1 0 01.684.949V19a2 2 0 01-2 2h-1C9.716 21 3 14.284 3 6V5z" />
+                      </svg>
+                      <%= supplier.phone %>
+                    </p>
+                  <% end %>
+                  <% if supplier.email.present? %>
+                    <p class="flex items-center gap-1 mt-1">
+                      <svg class="h-3.5 w-3.5 text-gray-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 8l7.89 5.26a2 2 0 002.22 0L21 8M5 19h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z" />
+                      </svg>
+                      <%= supplier.email %>
+                    </p>
+                  <% end %>
+                </div>
+              </td>
+              <td class="px-6 py-4 whitespace-nowrap">
+                <div class="flex items-center gap-2">
+                  <div class="flex-1 min-w-[80px]">
+                    <div class="w-full bg-gray-200 rounded-full h-2">
+                      <% if supplier.material_completeness >= 80 %>
+                        <div class="bg-emerald-500 h-2 rounded-full transition-all" style="width: <%= supplier.material_completeness %>%"></div>
+                      <% elsif supplier.material_completeness >= 50 %>
+                        <div class="bg-amber-500 h-2 rounded-full transition-all" style="width: <%= supplier.material_completeness %>%"></div>
+                      <% else %>
+                        <div class="bg-red-500 h-2 rounded-full transition-all" style="width: <%= supplier.material_completeness %>%"></div>
+                      <% end %>
+                    </div>
+                  </div>
+                  <span class="text-sm font-medium text-gray-700"><%= supplier.material_completeness %>%</span>
+                </div>
+              </td>
+              <td class="px-6 py-4 whitespace-nowrap">
+                <% status_configs = {
+                  active: { class: "bg-emerald-100 text-emerald-800", text: "正常" },
+                  inactive: { class: "bg-gray-100 text-gray-800", text: "停用" },
+                  suspended: { class: "bg-amber-100 text-amber-800", text: "暂停" }
+                } %>
+                <% config = status_configs[supplier.status.to_sym] || { class: "bg-gray-100 text-gray-800", text: supplier.status.text } %>
+                <span class="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium <%= config[:class] %>">
+                  <%= config[:text] %>
+                </span>
+              </td>
+              <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
+                <%= supplier.created_at.strftime("%Y-%m-%d") %>
+              </td>
+              <td class="px-6 py-4 whitespace-nowrap text-right text-sm font-medium">
+                <div class="flex items-center justify-end gap-2">
+                  <%= link_to supplier_path(supplier), class: "text-blue-600 hover:text-blue-900 transition" do %>
+                    查看
+                  <% end %>
+                  <%= link_to edit_supplier_path(supplier), class: "text-gray-600 hover:text-gray-900 transition" do %>
+                    编辑
+                  <% end %>
+                </div>
+              </td>
+            </tr>
+          <% end %>
+          <% if @suppliers.empty? %>
+            <tr>
+              <td colspan="8" class="px-6 py-16 text-center text-gray-400">
+                <svg class="mx-auto h-16 w-16 mb-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                  <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M19 21V5a2 2 0 00-2-2H7a2 2 0 00-2 2v16m14 0h2m-2 0h-5m-9 0H3m2 0h5M9 7h1m-1 4h1m4-4h1m-1 4h1m-5 10v-5a1 1 0 011-1h2a1 1 0 011 1v5m-4 0h4" />
+                </svg>
+                <p class="text-lg font-medium mb-1">暂无供应商数据</p>
+                <p class="text-sm"><%= link_to "立即新增", new_supplier_path, class: "text-blue-600 hover:text-blue-700" %></p>
+              </td>
+            </tr>
+          <% end %>
+        </tbody>
+      </table>
+    </div>
+
+    <% if @suppliers.total_pages > 1 %>
+      <div class="border-t border-gray-200 px-6 py-4 flex items-center justify-between bg-gray-50">
+        <div class="flex items-center gap-4">
+          <p class="text-sm text-gray-700">
+            显示第 <span class="font-medium"><%= @suppliers.offset_value + 1 %></span> 至
+            <span class="font-medium"><%= [@suppliers.offset_value + @suppliers.limit_value, @suppliers.total_count].min %></span> 条，
+            共 <span class="font-medium"><%= @suppliers.total_count %></span> 条记录
+          </p>
+        </div>
+        <nav class="flex items-center" aria-label="分页">
+          <%= paginate @suppliers, theme: "tailwind" %>
+        </nav>
+      </div>
+    <% end %>
+  </div>
+</div>

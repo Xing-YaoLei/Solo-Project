@@ -1,0 +1,105 @@
+<div class="space-y-6">
+  <%= render "layouts/breadcrumbs" %>
+
+  <div class="grid grid-cols-1 lg:grid-cols-3 gap-6">
+    <div class="lg:col-span-1 space-y-6">
+      <div class="bg-white rounded-lg border border-gray-200 shadow-sm overflow-hidden">
+        <div class="px-6 py-5 border-b border-gray-100 flex items-center justify-between">
+          <h2 class="text-lg font-semibold text-gray-900">模板信息</h2>
+          <% if @template.is_active? %>
+            <span class="inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full text-xs font-medium bg-green-100 text-green-700">
+              <span class="w-1.5 h-1.5 bg-green-500 rounded-full"></span>
+              已启用
+            </span>
+          <% else %>
+            <span class="inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full text-xs font-medium bg-gray-100 text-gray-600">
+              <span class="w-1.5 h-1.5 bg-gray-400 rounded-full"></span>
+              已停用
+            </span>
+          <% end %>
+        </div>
+        <div class="px-6 py-5 space-y-4">
+          <div>
+            <div class="text-xs font-medium text-gray-500 uppercase tracking-wider mb-1">模板名称</div>
+            <div class="text-sm font-medium text-gray-900"><%= @template.name %></div>
+          </div>
+          <div>
+            <div class="text-xs font-medium text-gray-500 uppercase tracking-wider mb-1">适用审计类型</div>
+            <div class="text-sm text-gray-900"><%= @template.audit_type.humanize %></div>
+          </div>
+          <div>
+            <div class="text-xs font-medium text-gray-500 uppercase tracking-wider mb-1">创建人</div>
+            <div class="text-sm text-gray-900"><%= @template.creator&.name %></div>
+          </div>
+          <div>
+            <div class="text-xs font-medium text-gray-500 uppercase tracking-wider mb-1">创建时间</div>
+            <div class="text-sm text-gray-600"><%= @template.created_at.strftime("%Y-%m-%d %H:%M") %></div>
+          </div>
+          <div>
+            <div class="text-xs font-medium text-gray-500 uppercase tracking-wider mb-1">更新时间</div>
+            <div class="text-sm text-gray-600"><%= @template.updated_at.strftime("%Y-%m-%d %H:%M") %></div>
+          </div>
+        </div>
+      </div>
+
+      <div class="bg-white rounded-lg border border-gray-200 shadow-sm overflow-hidden">
+        <div class="px-6 py-4 border-b border-gray-100">
+          <h2 class="text-lg font-semibold text-gray-900">可用变量</h2>
+          <p class="text-xs text-gray-500 mt-1">使用 <code class="px-1 py-0.5 bg-gray-100 rounded text-pink-600">{{变量名}}</code> 格式在模板内容中引用</p>
+        </div>
+        <div class="px-6 py-4">
+          <% if @template.available_variables.any? %>
+            <div class="space-y-2">
+              <% @template.available_variables.each do |var| %>
+                <div class="flex items-center gap-2 p-2 bg-gray-50 rounded-lg">
+                  <code class="text-xs font-mono text-indigo-600 bg-white px-2 py-1 rounded border border-gray-200">{{<%= var %>}}</code>
+                  <span class="text-xs text-gray-500">
+                    <%= case var
+                        when :supplier_name then "供应商名称"
+                        when :audit_title then "审计项目标题"
+                        when :audit_type then "审计类型"
+                        when :deadline then "截止日期"
+                        when :handler then "处理人"
+                        else var.to_s.humanize
+                        end %>
+                  </span>
+                </div>
+              <% end %>
+            </div>
+          <% else %>
+            <div class="text-sm text-gray-500 text-center py-4">未配置变量</div>
+          <% end %>
+        </div>
+        <div class="px-6 py-4 border-t border-gray-100 flex gap-2">
+          <%= link_to "编辑模板", edit_templates_notification_template_path(@template), class: "flex-1 px-4 py-2 bg-indigo-600 text-white text-sm font-medium rounded-lg hover:bg-indigo-700 text-center transition-colors" %>
+          <%= link_to "返回列表", templates_notification_templates_path, class: "px-4 py-2 bg-gray-100 text-gray-700 text-sm font-medium rounded-lg hover:bg-gray-200 text-center transition-colors" %>
+        </div>
+      </div>
+    </div>
+
+    <div class="lg:col-span-2 space-y-6">
+      <div class="bg-white rounded-lg border border-gray-200 shadow-sm overflow-hidden">
+        <div class="px-6 py-4 border-b border-gray-100">
+          <h2 class="text-lg font-semibold text-gray-900">模板内容</h2>
+        </div>
+        <div class="px-6 py-5">
+          <pre class="whitespace-pre-wrap font-sans text-sm text-gray-800 leading-relaxed p-4 bg-gray-50 rounded-lg border border-gray-100"><%= @template.content %></pre>
+        </div>
+      </div>
+
+      <div class="bg-white rounded-lg border border-gray-200 shadow-sm overflow-hidden">
+        <div class="px-6 py-4 border-b border-gray-100 flex items-center gap-2">
+          <h2 class="text-lg font-semibold text-gray-900">预览效果</h2>
+          <span class="inline-flex items-center px-2 py-0.5 rounded text-xs font-medium bg-amber-100 text-amber-700">示例数据</span>
+        </div>
+        <div class="px-6 py-5">
+          <div class="p-6 bg-gradient-to-br from-gray-50 to-white rounded-lg border border-gray-200">
+            <div class="prose prose-sm max-w-none">
+              <pre class="whitespace-pre-wrap font-sans text-sm text-gray-800 leading-relaxed"><%= @sample_preview %></pre>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>

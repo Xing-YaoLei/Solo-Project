@@ -1,0 +1,119 @@
+<div class="overflow-x-auto">
+  <table class="min-w-full divide-y divide-gray-200" id="audit_history_list">
+    <thead class="bg-gray-50">
+      <tr>
+        <th class="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">审计项目</th>
+        <th class="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">类型</th>
+        <th class="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">创建人</th>
+        <th class="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">状态</th>
+        <th class="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">异常单</th>
+        <th class="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">审计周期</th>
+        <th class="px-4 py-3 text-right text-xs font-medium text-gray-500 uppercase tracking-wider">操作</th>
+      </tr>
+    </thead>
+    <tbody class="bg-white divide-y divide-gray-100">
+      <% audits.each do |audit| %>
+        <tr class="hover:bg-gray-50 transition" id="<%= dom_id(audit) %>">
+          <td class="px-4 py-3">
+            <%= link_to audit_path(audit), class: "text-sm font-medium text-gray-900 hover:text-blue-600" do %>
+              <%= audit.title %>
+            <% end %>
+            <% if audit.overdue? %>
+              <span class="ml-2 text-xs font-medium text-red-600">已逾期</span>
+            <% end %>
+          </td>
+          <td class="px-4 py-3 whitespace-nowrap">
+            <span class="inline-flex items-center px-2 py-0.5 rounded text-xs font-medium bg-gray-100 text-gray-700">
+              <% type_labels = {
+                routine_audit: "常规审计",
+                special_audit: "专项审计",
+                compliance_audit: "合规审计",
+                quality_audit: "质量审计",
+                safety_audit: "安全审计",
+                financial_audit: "财务审计"
+              } %>
+              <%= type_labels[audit.audit_type.to_sym] || audit.audit_type.humanize %>
+            </span>
+          </td>
+          <td class="px-4 py-3 whitespace-nowrap text-sm text-gray-600">
+            <%= audit.creator&.name || "-" %>
+          </td>
+          <td class="px-4 py-3 whitespace-nowrap">
+            <% status_colors = {
+              draft: "bg-gray-100 text-gray-800",
+              pending_materials: "bg-orange-100 text-orange-800",
+              in_progress: "bg-blue-100 text-blue-800",
+              pending_evidence: "bg-yellow-100 text-yellow-800",
+              pending_checklist: "bg-yellow-100 text-yellow-800",
+              pending_notification: "bg-yellow-100 text-yellow-800",
+              pending_approval: "bg-purple-100 text-purple-800",
+              approved: "bg-emerald-100 text-emerald-800",
+              rejected: "bg-red-100 text-red-800",
+              archived: "bg-gray-100 text-gray-600"
+            } %>
+            <span class="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium <%= status_colors[audit.status.to_sym] || "bg-gray-100 text-gray-800" %>">
+              <%= audit.status.text %>
+            </span>
+          </td>
+          <td class="px-4 py-3 whitespace-nowrap">
+            <% ex_count = audit.exception_orders.count %>
+            <% open_ex_count = audit.pending_exceptions_count %>
+            <% if ex_count > 0 %>
+              <div class="flex items-center gap-2">
+                <span class="text-sm text-gray-600"><%= ex_count %> 项</span>
+                <% if open_ex_count > 0 %>
+                  <span class="inline-flex items-center px-2 py-0.5 rounded text-xs font-medium bg-red-100 text-red-700">
+                    <%= open_ex_count %> 待处理
+                  </span>
+                <% else %>
+                  <span class="inline-flex items-center px-2 py-0.5 rounded text-xs font-medium bg-emerald-100 text-emerald-700">
+                    全部处理
+                  </span>
+                <% end %>
+              </div>
+            <% else %>
+              <span class="text-sm text-gray-400">-</span>
+            <% end %>
+          </td>
+          <td class="px-4 py-3 whitespace-nowrap text-sm text-gray-500">
+            <% if audit.start_at.present? || audit.end_at.present? %>
+              <p><%= audit.start_at&.strftime("%Y-%m-%d") || "-" %></p>
+              <p class="text-xs text-gray-400">至 <%= audit.end_at&.strftime("%Y-%m-%d") || "-" %></p>
+            <% else %>
+              <span>-</span>
+            <% end %>
+          </td>
+          <td class="px-4 py-3 whitespace-nowrap text-right text-sm">
+            <div class="flex items-center justify-end gap-2">
+              <%= link_to audit_path(audit), class: "text-blue-600 hover:text-blue-900 font-medium transition" do %>
+                查看
+              <% end %>
+              <%= link_to "#{audit_path(audit)}/checklist", class: "text-gray-600 hover:text-gray-900 transition" do %>
+                清单
+              <% end %>
+            </div>
+          </td>
+        </tr>
+      <% end %>
+      <% if audits.empty? %>
+        <tr>
+          <td colspan="7" class="px-4 py-12 text-center text-gray-400">
+            <svg class="mx-auto h-10 w-10 mb-3" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2" />
+            </svg>
+            <p>暂无审计记录</p>
+          </td>
+        </tr>
+      <% end %>
+    </tbody>
+  </table>
+</div>
+
+<% if audits.respond_to?(:total_pages) && audits.total_pages > 1 %>
+  <div class="border-t border-gray-200 px-4 py-3 flex items-center justify-between bg-gray-50 rounded-b-xl">
+    <p class="text-sm text-gray-700">
+      共 <span class="font-medium"><%= audits.total_count %></span> 条审计记录
+    </p>
+    <%= paginate audits, theme: "tailwind", params: { controller: "suppliers", action: "audit_history", id: audits.respond_to?(:first) ? audits.first&.supplier_id : nil } %>
+  </div>
+<% end %>

@@ -1,0 +1,46 @@
+<div id="conclusion_section" class="bg-white rounded-lg border border-slate-200 overflow-hidden">
+  <div class="px-5 py-4 border-b border-slate-100 bg-slate-50">
+    <h3 class="text-sm font-semibold text-slate-500 uppercase tracking-wider">处理结论</h3>
+  </div>
+
+  <% if exception_order.conclusion.present? %>
+    <div class="p-5">
+      <div class="flex items-start gap-3 mb-4">
+        <div class="w-10 h-10 rounded-full bg-green-100 flex items-center justify-center flex-shrink-0">
+          <svg class="w-5 h-5 text-green-600" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"></path></svg>
+        </div>
+        <div class="flex-1">
+          <div class="text-sm text-slate-900 whitespace-pre-wrap"><%= exception_order.conclusion %></div>
+          <% if exception_order.resolved_at.present? %>
+            <p class="mt-2 text-xs text-slate-400">
+              于 <%= exception_order.resolved_at.strftime("%Y-%m-%d %H:%M") %> 标记为已解决
+            </p>
+          <% end %>
+        </div>
+      </div>
+    </div>
+  <% else %>
+    <div class="p-5">
+      <% if policy(exception_order).resolve? %>
+        <div class="text-center py-4">
+          <svg class="mx-auto h-10 w-10 text-slate-300" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z"></path>
+          </svg>
+          <p class="mt-2 text-sm text-slate-500">尚未填写处理结论</p>
+        </div>
+        <button type="button"
+          data-controller="modal"
+          data-action="click->modal#open"
+          data-modal-target="resolveModal"
+          class="w-full mt-3 inline-flex items-center justify-center px-4 py-2 rounded text-sm font-semibold bg-green-600 text-white hover:bg-green-700 transition-colors">
+          <svg class="w-4 h-4 mr-1.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"></path></svg>
+          标记为已解决
+        </button>
+      <% else %>
+        <div class="text-center py-4">
+          <p class="text-sm text-slate-400">暂无处理结论</p>
+        </div>
+      <% end %>
+    </div>
+  <% end %>
+</div>

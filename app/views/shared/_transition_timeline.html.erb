@@ -1,0 +1,96 @@
+<%
+  timeline_color_mapping = {
+    "green" => { line: "bg-green-200", dot: "bg-green-500", dot_ring: "bg-green-100", badge: "bg-green-50 text-green-700 ring-green-600/20" },
+    "blue" => { line: "bg-blue-200", dot: "bg-blue-500", dot_ring: "bg-blue-100", badge: "bg-blue-50 text-blue-700 ring-blue-600/20" },
+    "yellow" => { line: "bg-amber-200", dot: "bg-amber-500", dot_ring: "bg-amber-100", badge: "bg-amber-50 text-amber-700 ring-amber-600/20" },
+    "red" => { line: "bg-red-200", dot: "bg-red-500", dot_ring: "bg-red-100", badge: "bg-red-50 text-red-700 ring-red-600/20" },
+    "gray" => { line: "bg-slate-200", dot: "bg-slate-400", dot_ring: "bg-slate-100", badge: "bg-slate-50 text-slate-700 ring-slate-600/20" }
+  }
+%>
+
+<div class="relative">
+  <% if logs.blank? %>
+    <div class="text-center py-12">
+      <i data-lucide="clock" class="w-12 h-12 text-slate-300 mx-auto mb-3"></i>
+      <p class="text-sm text-slate-500">暂无状态变更记录</p>
+    </div>
+  <% else %>
+    <ul role="list" class="space-y-6">
+      <% logs.each_with_index do |log, index| %>
+        <%
+          color_key = log.respond_to?(:color) ? log.color : "gray"
+          style = timeline_color_mapping[color_key] || timeline_color_mapping["gray"]
+          is_last = index == logs.length - 1
+          icon_name = log.respond_to?(:icon) ? log.icon : "arrow-right"
+        %>
+        <li class="relative flex gap-x-4">
+          <% unless is_last %>
+            <div class="absolute left-0 top-0 flex w-6 justify-center -bottom-6">
+              <div class="w-px <%= style[:line] %>"></div>
+            </div>
+          <% end %>
+
+          <div class="relative flex h-6 w-6 flex-none items-center justify-center">
+            <div class="h-2.5 w-2.5 rounded-full <%= style[:dot_ring] %> flex items-center justify-center">
+              <div class="h-1.5 w-1.5 rounded-full <%= style[:dot] %>"></div>
+            </div>
+          </div>
+
+          <div class="flex-auto rounded-xl bg-white border border-slate-100 p-4 shadow-sm hover:shadow-md transition-shadow">
+            <div class="flex items-start justify-between gap-4 mb-2">
+              <div class="flex items-center gap-2 flex-wrap">
+                <span class="inline-flex items-center rounded-md px-2 py-1 text-xs font-medium ring-1 ring-inset <%= style[:badge] %>">
+                  <i data-lucide="<%= icon_name %>" class="w-3 h-3 mr-1"></i>
+                  <%= log.respond_to?(:state_transition_text) ? log.state_transition_text : (log.to_state.to_s.humanize) %>
+                </span>
+
+                <% if log.respond_to?(:metadata) && log.metadata.is_a?(Hash) && log.metadata["automated"] %>
+                  <span class="inline-flex items-center rounded-md bg-violet-50 px-2 py-1 text-xs font-medium text-violet-700 ring-1 ring-inset ring-violet-600/20">
+                    <i data-lucide="bot" class="w-3 h-3 mr-1"></i>
+                    系统自动
+                  </span>
+                <% end %>
+              </div>
+
+              <div class="flex flex-col items-end text-xs text-slate-500 flex-shrink-0">
+                <span class="font-medium text-slate-700">
+                  <%= log.respond_to?(:operator_name) ? log.operator_name : "系统" %>
+                </span>
+                <span title="<%= log.respond_to?(:full_timestamp) ? log.full_timestamp : log.created_at %>">
+                  <%= log.respond_to?(:time_ago) ? log.time_ago : I18n.l(log.created_at, format: :short) rescue log.created_at&.strftime("%Y-%m-%d %H:%M") %>
+                </span>
+              </div>
+            </div>
+
+            <% if log.respond_to?(:remark) && log.remark.present? %>
+              <div class="mt-3 p-3 rounded-lg bg-slate-50 border border-slate-100">
+                <div class="flex items-start gap-2">
+                  <i data-lucide="message-square" class="w-4 h-4 text-slate-400 mt-0.5 flex-shrink-0"></i>
+                  <p class="text-sm text-slate-600 whitespace-pre-wrap"><%= log.remark %></p>
+                </div>
+              </div>
+            <% end %>
+
+            <% if log.respond_to?(:metadata) && log.metadata.is_a?(Hash) %>
+              <% relevant_meta = log.metadata.except("action", "automated", "notification_sent", "previous_status", "target_status", "options", "changes") %>
+              <% if relevant_meta.any? %>
+                <div class="mt-3 pt-3 border-t border-slate-100">
+                  <dl class="grid grid-cols-1 sm:grid-cols-2 gap-2">
+                    <% relevant_meta.each do |key, value| %>
+                      <div class="flex items-center gap-2">
+                        <dt class="text-xs text-slate-500"><%= key.to_s.humanize %>:</dt>
+                        <dd class="text-xs font-medium text-slate-700">
+                          <% if value.is_a?(TrueClass) %>是<% elsif value.is_a?(FalseClass) %>否<% else %><%= value %><% end %>
+                        </dd>
+                      </div>
+                    <% end %>
+                  </dl>
+                </div>
+              <% end %>
+            <% end %>
+          </div>
+        </li>
+      <% end %>
+    </ul>
+  <% end %>
+</div>

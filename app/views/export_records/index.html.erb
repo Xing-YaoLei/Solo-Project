@@ -1,0 +1,120 @@
+<div class="space-y-6">
+  <div class="flex items-center justify-between">
+    <div>
+      <%= render "layouts/breadcrumbs" %>
+      <h1 class="text-2xl font-bold text-gray-900 mt-2">导出记录</h1>
+      <p class="text-sm text-gray-500 mt-1">查看和管理所有历史导出任务</p>
+    </div>
+    <div class="flex items-center gap-3">
+      <%= link_to "新建导出", reports_path, class: "px-4 py-2 bg-indigo-600 text-white text-sm font-medium rounded-lg hover:bg-indigo-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500 transition-colors" %>
+    </div>
+  </div>
+
+  <div class="bg-white rounded-lg border border-gray-200 shadow-sm overflow-hidden">
+    <div class="px-6 py-4 border-b border-gray-100 bg-gray-50">
+      <%= search_form_for @q, url: export_records_path, method: :get, class: "flex items-center gap-4" do |f| %>
+        <div class="flex-1 max-w-md">
+          <%= f.search_field :file_name_or_export_type_cont, placeholder: "搜索文件名或导出类型...", class: "w-full rounded-lg border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500 text-sm" %>
+        </div>
+        <div>
+          <%= f.select :status_eq, [["全部状态", ""], ["待处理", "pending"], ["处理中", "processing"], ["已完成", "completed"], ["失败", "failed"]], {}, class: "rounded-lg border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500 text-sm" %>
+        </div>
+        <div>
+          <%= f.submit "搜索", class: "px-4 py-2 bg-gray-800 text-white text-sm font-medium rounded-lg hover:bg-gray-900 transition-colors" %>
+        </div>
+      <% end %>
+    </div>
+
+    <div class="overflow-x-auto">
+      <table class="w-full text-sm">
+        <thead class="bg-gray-50 border-b border-gray-200">
+          <tr>
+            <th class="px-6 py-3 text-left font-medium text-gray-500 text-xs uppercase tracking-wider">文件名</th>
+            <th class="px-6 py-3 text-left font-medium text-gray-500 text-xs uppercase tracking-wider">类型</th>
+            <th class="px-6 py-3 text-left font-medium text-gray-500 text-xs uppercase tracking-wider">状态</th>
+            <th class="px-6 py-3 text-left font-medium text-gray-500 text-xs uppercase tracking-wider">操作人</th>
+            <th class="px-6 py-3 text-left font-medium text-gray-500 text-xs uppercase tracking-wider">大小</th>
+            <th class="px-6 py-3 text-left font-medium text-gray-500 text-xs uppercase tracking-wider">创建时间</th>
+            <th class="px-6 py-3 text-left font-medium text-gray-500 text-xs uppercase tracking-wider">过期时间</th>
+            <th class="px-6 py-3 text-right font-medium text-gray-500 text-xs uppercase tracking-wider">操作</th>
+          </tr>
+        </thead>
+        <tbody class="divide-y divide-gray-100">
+          <% @export_records.each do |record| %>
+            <tr class="hover:bg-gray-50 transition-colors">
+              <td class="px-6 py-4">
+                <div class="font-medium text-gray-900"><%= record.file_name || "未命名导出" %></div>
+                <div class="text-xs text-gray-500 mt-0.5">ID: <%= record.id.first(8) %></div>
+              </td>
+              <td class="px-6 py-4">
+                <span class="inline-flex items-center px-2 py-0.5 rounded text-xs font-medium bg-gray-100 text-gray-700">
+                  <%= record.export_type.humanize %>
+                </span>
+              </td>
+              <td class="px-6 py-4">
+                <% status_classes = {
+                  "completed" => "bg-green-100 text-green-700",
+                  "processing" => "bg-blue-100 text-blue-700",
+                  "pending" => "bg-yellow-100 text-yellow-700",
+                  "failed" => "bg-red-100 text-red-700"
+                } %>
+                <span class="inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full text-xs font-medium <%= status_classes[record.status] %>">
+                  <% if record.completed? %>
+                    <svg class="w-3 h-3" fill="currentColor" viewBox="0 0 20 20">
+                      <path fill-rule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-9.293a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z" clip-rule="evenodd"/>
+                    </svg>
+                  <% elsif record.processing? %>
+                    <svg class="w-3 h-3 animate-spin" fill="none" viewBox="0 0 24 24">
+                      <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"/>
+                      <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z"/>
+                    </svg>
+                  <% elsif record.failed? %>
+                    <svg class="w-3 h-3" fill="currentColor" viewBox="0 0 20 20">
+                      <path fill-rule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zM8.707 7.293a1 1 0 00-1.414 1.414L8.586 10l-1.293 1.293a1 1 0 101.414 1.414L10 11.414l1.293 1.293a1 1 0 001.414-1.414L11.414 10l1.293-1.293a1 1 0 00-1.414-1.414L10 8.586 8.707 7.293z" clip-rule="evenodd"/>
+                    </svg>
+                  <% else %>
+                    <svg class="w-3 h-3" fill="currentColor" viewBox="0 0 20 20">
+                      <path fill-rule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm1-12a1 1 0 10-2 0v4a1 1 0 00.293.707l2.828 2.829a1 1 0 101.415-1.415L11 9.586V6z" clip-rule="evenodd"/>
+                    </svg>
+                  <% end %>
+                  <%= record.status.humanize %>
+                </span>
+              </td>
+              <td class="px-6 py-4 text-gray-600"><%= record.user&.name %></td>
+              <td class="px-6 py-4 text-gray-600"><%= record.file_size_human || "-" %></td>
+              <td class="px-6 py-4 text-gray-500"><%= record.created_at.strftime("%Y-%m-%d %H:%M") %></td>
+              <td class="px-6 py-4">
+                <% if record.expired_at.present? %>
+                  <span class="<%= record.expired? ? "text-red-600" : "text-gray-500" %>">
+                    <%= record.expired_at.strftime("%Y-%m-%d") %>
+                  </span>
+                <% else %>
+                  <span class="text-gray-400">-</span>
+                <% end %>
+              </td>
+              <td class="px-6 py-4 text-right">
+                <div class="flex items-center justify-end gap-2">
+                  <%= link_to "详情", export_record_path(record), class: "text-sm text-gray-600 hover:text-indigo-600 transition-colors" %>
+                  <% if record.downloadable? %>
+                    <%= link_to "下载", download_report_path(record), class: "text-sm text-indigo-600 hover:text-indigo-800 font-medium transition-colors" %>
+                  <% end %>
+                  <% if policy(record).destroy? %>
+                    <%= button_to export_record_path(record), method: :delete, class: "text-sm text-red-600 hover:text-red-800 transition-colors", data: { turbo_confirm: "确认删除此导出记录？" } do %>
+                      删除
+                    <% end %>
+                  <% end %>
+                </div>
+              </td>
+            </tr>
+          <% end %>
+        </tbody>
+      </table>
+    </div>
+
+    <% if @export_records.total_pages > 1 %>
+      <div class="px-6 py-4 border-t border-gray-100 bg-gray-50">
+        <%= paginate @export_records, theme: "tailwind" %>
+      </div>
+    <% end %>
+  </div>
+</div>

@@ -1,0 +1,144 @@
+zh-CN:
+  date:
+    formats:
+      default: "%Y年%m月%d日"
+      short: "%Y-%m-%d"
+      long: "%Y年%m月%d日 %H:%M"
+  time:
+    formats:
+      default: "%Y年%m月%d日 %H:%M:%S"
+      short: "%Y-%m-%d %H:%M"
+      long: "%Y年%m月%d日 %H:%M:%S"
+
+  audit_statuses:
+    draft: "草稿"
+    pending_materials: "待材料入库"
+    in_progress: "进行中"
+    pending_evidence: "待证据上传"
+    pending_checklist: "待检查清单"
+    pending_notification: "待通报生成"
+    pending_approval: "待审批"
+    approved: "已通过"
+    rejected: "已拒绝"
+    archived: "已归档"
+
+  audit_types:
+    routine_audit: "常规审计"
+    special_audit: "专项审计"
+    compliance_audit: "合规审计"
+    quality_audit: "质量审计"
+    safety_audit: "安全审计"
+    financial_audit: "财务审计"
+
+  user_roles:
+    auditor: "审计专员"
+    supervisor: "审计主管"
+    admin: "系统管理员"
+
+  severities:
+    critical: "严重"
+    high: "高"
+    medium: "中"
+    low: "低"
+
+  exception_statuses:
+    open: "待分派"
+    assigned: "已分派"
+    in_progress: "处理中"
+    resolved: "已解决"
+    closed: "已关闭"
+
+  supplier_statuses:
+    active: "启用"
+    inactive: "停用"
+    suspended: "暂停"
+
+  checklist_statuses:
+    pending: "待核验"
+    completed: "已完成"
+    rejected: "未通过"
+    not_applicable: "不适用"
+
+  supplier_materials:
+    types:
+      business_license: "营业执照"
+      tax_certificate: "税务登记证"
+      quality_certification: "质量认证"
+      safety_certification: "安全认证"
+      insurance_certificate: "保险凭证"
+      financial_statement: "财务报表"
+      contract: "合同文件"
+      other: "其他材料"
+    statuses:
+      pending: "待审核"
+      approved: "已通过"
+      expired: "已过期"
+      rejected: "已拒绝"
+
+  evidence_types:
+    contract: "合同"
+    invoice: "发票"
+    report: "报告"
+    certificate: "证书"
+    screenshot: "截图"
+    email: "邮件"
+    meeting_minutes: "会议纪要"
+    other: "其他"
+
+  permission_configs:
+    types:
+      data_access: "数据访问"
+      audit_participation: "审计参与"
+      document_upload: "文件上传"
+      report_view: "报告查看"
+      exception_handling: "异常处理"
+      approval: "审批权限"
+    data_ranges:
+      own: "仅本人"
+      department: "本部门"
+      all: "全部"
+
+  export_types:
+    audit_summary: "审计汇总报告"
+    exception_summary: "异常单汇总报告"
+    rectification_report: "整改完成率报告"
+    supplier_audit: "供应商审计报告"
+    full_audit_record: "审计完整档案"
+
+  notification_types:
+    audit_status_changed: "审计状态变更"
+    exception_created: "异常单创建"
+    exception_assigned: "异常单分派"
+    exception_resolved: "异常单解决"
+    exception_overdue: "异常单逾期"
+    evidence_missing: "证据缺失提醒"
+    export_completed: "导出完成"
+    export_failed: "导出失败"
+    material_expiring: "材料到期提醒"
+    system_announcement: "系统公告"
+
+  activerecord:
+    errors:
+      messages:
+        record_invalid: "校验失败：%{errors}"
+      models:
+        user:
+          attributes:
+            email:
+              blank: "不能为空"
+            name:
+              blank: "不能为空"
+        audit:
+          attributes:
+            title:
+              blank: "不能为空"
+        supplier:
+          attributes:
+            name:
+              blank: "不能为空"
+            code:
+              blank: "不能为空"
+        exception_order:
+          attributes:
+            title:
+              blank: "不能为空"

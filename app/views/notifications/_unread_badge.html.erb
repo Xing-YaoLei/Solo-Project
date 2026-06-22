@@ -1,0 +1,7 @@
+<% if count.to_i > 0 %>
+  <span id="unread_count_badge" class="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-bold bg-red-100 text-red-700">
+    <%= count > 99 ? "99+" : count %>
+  </span>
+<% else %>
+  <span id="unread_count_badge" class="hidden"></span>
+<% end %>

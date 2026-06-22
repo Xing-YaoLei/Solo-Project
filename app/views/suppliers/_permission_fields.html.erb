@@ -1,0 +1,49 @@
+<div data-nested-form-target="permissionRow" class="rounded-lg border border-gray-200 bg-gray-50 p-4">
+  <div class="flex items-start justify-between mb-4">
+    <h4 class="text-sm font-medium text-gray-900">权限配置项</h4>
+    <button type="button"
+      data-action="nested-form#removePermission"
+      class="inline-flex items-center p-1 text-gray-400 hover:text-red-600 rounded-md transition">
+      <svg class="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12" />
+      </svg>
+    </button>
+  </div>
+
+  <%= f.hidden_field :id, data: { nested_form_target: "permissionId" } %>
+  <%= f.hidden_field :_destroy, value: false, data: { nested_form_target: "permissionDestroy" } %>
+
+  <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+    <div>
+      <%= f.label :permission_type, "权限类型", class: "block text-xs font-medium text-gray-600 mb-1" %>
+      <%= f.select :permission_type,
+        PermissionConfig.permission_type_options,
+        {},
+        class: "block w-full rounded-md border-gray-300 text-sm shadow-sm focus:border-blue-500 focus:ring-blue-500" %>
+    </div>
+
+    <div>
+      <%= f.label :is_active, "启用状态", class: "block text-xs font-medium text-gray-600 mb-1" %>
+      <div class="mt-2">
+        <%= f.check_box :is_active,
+          class: "h-4 w-4 rounded border-gray-300 text-blue-600 focus:ring-blue-500",
+          checked: true %>
+        <%= f.label :is_active, "启用此权限", class: "ml-2 text-sm text-gray-700" %>
+      </div>
+    </div>
+
+    <div>
+      <%= f.label :"access_scope[data_range]", "数据范围", class: "block text-xs font-medium text-gray-600 mb-1" %>
+      <%= f.select :"access_scope[data_range]",
+        PermissionConfig.data_range_options,
+        {},
+        class: "block w-full rounded-md border-gray-300 text-sm shadow-sm focus:border-blue-500 focus:ring-blue-500" %>
+    </div>
+
+    <div>
+      <%= f.label :"access_scope[expires_at]", "有效期至", class: "block text-xs font-medium text-gray-600 mb-1" %>
+      <%= f.datetime_field :"access_scope[expires_at]",
+        class: "block w-full rounded-md border-gray-300 text-sm shadow-sm focus:border-blue-500 focus:ring-blue-500" %>
+    </div>
+  </div>
+</div>
