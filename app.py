@@ -73,7 +73,7 @@ st.markdown("""
 
 
 @st.cache_data(ttl=3600, show_spinner="正在加载数据...")
-def load_data(version: int = 2026062203):
+def load_data(version: int = 2026062204):
     data = generate_all_data()
     for name, df in data.items():
         dw.register_polars(name, df)
@@ -789,14 +789,16 @@ elif page == "🔄 版本-转化复盘":
 
     col1, col2 = st.columns(2)
     with col1:
+        gap_label_vg = "超额完成" if best_vg['target_gap'] >= 0 else "低于目标"
         st.info(
-            f"🏆 最佳版本分组：**{best_vg['group']}**，转化提升 **{best_vg['improvement_pct']}%**，"
-            f"目标差距 **{best_vg['target_gap']}%**"
+            f"🏆 最佳版本分组：**{best_vg['group']}**，相对V1转化提升 **{best_vg['improvement_pct']}%**，"
+            f"目标差距 **{best_vg['target_gap']}%**（{gap_label_vg}，差距=转化率-目标率，正值超额）"
         )
     with col2:
+        gap_label_q = "超额完成" if best_q['target_gap'] >= 0 else "低于目标"
         st.info(
             f"✅ 最佳审核质量：**{best_q['quality']}**，对应平均转化率 **{best_q['avg_conversion_rate']}%**，"
-            f"目标差距 **{best_q['target_gap']}%**"
+            f"目标差距 **{best_q['target_gap']}%**（{gap_label_q}，差距=转化率-目标率，正值超额）"
         )
 
     st.markdown('<div class="section-header">版本分组转化改善对比（各分组独立计算）</div>', unsafe_allow_html=True)
@@ -853,7 +855,7 @@ elif page == "🔄 版本-转化复盘":
 
     with col3:
         fig = go.Figure()
-        gap_colors = ["#38a169" if v <= 0 else "#c53030" for v in vg_detail["avg_target_gap"].to_list()]
+        gap_colors = ["#38a169" if v >= 0 else "#c53030" for v in vg_detail["avg_target_gap"].to_list()]
         fig.add_trace(go.Bar(
             x=vg_detail["version_group"].to_list(),
             y=vg_detail["avg_target_gap"].to_list(),
@@ -865,9 +867,9 @@ elif page == "🔄 版本-转化复盘":
         fig.add_hline(y=0, line_dash="dash", line_color="#666")
         fig.update_layout(
             height=380,
-            title="各版本分组目标差距 (负数=超额完成)",
+            title="各版本分组目标差距 (正值=超额完成, 负值=低于目标)",
             xaxis_title="版本分组",
-            yaxis_title="目标差距 (%)",
+            yaxis_title="目标差距 (%) (转化率 - 目标率)",
         )
         st.plotly_chart(fig, use_container_width=True)
 
@@ -905,7 +907,7 @@ elif page == "🔄 版本-转化复盘":
 
     with col2:
         fig = go.Figure()
-        gap_colors = ["#38a169" if v <= 0 else "#c53030" for v in q_matrix["avg_target_gap"].to_list()]
+        gap_colors = ["#38a169" if v >= 0 else "#c53030" for v in q_matrix["avg_target_gap"].to_list()]
         fig.add_trace(go.Bar(
             x=q_matrix["review_quality"].to_list(),
             y=q_matrix["avg_target_gap"].to_list(),
@@ -917,9 +919,9 @@ elif page == "🔄 版本-转化复盘":
         fig.add_hline(y=0, line_dash="dash", line_color="#666")
         fig.update_layout(
             height=380,
-            title="各审核质量目标差距 (负数=超额完成)",
+            title="各审核质量目标差距 (正值=超额完成, 负值=低于目标)",
             xaxis_title="审核质量",
-            yaxis_title="目标差距 (%)",
+            yaxis_title="目标差距 (%) (转化率 - 目标率)",
         )
         st.plotly_chart(fig, use_container_width=True)
 
@@ -1097,9 +1099,57 @@ elif page == "🔄 版本-转化复盘":
             },
         )
 
+    st.markdown('<div class="section-header">内容口径 × 版本分组（同一分析粒度）</div>', unsafe_allow_html=True)
+
+    content_vg = version_conversion.content_caliber_version_distribution()
+    st.dataframe(
+        content_vg.to_pandas(),
+        use_container_width=True,
+        hide_index=True,
+        column_config={
+            "content_category": st.column_config.Column("内容口径", width="small"),
+            "content_type": st.column_config.Column("内容类型", width="small"),
+            "version_group": st.column_config.Column("版本分组", width="medium"),
+            "content_count": st.column_config.Column("内容数", width="small"),
+            "case_count": st.column_config.Column("关联案件数", width="small"),
+            "avg_conversion_rate": st.column_config.NumberColumn("实际转化率(%)", format="%.2f"),
+            "avg_target_rate": st.column_config.NumberColumn("目标转化率(%)", format="%.2f"),
+            "avg_target_gap": st.column_config.NumberColumn("目标差距(%, 正值=超额)", format="%.2f"),
+            "avg_target_achievement_pct": st.column_config.NumberColumn("目标完成度(%)", format="%.2f"),
+            "achievement_ratio_pct": st.column_config.NumberColumn("达标率(%)", format="%.2f"),
+        },
+    )
+
+    st.markdown('<div class="section-header">内容口径 × 审核质量矩阵（同一分析粒度）</div>', unsafe_allow_html=True)
+
+    content_qm = version_conversion.content_caliber_quality_matrix()
+    st.dataframe(
+        content_qm.to_pandas(),
+        use_container_width=True,
+        hide_index=True,
+        column_config={
+            "content_category": st.column_config.Column("内容口径", width="small"),
+            "content_type": st.column_config.Column("内容类型", width="small"),
+            "review_quality": st.column_config.Column("审核质量", width="medium"),
+            "content_count": st.column_config.Column("内容数", width="small"),
+            "case_count": st.column_config.Column("关联案件数", width="small"),
+            "avg_conversion_rate": st.column_config.NumberColumn("实际转化率(%)", format="%.2f"),
+            "avg_target_rate": st.column_config.NumberColumn("目标转化率(%)", format="%.2f"),
+            "avg_target_gap": st.column_config.NumberColumn("目标差距(%, 正值=超额)", format="%.2f"),
+            "avg_target_achievement_pct": st.column_config.NumberColumn("目标完成度(%)", format="%.2f"),
+            "achievement_ratio_pct": st.column_config.NumberColumn("达标率(%)", format="%.2f"),
+        },
+    )
+
     st.markdown('<div class="section-header">内容-案件关联明细（同一分析粒度）</div>', unsafe_allow_html=True)
 
     enriched_data = version_conversion.get_enriched_data()
+
+    category_filter = st.multiselect(
+        "筛选内容口径",
+        options=enriched_data["content_category"].unique().to_list() if enriched_data.height > 0 else [],
+        default=[],
+    )
 
     case_type_filter = st.multiselect(
         "筛选案件类型",
@@ -1114,6 +1164,8 @@ elif page == "🔄 版本-转化复盘":
     )
 
     display_data = enriched_data
+    if category_filter:
+        display_data = display_data.filter(pl.col("content_category").is_in(category_filter))
     if case_type_filter:
         display_data = display_data.filter(pl.col("case_type").is_in(case_type_filter))
     if vg_filter:
@@ -1121,7 +1173,8 @@ elif page == "🔄 版本-转化复盘":
 
     st.dataframe(
         display_data.select([
-            "schedule_id", "publish_date", "title", "content_type",
+            "schedule_id", "publish_date", "title",
+            "content_category", "content_type", "content_format",
             "related_case_id", "case_type", "version_group",
             "total_versions", "review_quality", "reject_times",
             "views", "conversions", "conversion_rate",
@@ -1133,7 +1186,9 @@ elif page == "🔄 版本-转化复盘":
             "schedule_id": st.column_config.Column("内容ID", width="small"),
             "publish_date": st.column_config.Column("发布日期", width="small"),
             "title": st.column_config.Column("标题", width="large"),
+            "content_category": st.column_config.Column("内容口径", width="small"),
             "content_type": st.column_config.Column("内容类型", width="small"),
+            "content_format": st.column_config.Column("内容形式", width="small"),
             "related_case_id": st.column_config.Column("关联案件", width="small"),
             "case_type": st.column_config.Column("案件类型", width="small"),
             "version_group": st.column_config.Column("版本分组", width="small"),
@@ -1144,7 +1199,7 @@ elif page == "🔄 版本-转化复盘":
             "conversions": st.column_config.Column("转化数", width="small"),
             "conversion_rate": st.column_config.NumberColumn("转化率(%)", format="%.2f"),
             "target_rate": st.column_config.NumberColumn("目标(%)", format="%.2f"),
-            "target_gap": st.column_config.NumberColumn("差距(%)", format="%.2f"),
+            "target_gap": st.column_config.NumberColumn("差距(%, 正值=超额)", format="%.2f"),
             "target_achievement_pct": st.column_config.NumberColumn("完成度(%)", format="%.2f"),
             "target_status": st.column_config.Column("状态", width="small"),
         },

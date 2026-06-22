@@ -455,7 +455,7 @@ class VersionConversionLinkage:
             pl.col("publish_date").str.to_date().dt.truncate("1mo").alias("period_month"),
             pl.col("publish_date").str.to_date().dt.truncate("1w").alias("period_week"),
             (pl.col("conversion_rate") - pl.col("target_rate")).round(2).alias("target_gap"),
-            ((pl.col("conversion_rate") - pl.col("target_rate")) / pl.col("target_rate") * 100).round(2).alias("target_achievement_pct"),
+            (pl.col("conversion_rate") / pl.col("target_rate") * 100).round(2).alias("target_achievement_pct"),
             pl.when(pl.col("conversion_rate") >= pl.col("target_rate"))
             .then(pl.lit("达标"))
             .otherwise(pl.lit("未达标"))
@@ -638,7 +638,7 @@ class VersionConversionLinkage:
 
         version_conv = self.conversion_improvement_by_version_group()
         if version_conv.height > 0:
-            best_row = version_conv.sort("conversion_improvement_pct", descending=True).head(1)
+            best_row = version_conv.sort("avg_target_gap", descending=True).head(1)
             best_group = best_row["version_group"][0] if best_row.height > 0 else "N/A"
             best_improvement = best_row["conversion_improvement_pct"][0] if best_row.height > 0 else 0
             best_target_gap = best_row["avg_target_gap"][0] if best_row.height > 0 else 0
@@ -649,9 +649,10 @@ class VersionConversionLinkage:
 
         quality_matrix = self.quality_review_conversion_matrix()
         if quality_matrix.height > 0:
-            best_quality = quality_matrix.head(1)["review_quality"][0]
-            best_quality_rate = quality_matrix.head(1)["avg_conversion_rate"][0]
-            best_quality_gap = quality_matrix.head(1)["avg_target_gap"][0]
+            quality_best_row = quality_matrix.sort("avg_target_gap", descending=True).head(1)
+            best_quality = quality_best_row["review_quality"][0]
+            best_quality_rate = quality_best_row["avg_conversion_rate"][0]
+            best_quality_gap = quality_best_row["avg_target_gap"][0]
         else:
             best_quality = "N/A"
             best_quality_rate = 0
@@ -680,3 +681,41 @@ class VersionConversionLinkage:
             "version_group_detail": version_conv,
             "quality_matrix": quality_matrix,
         }
+
+    def content_caliber_version_distribution(self) -> pl.DataFrame:
+        data = self._enriched_data
+
+        distrib = data.group_by(["content_category", "content_type", "version_group"]).agg([
+            pl.col("schedule_id").count().alias("content_count"),
+            pl.col("case_id").n_unique().alias("case_count"),
+            pl.col("conversion_rate").mean().round(2).alias("avg_conversion_rate"),
+            pl.col("target_rate").mean().round(2).alias("avg_target_rate"),
+            pl.col("target_gap").mean().round(2).alias("avg_target_gap"),
+            pl.col("target_achievement_pct").mean().round(2).alias("avg_target_achievement_pct"),
+            (pl.col("target_status") == "达标").mean().round(4).alias("achievement_ratio"),
+        ])
+
+        distrib = distrib.with_columns(
+            (pl.col("achievement_ratio") * 100).round(2).alias("achievement_ratio_pct")
+        )
+
+        return distrib.sort(["content_category", "content_type", "version_group"])
+
+    def content_caliber_quality_matrix(self) -> pl.DataFrame:
+        data = self._enriched_data
+
+        matrix = data.group_by(["content_category", "content_type", "review_quality"]).agg([
+            pl.col("schedule_id").count().alias("content_count"),
+            pl.col("case_id").n_unique().alias("case_count"),
+            pl.col("conversion_rate").mean().round(2).alias("avg_conversion_rate"),
+            pl.col("target_rate").mean().round(2).alias("avg_target_rate"),
+            pl.col("target_gap").mean().round(2).alias("avg_target_gap"),
+            pl.col("target_achievement_pct").mean().round(2).alias("avg_target_achievement_pct"),
+            (pl.col("target_status") == "达标").mean().round(4).alias("achievement_ratio"),
+        ])
+
+        matrix = matrix.with_columns(
+            (pl.col("achievement_ratio") * 100).round(2).alias("achievement_ratio_pct")
+        )
+
+        return matrix.sort(["content_category", "content_type", "avg_conversion_rate"], descending=[False, False, True])

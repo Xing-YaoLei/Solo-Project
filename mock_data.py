@@ -138,6 +138,22 @@ def generate_schedule_data(case_data: pl.DataFrame) -> pl.DataFrame:
     dates = generate_date_range("2025-01-01", "2026-06-20")
     content_types = ["新法解读", "案例分析", "实务指南", "风险提示", "客户通讯"]
 
+    content_categories = {
+        "新法解读": "核心复盘内容",
+        "案例分析": "核心复盘内容",
+        "实务指南": "核心复盘内容",
+        "风险提示": "核心复盘内容",
+        "客户通讯": "常规运营内容",
+    }
+
+    content_formats = {
+        "新法解读": "深度解读",
+        "案例分析": "案例复盘",
+        "实务指南": "操作指引",
+        "风险提示": "预警提示",
+        "客户通讯": "信息推送",
+    }
+
     case_type_to_content = {
         "民事起诉状": "案例分析",
         "答辩状": "实务指南",
@@ -162,6 +178,8 @@ def generate_schedule_data(case_data: pl.DataFrame) -> pl.DataFrame:
             for _ in range(weekly_count):
                 schedule_id += 1
                 content_type = random.choice(content_types)
+                content_category = content_categories[content_type]
+                content_format = content_formats[content_type]
 
                 related_case = ""
                 if case_idx < len(case_list):
@@ -192,7 +210,9 @@ def generate_schedule_data(case_data: pl.DataFrame) -> pl.DataFrame:
                     "schedule_id": f"SCH{schedule_id:05d}",
                     "publish_date": date.strftime("%Y-%m-%d"),
                     "content_type": content_type,
-                    "title": f"{content_type}文章{schedule_id}",
+                    "content_category": content_category,
+                    "content_format": content_format,
+                    "title": f"{content_format}：{content_type}内容{schedule_id}",
                     "views": views,
                     "conversions": conversions,
                     "conversion_rate": round(conversions / views * 100, 2),
