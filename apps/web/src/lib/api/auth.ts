@@ -9,7 +9,7 @@ import type {
 } from './types';
 
 export interface LoginRequest {
-  username: string;
+  identifier: string;
   password: string;
 }
 
@@ -24,6 +24,9 @@ export interface RegisterRequest {
 
 export interface AuthResponse {
   accessToken: string;
+  refreshToken?: string;
+  tokenType?: string;
+  expiresIn?: number;
   user: User;
 }
 

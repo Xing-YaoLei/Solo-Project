@@ -16,9 +16,14 @@ const apiClient: AxiosInstance = axios.create({
 apiClient.interceptors.request.use(
   (config: InternalAxiosRequestConfig) => {
     if (typeof window !== 'undefined') {
-      const token = localStorage.getItem('auth_token');
-      if (token) {
-        config.headers.Authorization = `Bearer ${token}`;
+      const authStorageRaw = localStorage.getItem('auth-storage');
+      if (authStorageRaw) {
+        try {
+          const authStorage = JSON.parse(authStorageRaw);
+          if (authStorage.state?.token) {
+            config.headers.Authorization = `Bearer ${authStorage.state.token}`;
+          }
+        } catch (e) { /* ignore */ }
       }
     }
     return config;
@@ -40,6 +45,7 @@ apiClient.interceptors.response.use(
         if (typeof window !== 'undefined') {
           localStorage.removeItem('auth_token');
           localStorage.removeItem('user_info');
+          localStorage.removeItem('auth-storage');
           if (!window.location.pathname.includes('/login')) {
             window.location.href = '/login';
           }

@@ -89,7 +89,7 @@ export const Sidebar: React.FC = () => {
 
     if (permission.canViewUnauthorized) {
       items.push({
-        key: '/unauthorized',
+        key: '/audit-log/unauthorized',
         icon: <SafetyCertificateOutlined />,
         label: '越权记录',
       });

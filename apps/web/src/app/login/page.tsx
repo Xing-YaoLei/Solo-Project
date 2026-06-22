@@ -68,17 +68,17 @@ const LoginPage: React.FC = () => {
             name="login"
             layout="vertical"
             onFinish={onFinish}
-            initialValues={{ username: '', password: '' }}
+            initialValues={{ identifier: '', password: '' }}
             size="large"
           >
             <Form.Item
-              label="用户名"
-              name="username"
-              rules={[{ required: true, message: '请输入用户名' }]}
+              label="用户名/邮箱"
+              name="identifier"
+              rules={[{ required: true, message: '请输入用户名或邮箱' }]}
             >
               <Input
                 prefix={<UserOutlined className="text-gray-400" />}
-                placeholder="请输入用户名"
+                placeholder="请输入用户名或邮箱"
                 autoComplete="username"
               />
             </Form.Item>

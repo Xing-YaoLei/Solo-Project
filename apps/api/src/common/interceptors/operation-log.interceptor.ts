@@ -6,8 +6,8 @@ import {
   Logger,
   SetMetadata,
 } from '@nestjs/common';
-import { Observable, throwError } from 'rxjs';
-import { catchError, tap } from 'rxjs/operators';
+import { Observable, throwError, from } from 'rxjs';
+import { catchError, tap, switchMap } from 'rxjs/operators';
 import { Reflector } from '@nestjs/core';
 import { PrismaService } from '@/prisma/prisma.service';
 import { OperationAction } from '@prisma/client';
@@ -50,86 +50,95 @@ export class OperationLogInterceptor implements NestInterceptor {
     const ipAddress = request.ip || request.headers['x-forwarded-for'] || request.connection?.remoteAddress;
     const userAgent = request.headers['user-agent'];
 
-    let beforeData: any = null;
-    let afterData: any = null;
-
-    return next.handle().pipe(
-      tap(async (result) => {
-        try {
-          if (options.getBeforeData) {
-            beforeData = await options.getBeforeData(context);
-          } else if (
-            (options.action === OperationAction.UPDATE ||
-              options.action === OperationAction.DELETE) &&
-            options.targetIdField
-          ) {
-            beforeData = await this.fetchBeforeData(
-              options.targetType,
-              request.params[options.targetIdField] ||
-                request.body[options.targetIdField] ||
-                request.query[options.targetIdField],
-            );
-          }
-
-          afterData = this.extractAfterData(result, options.action);
-
-          let targetId: string;
-          if (options.getTargetId) {
-            targetId = await options.getTargetId(context, result);
-          } else if (options.targetIdField) {
-            targetId =
-              request.params[options.targetIdField] ||
-              (result && result[options.targetIdField]) ||
-              (result && result.id);
-          } else if (result && result.id) {
-            targetId = result.id;
-          } else if (request.params.id) {
-            targetId = request.params.id;
-          }
-
-          if (!targetId) {
-            this.logger.warn(`无法获取操作记录的targetId: ${options.targetType} ${options.action}`);
-            return;
-          }
-
-          const taskId = this.extractRelationalId(request, result, 'taskId');
-          const evidenceId = this.extractRelationalId(request, result, 'evidenceId');
-
-          let description = options.description;
-          if (!description) {
-            description = this.generateDefaultDescription(
-              options.action,
-              options.targetType,
-              targetId,
-            );
-          }
-
-          await this.prisma.operationLog.create({
-            data: {
-              operatorId: user?.id || 'system',
-              operatorName: user?.fullName || user?.username || 'System',
-              targetType: options.targetType,
-              targetId: targetId,
-              action: options.action,
-              description: description,
-              beforeData: beforeData,
-              afterData: afterData,
-              ipAddress: typeof ipAddress === 'string' ? ipAddress : undefined,
-              userAgent: userAgent,
-              taskId,
-              evidenceId,
-            },
-          });
-        } catch (error) {
-          this.logger.error(`记录操作日志失败: ${error.message}`);
+    const beforeDataPromise = (async () => {
+      try {
+        if (options.getBeforeData) {
+          return await options.getBeforeData(context);
         }
-      }),
-      catchError((error) => {
-        if (options.action === OperationAction.UPDATE || options.action === OperationAction.DELETE) {
-          this.logger.warn(`操作失败，但beforeData未记录: ${options.targetType}`);
+        if (
+          (options.action === OperationAction.UPDATE ||
+            options.action === OperationAction.DELETE) &&
+          options.targetIdField
+        ) {
+          const targetId =
+            request.params[options.targetIdField] ||
+            request.body[options.targetIdField] ||
+            request.query[options.targetIdField];
+          return await this.fetchBeforeData(options.targetType, targetId);
         }
-        return throwError(() => error);
-      }),
+        return null;
+      } catch (error) {
+        this.logger.warn(`采集beforeData失败: ${options.targetType}: ${error.message}`);
+        return null;
+      }
+    })();
+
+    return from(beforeDataPromise).pipe(
+      switchMap((beforeData) => {
+        return next.handle().pipe(
+          tap(async (result) => {
+            try {
+              const afterData = this.extractAfterData(result, options.action);
+
+              let targetId: string;
+              if (options.getTargetId) {
+                targetId = await options.getTargetId(context, result);
+              } else if (options.targetIdField) {
+                targetId =
+                  request.params[options.targetIdField] ||
+                  (result && result[options.targetIdField]) ||
+                  (result && result.id);
+              } else if (result && result.id) {
+                targetId = result.id;
+              } else if (request.params.id) {
+                targetId = request.params.id;
+              }
+
+              if (!targetId) {
+                this.logger.warn(`无法获取操作记录的targetId: ${options.targetType} ${options.action}`);
+                return;
+              }
+
+              const taskId = this.extractRelationalId(request, result, 'taskId');
+              const evidenceId = this.extractRelationalId(request, result, 'evidenceId');
+
+              let description = options.description;
+              if (!description) {
+                description = this.generateDefaultDescription(
+                  options.action,
+                  options.targetType,
+                  targetId,
+                );
+              }
+
+              await this.prisma.operationLog.create({
+                data: {
+                  operatorId: user?.id || 'system',
+                  operatorName: user?.fullName || user?.username || 'System',
+                  targetType: options.targetType,
+                  targetId: targetId,
+                  action: options.action,
+                  description: description,
+                  beforeData: beforeData,
+                  afterData: afterData,
+                  ipAddress: typeof ipAddress === 'string' ? ipAddress : undefined,
+                  userAgent: userAgent,
+                  taskId,
+                  evidenceId,
+                },
+              });
+            } catch (error) {
+              this.logger.error(`记录操作日志失败: ${error.message}`);
+            }
+          }),
+          catchError((error) => {
+            if (options.action === OperationAction.UPDATE || options.action === OperationAction.DELETE) {
+              this.logger.warn(`操作失败，beforeData已采集: ${options.targetType}`);
+            }
+            return throwError(() => error);
+          })
+        );
+      })
     );
   }
 

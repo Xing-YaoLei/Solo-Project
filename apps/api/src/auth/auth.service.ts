@@ -113,8 +113,11 @@ export class AuthService {
     };
 
     return {
+      accessToken: tokens.accessToken,
+      refreshToken: tokens.refreshToken,
+      tokenType: 'Bearer',
+      expiresIn: tokens.accessTokenExpires,
       user: userInfo,
-      tokens,
     };
   }
 

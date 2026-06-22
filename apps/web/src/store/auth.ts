@@ -70,6 +70,7 @@ export const useAuthStore = create<AuthState>()(
             error: null,
           });
           if (typeof window !== 'undefined') {
+            localStorage.removeItem('auth-storage');
             localStorage.removeItem('auth_token');
             localStorage.removeItem('user_info');
           }
