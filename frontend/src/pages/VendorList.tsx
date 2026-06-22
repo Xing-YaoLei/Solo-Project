@@ -95,8 +95,8 @@ const VendorList: React.FC = () => {
   })
 
   const reviewMaterialMutation = useMutation({
-    mutationFn: (params: { vendorId: number; materialId: number; status: MaterialStatus }) =>
-      vendorApi.reviewMaterial(params.vendorId, params.materialId, params.status),
+    mutationFn: (params: { materialId: number; status: MaterialStatus }) =>
+      vendorApi.reviewMaterial(params.materialId, params.status),
     onSuccess: () => {
       message.success('审核完成')
       queryClient.invalidateQueries({ queryKey: ['vendor-materials', currentVendor?.id] })
@@ -141,9 +141,8 @@ const VendorList: React.FC = () => {
   }
 
   const handleDownloadMaterial = (materialId: number) => {
-    if (!currentVendor) return
     vendorApi
-      .downloadMaterial(currentVendor.id, materialId)
+      .downloadMaterial(materialId)
       .then((blob) => {
         const url = window.URL.createObjectURL(blob)
         const a = document.createElement('a')
@@ -294,7 +293,6 @@ const VendorList: React.FC = () => {
                 icon={<CheckOutlined />}
                 onClick={() =>
                   reviewMaterialMutation.mutate({
-                    vendorId: currentVendor.id,
                     materialId: record.id,
                     status: MaterialStatus.APPROVED,
                   })
@@ -309,7 +307,6 @@ const VendorList: React.FC = () => {
                 icon={<CloseOutlined />}
                 onClick={() =>
                   reviewMaterialMutation.mutate({
-                    vendorId: currentVendor.id,
                     materialId: record.id,
                     status: MaterialStatus.REJECTED,
                   })

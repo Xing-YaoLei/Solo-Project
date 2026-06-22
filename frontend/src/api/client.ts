@@ -1,4 +1,5 @@
 import axios, { AxiosInstance, InternalAxiosRequestConfig } from 'axios'
+import { router } from '@/router'
 
 const baseURL = import.meta.env.VITE_API_BASE_URL || '/api'
 
@@ -25,9 +26,16 @@ apiClient.interceptors.response.use(
   (response) => response,
   (error) => {
     if (error.response?.status === 401) {
+      const currentPath = window.location.pathname + window.location.search
       localStorage.removeItem('audit_token')
       localStorage.removeItem('audit_user')
-      window.location.href = '/login'
+      if (currentPath !== '/login') {
+        router.navigate({
+          to: '/login',
+          search: { redirect: currentPath },
+          replace: true,
+        })
+      }
     }
     return Promise.reject(error)
   }

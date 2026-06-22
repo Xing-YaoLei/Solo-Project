@@ -2,7 +2,8 @@ from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 
 from app.core.config import settings
-from app.core.database import Base, engine
+from app.core.database import Base, engine, SessionLocal
+from app.utils.init_data import init_default_user
 from app.api.routers import (
     auth_router,
     checklist_router,
@@ -43,6 +44,13 @@ def create_application() -> FastAPI:
     )
 
     create_tables()
+
+    try:
+        db = SessionLocal()
+        init_default_user(db)
+        db.close()
+    except Exception as e:
+        print(f"⚠️  初始化默认用户失败（数据库可能未就绪）: {e}")
 
     app.include_router(auth_router)
     app.include_router(dashboard_router)

@@ -57,21 +57,35 @@ export const vendorApi = {
     return res.data
   },
 
+  getMaterial: async (materialId: number): Promise<SupplierMaterial> => {
+    const res = await apiClient.get(`/vendors/materials/${materialId}`)
+    return res.data
+  },
+
+  updateMaterial: async (
+    materialId: number,
+    data: { materialType?: string; materialName?: string; status?: MaterialStatus }
+  ): Promise<SupplierMaterial> => {
+    const res = await apiClient.put(`/vendors/materials/${materialId}`, data)
+    return res.data
+  },
+
   reviewMaterial: async (
-    vendorId: number,
     materialId: number,
     status: MaterialStatus
   ): Promise<SupplierMaterial> => {
-    const res = await apiClient.patch(`/vendors/${vendorId}/materials/${materialId}/review`, {
-      status,
+    const res = await apiClient.put(`/vendors/materials/${materialId}`, { status })
+    return res.data
+  },
+
+  downloadMaterial: async (materialId: number): Promise<Blob> => {
+    const res = await apiClient.get(`/vendors/materials/${materialId}/download`, {
+      responseType: 'blob',
     })
     return res.data
   },
 
-  downloadMaterial: async (vendorId: number, materialId: number): Promise<Blob> => {
-    const res = await apiClient.get(`/vendors/${vendorId}/materials/${materialId}/download`, {
-      responseType: 'blob',
-    })
-    return res.data
+  deleteMaterial: async (materialId: number): Promise<void> => {
+    await apiClient.delete(`/vendors/materials/${materialId}`)
   },
 }

@@ -1,6 +1,16 @@
 import React from 'react'
+import { Spin } from 'antd'
+import {
+  createRootRouteWithContext,
+  createRoute,
+  createRouter,
+  Outlet,
+  Link,
+  useRouter,
+  useLocation,
+  Navigate,
+} from '@tanstack/react-router'
 import { Layout, Menu, Avatar, Dropdown, Badge, ConfigProvider } from 'antd'
-import { Outlet, createRootRouteWithContext, createRoute, createRouter, Link, useRouter } from '@tanstack/react-router'
 import {
   DashboardOutlined,
   UnorderedListOutlined,
@@ -15,6 +25,7 @@ import {
 } from '@ant-design/icons'
 import zhCN from 'antd/locale/zh_CN'
 import { useAuth } from '@/hooks/useAuth'
+import LoginPage from '@/pages/LoginPage'
 import Dashboard from '@/pages/Dashboard'
 import ChecklistList from '@/pages/ChecklistList'
 import ChecklistForm from '@/pages/ChecklistForm'
@@ -34,13 +45,33 @@ interface RouterContext {
   auth: ReturnType<typeof useAuth>
 }
 
-const RootComponent: React.FC = () => {
+const ProtectedRoute: React.FC<{ children: React.ReactNode }> = ({ children }) => {
+  const { user, loading } = useAuth()
+  const location = useLocation()
+
+  if (loading) {
+    return (
+      <div style={{ display: 'flex', justifyContent: 'center', alignItems: 'center', height: '100vh' }}>
+        <Spin size="large" />
+      </div>
+    )
+  }
+
+  if (!user) {
+    const redirectPath = location.pathname + location.search
+    return <Navigate to="/login" search={{ redirect: redirectPath }} replace />
+  }
+
+  return <>{children}</>
+}
+
+const AuthenticatedLayout: React.FC = () => {
   const { user, logout } = useAuth()
   const router = useRouter()
 
   const handleLogout = async () => {
     await logout()
-    router.navigate({ to: '/' })
+    router.navigate({ to: '/login' })
   }
 
   const userMenu = {
@@ -157,29 +188,45 @@ const RootComponent: React.FC = () => {
 }
 
 export const rootRoute = createRootRouteWithContext<RouterContext>()({
-  component: RootComponent,
+  component: () => <Outlet />,
+})
+
+const loginRoute = createRoute({
+  getParentRoute: () => rootRoute,
+  path: '/login',
+  component: LoginPage,
+})
+
+const protectedLayoutRoute = createRoute({
+  getParentRoute: () => rootRoute,
+  id: '_protected',
+  component: () => (
+    <ProtectedRoute>
+      <AuthenticatedLayout />
+    </ProtectedRoute>
+  ),
 })
 
 const indexRoute = createRoute({
-  getParentRoute: () => rootRoute,
+  getParentRoute: () => protectedLayoutRoute,
   path: '/',
   component: Dashboard,
 })
 
 const checklistRoute = createRoute({
-  getParentRoute: () => rootRoute,
+  getParentRoute: () => protectedLayoutRoute,
   path: '/checklist',
   component: ChecklistList,
 })
 
 const checklistNewRoute = createRoute({
-  getParentRoute: () => rootRoute,
+  getParentRoute: () => protectedLayoutRoute,
   path: '/checklist/new',
   component: () => <ChecklistForm />,
 })
 
 const checklistEditRoute = createRoute({
-  getParentRoute: () => rootRoute,
+  getParentRoute: () => protectedLayoutRoute,
   path: '/checklist/$id/edit',
   component: () => {
     const { id } = checklistEditRoute.useParams()
@@ -188,19 +235,19 @@ const checklistEditRoute = createRoute({
 })
 
 const samplingRoute = createRoute({
-  getParentRoute: () => rootRoute,
+  getParentRoute: () => protectedLayoutRoute,
   path: '/sampling',
   component: SamplingList,
 })
 
 const samplingNewRoute = createRoute({
-  getParentRoute: () => rootRoute,
+  getParentRoute: () => protectedLayoutRoute,
   path: '/sampling/new',
   component: SamplingForm,
 })
 
 const samplingEditRoute = createRoute({
-  getParentRoute: () => rootRoute,
+  getParentRoute: () => protectedLayoutRoute,
   path: '/sampling/$id/edit',
   component: () => {
     const { id } = samplingEditRoute.useParams()
@@ -209,7 +256,7 @@ const samplingEditRoute = createRoute({
 })
 
 const samplingDetailRoute = createRoute({
-  getParentRoute: () => rootRoute,
+  getParentRoute: () => protectedLayoutRoute,
   path: '/sampling/$id',
   component: () => {
     const { id } = samplingDetailRoute.useParams()
@@ -218,19 +265,19 @@ const samplingDetailRoute = createRoute({
 })
 
 const rectificationRoute = createRoute({
-  getParentRoute: () => rootRoute,
+  getParentRoute: () => protectedLayoutRoute,
   path: '/rectification',
   component: RectificationList,
 })
 
 const rectificationNewRoute = createRoute({
-  getParentRoute: () => rootRoute,
+  getParentRoute: () => protectedLayoutRoute,
   path: '/rectification/new',
   component: RectificationForm,
 })
 
 const rectificationEditRoute = createRoute({
-  getParentRoute: () => rootRoute,
+  getParentRoute: () => protectedLayoutRoute,
   path: '/rectification/$id/edit',
   component: () => {
     const { id } = rectificationEditRoute.useParams()
@@ -239,25 +286,25 @@ const rectificationEditRoute = createRoute({
 })
 
 const vendorsRoute = createRoute({
-  getParentRoute: () => rootRoute,
+  getParentRoute: () => protectedLayoutRoute,
   path: '/vendors',
   component: VendorList,
 })
 
 const exceptionsRoute = createRoute({
-  getParentRoute: () => rootRoute,
+  getParentRoute: () => protectedLayoutRoute,
   path: '/exceptions',
   component: ExceptionList,
 })
 
 const exceptionNewRoute = createRoute({
-  getParentRoute: () => rootRoute,
+  getParentRoute: () => protectedLayoutRoute,
   path: '/exceptions/new',
   component: ExceptionForm,
 })
 
 const exceptionEditRoute = createRoute({
-  getParentRoute: () => rootRoute,
+  getParentRoute: () => protectedLayoutRoute,
   path: '/exceptions/$id/edit',
   component: () => {
     const { id } = exceptionEditRoute.useParams()
@@ -266,12 +313,12 @@ const exceptionEditRoute = createRoute({
 })
 
 const exportRoute = createRoute({
-  getParentRoute: () => rootRoute,
+  getParentRoute: () => protectedLayoutRoute,
   path: '/export',
   component: ExportPage,
 })
 
-const routeTree = rootRoute.addChildren([
+const protectedChildren = protectedLayoutRoute.addChildren([
   indexRoute,
   checklistRoute,
   checklistNewRoute,
@@ -288,6 +335,11 @@ const routeTree = rootRoute.addChildren([
   exceptionNewRoute,
   exceptionEditRoute,
   exportRoute,
+])
+
+const routeTree = rootRoute.addChildren([
+  loginRoute,
+  protectedChildren,
 ])
 
 export const router = createRouter({
