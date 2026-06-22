@@ -1,0 +1,56 @@
+{
+  "level_id": "level_04",
+  "title": "风险规避：知识产权",
+  "description": "归档知识产权相关文书时识别侵权风险词并规避审查退回",
+  "difficulty": 3,
+  "time_limit": 200,
+  "tasks": [
+    {
+      "task_id": "task_04_01",
+      "title": "商标侵权投诉书归档",
+      "description": "权利人提交商标侵权投诉书，涉及近似商标和驰名商标保护。",
+      "document_type": "投诉文书",
+      "correct_category": "知识产权",
+      "correct_sub_category": "商标侵权",
+      "clues": [
+        {"clue_id": "clue_04_01", "content": "文书标题：商标侵权投诉书", "clue_type": "标题", "relevance": 1.0, "reveal_order": 0},
+        {"clue_id": "clue_04_02", "content": "投诉事项：被投诉人使用与注册商标近似的标识经营同类商品", "clue_type": "投诉内容", "relevance": 0.95, "reveal_order": 1},
+        {"clue_id": "clue_04_03", "content": "权利基础：投诉人持有第9类注册商标，有效期至2030年", "clue_type": "权利基础", "relevance": 0.9, "reveal_order": 2},
+        {"clue_id": "clue_04_04", "content": "附加：被投诉标识已在电商平台下架，投诉人申请行政查处", "clue_type": "程序性信息", "relevance": 0.7, "reveal_order": 3}
+      ],
+      "choices": [
+        {"choice_id": "ch_04_01", "display_text": "知识产权 / 商标侵权", "category": "知识产权", "sub_category": "商标侵权", "is_correct": true, "score_value": 100, "feedback": "正确！商标侵权投诉书归入知识产权/商标侵权。"},
+        {"choice_id": "ch_04_02", "display_text": "民商事诉讼 / 不正当竞争", "category": "民商事诉讼", "sub_category": "不正当竞争", "is_correct": false, "score_value": 40, "feedback": "部分正确：虽可能涉及不正当竞争，但投诉书以商标侵权为核心诉求，应优先归入商标类别。", "error_type": "核心诉求误判", "triggers_rejection": false},
+        {"choice_id": "ch_04_03", "display_text": "行政文书 / 市场监管", "category": "行政文书", "sub_category": "市场监管", "is_correct": false, "score_value": 0, "feedback": "错误：商标侵权投诉属于知识产权保护范畴，非一般市场监管。", "error_type": "性质误判", "triggers_rejection": true, "rejection_reason": "将知识产权投诉误归行政监管类别属于性质认定错误"}
+      ],
+      "risk_words": [
+        {"word_id": "rw_09", "word": "近似商标", "severity": 3, "category": "混淆风险", "description": "近似商标判定需综合考虑音形义及商品类似关系", "legal_reference": "商标法第57条第2项", "hint": "是否构成混淆性近似？"},
+        {"word_id": "rw_10", "word": "驰名商标", "severity": 2, "category": "跨类保护", "description": "如涉及驰名商标可获跨类保护", "legal_reference": "商标法第13条", "hint": "确认是否主张驰名商标认定"},
+        {"word_id": "rw_11", "word": "行政查处", "severity": 1, "category": "程序选择", "description": "行政查处与民事诉讼并行需注意程序衔接", "legal_reference": "商标法第60条", "hint": "行政与司法双轨制下需协调"}
+      ]
+    },
+    {
+      "task_id": "task_04_02",
+      "title": "关联文书：著作权许可合同归档",
+      "description": "与前述商标权属相关联的著作权许可合同，需交叉审查权属链。",
+      "document_type": "合同文书",
+      "correct_category": "知识产权",
+      "correct_sub_category": "著作权许可",
+      "clues": [
+        {"clue_id": "clue_04_05", "content": "文书标题：著作权许可使用合同", "clue_type": "标题", "relevance": 1.0, "reveal_order": 0},
+        {"clue_id": "clue_04_06", "content": "许可内容：投诉人将商标图文作品的著作权排他许可给被投诉人使用", "clue_type": "许可内容", "relevance": 1.0, "reveal_order": 1},
+        {"clue_id": "clue_04_07", "content": "特别约定：被投诉人不得转许可，合同期限与商标注册有效期挂钩", "clue_type": "特别约定", "relevance": 0.85, "reveal_order": 2}
+      ],
+      "choices": [
+        {"choice_id": "ch_04_04", "display_text": "知识产权 / 著作权许可", "category": "知识产权", "sub_category": "著作权许可", "is_correct": true, "score_value": 100, "feedback": "正确！著作权许可合同与商标投诉关联，归入知识产权/著作权许可。"},
+        {"choice_id": "ch_04_05", "display_text": "民商事合同 / 许可合同", "category": "民商事合同", "sub_category": "许可合同", "is_correct": false, "score_value": 30, "feedback": "部分正确：虽属许可合同，但因与知识产权投诉关联应归入知识产权类。", "error_type": "关联误判", "triggers_rejection": false},
+        {"choice_id": "ch_04_06", "display_text": "民商事合同 / 买卖合同", "category": "民商事合同", "sub_category": "买卖合同", "is_correct": false, "score_value": 0, "feedback": "错误：著作权许可非买卖关系。", "error_type": "性质误判", "triggers_rejection": true, "rejection_reason": "将许可合同误归买卖合同属于性质严重误判"}
+      ],
+      "risk_words": [
+        {"word_id": "rw_12", "word": "排他许可", "severity": 2, "category": "许可类型审查", "description": "排他许可下许可人仍可自行使用，与独占许可不同", "legal_reference": "著作权法第24条", "hint": "排他许可与独占许可的区别？"},
+        {"word_id": "rw_13", "word": "不得转许可", "severity": 1, "category": "限制条款", "description": "转许可限制需明确约定否则可能引发争议", "legal_reference": "著作权法第27条", "hint": "未约定转许可时的默认规则？"},
+        {"word_id": "rw_14", "word": "合同期限与商标有效期挂钩", "severity": 3, "category": "期限风险", "description": "合同期限超出知识产权保护期限部分无效", "legal_reference": "著作权法第26条", "hint": "著作权保护期限与商标续展期限的协调"}
+      ]
+    }
+  ]
+}

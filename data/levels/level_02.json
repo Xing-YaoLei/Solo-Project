@@ -1,0 +1,33 @@
+{
+  "level_id": "level_02",
+  "title": "风险筛查：借贷纠纷",
+  "description": "在归档民间借贷纠纷文书时识别并标注风险关键词",
+  "difficulty": 2,
+  "time_limit": 180,
+  "tasks": [
+    {
+      "task_id": "task_02_01",
+      "title": "民间借贷纠纷归档",
+      "description": "客户提交了民间借贷纠纷相关文书，需归档并识别风险关键词。",
+      "document_type": "诉讼文书",
+      "correct_category": "民商事诉讼",
+      "correct_sub_category": "借贷纠纷",
+      "clues": [
+        {"clue_id": "clue_02_01", "content": "文书标题：民间借贷纠纷起诉状", "clue_type": "标题", "relevance": 1.0, "reveal_order": 0},
+        {"clue_id": "clue_02_02", "content": "诉讼请求：请求判令被告偿还借款本金50万元及利息", "clue_type": "诉讼请求", "relevance": 0.95, "reveal_order": 1},
+        {"clue_id": "clue_02_03", "content": "关键条款：月利率3%，逾期加收50%罚息", "clue_type": "关键条款", "relevance": 1.0, "reveal_order": 2},
+        {"clue_id": "clue_02_04", "content": "补充：借款人已失联超过6个月", "clue_type": "补充信息", "relevance": 0.8, "reveal_order": 3}
+      ],
+      "choices": [
+        {"choice_id": "ch_02_01", "display_text": "民商事诉讼 / 借贷纠纷", "category": "民商事诉讼", "sub_category": "借贷纠纷", "is_correct": true, "score_value": 100, "feedback": "正确！民间借贷纠纷归入民商事诉讼/借贷纠纷。"},
+        {"choice_id": "ch_02_02", "display_text": "民商事合同 / 借款合同", "category": "民商事合同", "sub_category": "借款合同", "is_correct": false, "score_value": 40, "feedback": "部分正确：已进入诉讼阶段的文书应归入诉讼类别而非合同类别。", "error_type": "阶段误判", "triggers_rejection": false},
+        {"choice_id": "ch_02_03", "display_text": "执行文书 / 强制执行", "category": "执行文书", "sub_category": "强制执行", "is_correct": false, "score_value": 0, "feedback": "错误：本案尚在起诉阶段，非执行阶段。", "error_type": "阶段误判", "triggers_rejection": false}
+      ],
+      "risk_words": [
+        {"word_id": "rw_01", "word": "月利率3%", "severity": 3, "category": "高利贷风险", "description": "超出法律保护利率上限", "legal_reference": "最高法关于审理民间借贷案件的司法解释", "hint": "注意年化利率是否超过LPR四倍"},
+        {"word_id": "rw_02", "word": "逾期加收50%罚息", "severity": 3, "category": "罚息违规", "description": "罚息过高可能不被法院支持", "legal_reference": "合同法违约金条款", "hint": "罚息与利息合计是否超限"},
+        {"word_id": "rw_03", "word": "借款人失联", "severity": 2, "category": "送达风险", "description": "被告失联可能导致公告送达", "legal_reference": "民事诉讼法送达规定", "hint": "失联影响诉讼程序推进"}
+      ]
+    }
+  ]
+}

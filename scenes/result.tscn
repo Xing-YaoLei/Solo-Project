@@ -1,0 +1,167 @@
+[gd_scene load_steps=3 format=3]
+
+[ext_resource type="Script" path="res://scripts/ui/result.gd" id="1_script"]
+
+[sub_resource type="StyleBoxFlat" id="StyleBoxFlat_panel"]
+content_margin_left = 8.0
+content_margin_top = 6.0
+content_margin_right = 8.0
+content_margin_bottom = 6.0
+bg_color = Color(0.08, 0.1, 0.2, 0.9)
+corner_radius_top_left = 6
+corner_radius_top_right = 6
+corner_radius_bottom_left = 6
+corner_radius_bottom_right = 6
+
+[node name="Result" type="Control"]
+layout_mode = 3
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+grow_horizontal = 2
+grow_vertical = 2
+script = ExtResource("1_script")
+
+[node name="Background" type="ColorRect" parent="."]
+layout_mode = 1
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+color = Color(0.07, 0.07, 0.12, 1)
+
+[node name="VBoxContainer" type="VBoxContainer" parent="."]
+layout_mode = 1
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+offset_left = 30.0
+offset_top = 20.0
+offset_right = -30.0
+offset_bottom = -20.0
+grow_horizontal = 2
+grow_vertical = 2
+theme_override_constants/separation = 8
+
+[node name="Header" type="HBoxContainer" parent="VBoxContainer"]
+layout_mode = 2
+
+[node name="LevelTitleLabel" type="Label" parent="VBoxContainer/Header"]
+layout_mode = 2
+theme_override_font_sizes/font_size = 28
+theme_override_colors/font_color = Color(0.9, 0.9, 0.95, 1)
+text = "训练结果"
+size_flags_horizontal = 3
+
+[node name="ScoreLabel" type="Label" parent="VBoxContainer/Header"]
+layout_mode = 2
+theme_override_font_sizes/font_size = 28
+theme_override_colors/font_color = Color(0.9, 0.85, 0.4, 1)
+text = "总分: 0"
+
+[node name="ScoreSection" type="PanelContainer" parent="VBoxContainer"]
+layout_mode = 2
+theme_override_styles/panel = SubResource("StyleBoxFlat_panel")
+
+[node name="ScoreDetailLabel" type="RichTextLabel" parent="VBoxContainer/ScoreSection"]
+layout_mode = 2
+bbcode_enabled = true
+theme_override_font_sizes/normal_font_size = 16
+theme_override_colors/default_color = Color(0.8, 0.8, 0.85, 1)
+text = ""
+fit_content = true
+
+[node name="RiskSection" type="HBoxContainer" parent="VBoxContainer"]
+layout_mode = 2
+
+[node name="RiskLabel" type="Label" parent="VBoxContainer/RiskSection"]
+layout_mode = 2
+theme_override_font_sizes/font_size = 16
+theme_override_colors/font_color = Color(1.0, 0.5, 0.5, 1)
+text = "风险词命中: 0/0"
+
+[node name="ErrorSection" type="PanelContainer" parent="VBoxContainer"]
+layout_mode = 2
+size_flags_vertical = 3
+size_flags_stretch_ratio = 0.8
+theme_override_styles/panel = SubResource("StyleBoxFlat_panel")
+
+[node name="ErrorTitle" type="Label" parent="VBoxContainer/ErrorSection"]
+layout_mode = 2
+theme_override_font_sizes/font_size = 15
+theme_override_colors/font_color = Color(1.0, 0.6, 0.4, 1)
+text = "❌ 错因分析"
+
+[node name="ScrollContainer" type="ScrollContainer" parent="VBoxContainer/ErrorSection"]
+layout_mode = 2
+size_flags_vertical = 3
+
+[node name="ErrorContainer" type="VBoxContainer" parent="VBoxContainer/ErrorSection/ScrollContainer"]
+layout_mode = 2
+size_flags_horizontal = 3
+
+[node name="RejectionSection" type="PanelContainer" parent="VBoxContainer"]
+layout_mode = 2
+size_flags_vertical = 3
+size_flags_stretch_ratio = 0.5
+theme_override_styles/panel = SubResource("StyleBoxFlat_panel")
+
+[node name="RejectionTitle" type="Label" parent="VBoxContainer/RejectionSection"]
+layout_mode = 2
+theme_override_font_sizes/font_size = 15
+theme_override_colors/font_color = Color(1.0, 0.3, 0.3, 1)
+text = "⚠ 审核退回记录"
+
+[node name="ScrollContainer" type="ScrollContainer" parent="VBoxContainer/RejectionSection"]
+layout_mode = 2
+size_flags_vertical = 3
+
+[node name="RejectionContainer" type="VBoxContainer" parent="VBoxContainer/RejectionSection/ScrollContainer"]
+layout_mode = 2
+size_flags_horizontal = 3
+
+[node name="StuckSection" type="PanelContainer" parent="VBoxContainer"]
+layout_mode = 2
+theme_override_styles/panel = SubResource("StyleBoxFlat_panel")
+
+[node name="StuckTitle" type="Label" parent="VBoxContainer/StuckSection"]
+layout_mode = 2
+theme_override_font_sizes/font_size = 15
+theme_override_colors/font_color = Color(0.5, 0.8, 1.0, 1)
+text = "📍 卡顿定位"
+
+[node name="StuckSummaryLabel" type="RichTextLabel" parent="VBoxContainer/StuckSection"]
+layout_mode = 2
+bbcode_enabled = true
+theme_override_font_sizes/normal_font_size = 14
+theme_override_colors/default_color = Color(0.7, 0.7, 0.8, 1)
+text = ""
+fit_content = true
+
+[node name="ActionSection" type="HBoxContainer" parent="VBoxContainer"]
+layout_mode = 2
+theme_override_constants/separation = 12
+
+[node name="ReplayInfoLabel" type="Label" parent="VBoxContainer/ActionSection"]
+layout_mode = 2
+theme_override_font_sizes/font_size = 14
+theme_override_colors/font_color = Color(0.7, 0.7, 0.8, 1)
+text = "失败回放: 0/3"
+size_flags_horizontal = 3
+
+[node name="RetryButton" type="Button" parent="VBoxContainer/ActionSection"]
+layout_mode = 2
+custom_minimum_size = Vector2(120, 40)
+theme_override_font_sizes/font_size = 16
+text = "重新挑战"
+
+[node name="ReviewButton" type="Button" parent="VBoxContainer/ActionSection"]
+layout_mode = 2
+custom_minimum_size = Vector2(120, 40)
+theme_override_font_sizes/font_size = 16
+text = "复盘回放"
+
+[node name="BackButton" type="Button" parent="VBoxContainer/ActionSection"]
+layout_mode = 2
+custom_minimum_size = Vector2(120, 40)
+theme_override_font_sizes/font_size = 16
+text = "返回选关"

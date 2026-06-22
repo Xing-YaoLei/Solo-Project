@@ -1,0 +1,33 @@
+; Engine configuration file.
+; It's best edited using the editor UI and not directly,
+; but it can also be edited manually.
+
+[application]
+
+config/name="LegalDocArchivePuzzle"
+config/description="法律服务文书归档调度解谜游戏"
+run/main_scene="res://scenes/main_menu.tscn"
+config/features=PackedStringArray("4.2", "GL Compatibility")
+config/icon="res://icon.svg"
+
+[autoload]
+
+GameManager="*res://scripts/autoload/game_manager.gd"
+SaveManager="*res://scripts/autoload/save_manager.gd"
+LeaderboardManager="*res://scripts/autoload/leaderboard_manager.gd"
+LevelManager="*res://scripts/autoload/level_manager.gd"
+ReplayManager="*res://scripts/autoload/replay_manager.gd"
+
+[display]
+
+window/size/viewport_width=1280
+window/size/viewport_height=720
+window/size/resizable=true
+window/stretch/mode="canvas_items"
+window/stretch/aspect="expand"
+window/handheld/orientation=1
+
+[rendering]
+
+renderer/rendering_method="gl_compatibility"
+renderer/rendering_method.mobile="gl_compatibility"

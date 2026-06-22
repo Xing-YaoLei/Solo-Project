@@ -1,0 +1,29 @@
+{
+  "level_id": "level_01",
+  "title": "初识归档：合同文书",
+  "description": "将一份买卖合同正确归入对应法律类别",
+  "difficulty": 1,
+  "time_limit": 120,
+  "tasks": [
+    {
+      "task_id": "task_01_01",
+      "title": "买卖合同归档",
+      "description": "客户提交了一份商品房买卖合同，请根据文书内容选择正确的归档类别。",
+      "document_type": "合同文书",
+      "correct_category": "民商事合同",
+      "correct_sub_category": "买卖合同",
+      "clues": [
+        {"clue_id": "clue_01_01", "content": "文书标题：商品房买卖合同", "clue_type": "标题", "relevance": 1.0, "reveal_order": 0},
+        {"clue_id": "clue_01_02", "content": "合同标的：某市某区住宅一套，面积120平方米", "clue_type": "标的", "relevance": 0.9, "reveal_order": 1},
+        {"clue_id": "clue_01_03", "content": "双方当事人：甲方（出卖人）、乙方（买受人）", "clue_type": "当事人", "relevance": 0.7, "reveal_order": 2}
+      ],
+      "choices": [
+        {"choice_id": "ch_01_01", "display_text": "民商事合同 / 买卖合同", "category": "民商事合同", "sub_category": "买卖合同", "is_correct": true, "score_value": 100, "feedback": "正确！商品房买卖合同属于民商事合同下的买卖合同分类。"},
+        {"choice_id": "ch_01_02", "display_text": "民商事合同 / 租赁合同", "category": "民商事合同", "sub_category": "租赁合同", "is_correct": false, "score_value": 0, "feedback": "错误：本题涉及的是买卖关系而非租赁关系。", "error_type": "分类混淆", "triggers_rejection": false},
+        {"choice_id": "ch_01_03", "display_text": "行政文书 / 行政处罚", "category": "行政文书", "sub_category": "行政处罚", "is_correct": false, "score_value": 0, "feedback": "错误：买卖合同属于民商事范畴，不是行政文书。", "error_type": "大类错误", "triggers_rejection": true, "rejection_reason": "将民商事合同误归为行政文书属于严重分类错误"},
+        {"choice_id": "ch_01_04", "display_text": "刑事诉讼 / 辩护文书", "category": "刑事诉讼", "sub_category": "辩护文书", "is_correct": false, "score_value": 0, "feedback": "错误：合同文书不属于刑事诉讼范畴。", "error_type": "大类错误", "triggers_rejection": true, "rejection_reason": "将民商事合同归入刑事类别属于严重分类错误"}
+      ],
+      "risk_words": []
+    }
+  ]
+}

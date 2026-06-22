@@ -1,0 +1,76 @@
+{
+  "level_id": "level_05",
+  "title": "终极调度：跨领域联审",
+  "description": "同时处理刑事、民事、行政多领域交叉文书，完成全链路归档调度",
+  "difficulty": 4,
+  "time_limit": 300,
+  "tasks": [
+    {
+      "task_id": "task_05_01",
+      "title": "刑事报案材料归档",
+      "description": "被害单位提交合同诈骗刑事报案材料，涉及民刑交叉。",
+      "document_type": "刑事文书",
+      "correct_category": "刑事诉讼",
+      "correct_sub_category": "合同诈骗",
+      "clues": [
+        {"clue_id": "clue_05_01", "content": "文书标题：合同诈骗报案材料", "clue_type": "标题", "relevance": 1.0, "reveal_order": 0},
+        {"clue_id": "clue_05_02", "content": "案情摘要：嫌疑人以虚假项目合同骗取投资款500万元后失联", "clue_type": "案情", "relevance": 0.95, "reveal_order": 1},
+        {"clue_id": "clue_05_03", "content": "证据清单：项目合同原件、银行转账记录、虚假资质证明", "clue_type": "证据", "relevance": 0.9, "reveal_order": 2},
+        {"clue_id": "clue_05_04", "content": "备注：被害单位已同步提起民事诉讼要求返还投资款", "clue_type": "程序性信息", "relevance": 0.85, "reveal_order": 3}
+      ],
+      "choices": [
+        {"choice_id": "ch_05_01", "display_text": "刑事诉讼 / 合同诈骗", "category": "刑事诉讼", "sub_category": "合同诈骗", "is_correct": true, "score_value": 100, "feedback": "正确！合同诈骗报案材料归入刑事诉讼/合同诈骗。"},
+        {"choice_id": "ch_05_02", "display_text": "民商事诉讼 / 合同纠纷", "category": "民商事诉讼", "sub_category": "合同纠纷", "is_correct": false, "score_value": 0, "feedback": "错误：虽存在民事合同外观，但核心行为涉嫌刑事犯罪，应优先刑事归档。", "error_type": "民刑混淆", "triggers_rejection": true, "rejection_reason": "民刑交叉案件未优先归入刑事类别属于严重程序错误"},
+        {"choice_id": "ch_05_03", "display_text": "行政文书 / 经济监管", "category": "行政文书", "sub_category": "经济监管", "is_correct": false, "score_value": 0, "feedback": "错误：合同诈骗属刑事犯罪，非行政监管范畴。", "error_type": "性质误判", "triggers_rejection": true, "rejection_reason": "将刑事犯罪误归行政监管属于严重性质认定错误"}
+      ],
+      "risk_words": [
+        {"word_id": "rw_15", "word": "虚假项目合同", "severity": 3, "category": "诈骗手段", "description": "虚假合同是合同诈骗的核心客观要件", "legal_reference": "刑法第224条", "hint": "合同诈骗与合同纠纷的区别标准？"},
+        {"word_id": "rw_16", "word": "民刑交叉", "severity": 3, "category": "程序风险", "description": "民刑交叉案件应先刑后民，注意程序衔接", "legal_reference": "最高法关于民刑交叉案件的审理规定", "hint": "先刑后民原则的适用条件"},
+        {"word_id": "rw_17", "word": "虚假资质证明", "severity": 2, "category": "证据审查", "description": "虚假资质证明可能构成伪造公司印章罪", "legal_reference": "刑法第280条", "hint": "是否涉及数罪并罚？"}
+      ]
+    },
+    {
+      "task_id": "task_05_02",
+      "title": "关联文书：民事起诉状归档",
+      "description": "被害单位同步提交的返还投资款民事起诉状，需与刑事报案交叉审查。",
+      "document_type": "诉讼文书",
+      "correct_category": "民商事诉讼",
+      "correct_sub_category": "合同纠纷",
+      "clues": [
+        {"clue_id": "clue_05_05", "content": "文书标题：民事起诉状（返还投资款）", "clue_type": "标题", "relevance": 1.0, "reveal_order": 0},
+        {"clue_id": "clue_05_06", "content": "诉讼请求：判令被告返还投资款500万元及利息损失", "clue_type": "诉讼请求", "relevance": 0.95, "reveal_order": 1},
+        {"clue_id": "clue_05_07", "content": "事实依据：与刑事报案同一法律事实，依据先刑后民原则申请中止审理", "clue_type": "程序性信息", "relevance": 1.0, "reveal_order": 2}
+      ],
+      "choices": [
+        {"choice_id": "ch_05_04", "display_text": "民商事诉讼 / 合同纠纷", "category": "民商事诉讼", "sub_category": "合同纠纷", "is_correct": true, "score_value": 100, "feedback": "正确！民事起诉状独立归入民商事诉讼/合同纠纷，但需标注与刑事案件的交叉关系。"},
+        {"choice_id": "ch_05_05", "display_text": "刑事诉讼 / 附带民事诉讼", "category": "刑事诉讼", "sub_category": "附带民事诉讼", "is_correct": false, "score_value": 30, "feedback": "部分正确：该起诉状为独立民事诉讼，非刑事附带民事。", "error_type": "程序混淆", "triggers_rejection": false}
+      ],
+      "risk_words": [
+        {"word_id": "rw_18", "word": "先刑后民", "severity": 3, "category": "程序衔接", "description": "同一法律事实涉及刑事时应先刑后民，民事案件可能中止", "legal_reference": "民诉法解释第211条", "hint": "中止审理的适用条件和恢复条件？"},
+        {"word_id": "rw_19", "word": "同一法律事实", "severity": 2, "category": "事实认定", "description": "民刑交叉需判断是否基于同一法律事实", "legal_reference": "最高法关于审理经济纠纷案件中涉及经济犯罪嫌疑若干问题的规定", "hint": "同一法律事实与同一法律关系的区别？"}
+      ]
+    },
+    {
+      "task_id": "task_05_03",
+      "title": "关联文书：行政投诉书归档",
+      "description": "向市场监管部门提交的投诉书，形成刑-民-行三线并行。",
+      "document_type": "投诉文书",
+      "correct_category": "行政文书",
+      "correct_sub_category": "市场投诉",
+      "clues": [
+        {"clue_id": "clue_05_08", "content": "文书标题：市场监督管理投诉书", "clue_type": "标题", "relevance": 1.0, "reveal_order": 0},
+        {"clue_id": "clue_05_09", "content": "投诉内容：请求查处虚假宣传和欺诈经营行为", "clue_type": "投诉内容", "relevance": 0.9, "reveal_order": 1},
+        {"clue_id": "clue_05_10", "content": "备注：与刑事报案和民事诉讼基于同一事实", "clue_type": "关联信息", "relevance": 0.95, "reveal_order": 2}
+      ],
+      "choices": [
+        {"choice_id": "ch_05_06", "display_text": "行政文书 / 市场投诉", "category": "行政文书", "sub_category": "市场投诉", "is_correct": true, "score_value": 100, "feedback": "正确！行政投诉书独立归入行政文书/市场投诉，形成刑-民-行三线归档。"},
+        {"choice_id": "ch_05_07", "display_text": "刑事诉讼 / 合同诈骗", "category": "刑事诉讼", "sub_category": "合同诈骗", "is_correct": false, "score_value": 0, "feedback": "错误：行政投诉书不属于刑事程序文书。", "error_type": "程序误判", "triggers_rejection": true, "rejection_reason": "将行政投诉误归刑事类别属于严重程序错误"},
+        {"choice_id": "ch_05_08", "display_text": "知识产权 / 商标侵权", "category": "知识产权", "sub_category": "商标侵权", "is_correct": false, "score_value": 0, "feedback": "错误：市场投诉涉及虚假宣传和欺诈经营，非商标侵权。", "error_type": "诉求误判", "triggers_rejection": false}
+      ],
+      "risk_words": [
+        {"word_id": "rw_20", "word": "虚假宣传", "severity": 2, "category": "行政违法", "description": "虚假宣传属于反不正当竞争法规制范围", "legal_reference": "反不正当竞争法第8条", "hint": "虚假宣传与商业诋毁的区别？"},
+        {"word_id": "rw_21", "word": "刑民行交叉", "severity": 3, "category": "多线并行", "description": "三线并行时需分别归档但标注关联关系", "legal_reference": "行政执法与刑事司法衔接规定", "hint": "行刑衔接中证据转换的规则？"}
+      ]
+    }
+  ]
+}

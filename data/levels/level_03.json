@@ -1,0 +1,54 @@
+{
+  "level_id": "level_03",
+  "title": "综合调度：多文书联审",
+  "description": "同时处理多份相互关联的法律文书，完成归档并规避审核退回风险",
+  "difficulty": 3,
+  "time_limit": 240,
+  "tasks": [
+    {
+      "task_id": "task_03_01",
+      "title": "劳动争议仲裁申请书归档",
+      "description": "劳动者提交仲裁申请，涉及加班费和违法解除劳动合同。",
+      "document_type": "仲裁文书",
+      "correct_category": "劳动争议",
+      "correct_sub_category": "劳动仲裁",
+      "clues": [
+        {"clue_id": "clue_03_01", "content": "文书标题：劳动争议仲裁申请书", "clue_type": "标题", "relevance": 1.0, "reveal_order": 0},
+        {"clue_id": "clue_03_02", "content": "申请人主张：加班费差额8万元，违法解除赔偿12万元", "clue_type": "请求内容", "relevance": 0.95, "reveal_order": 1},
+        {"clue_id": "clue_03_03", "content": "证据清单：考勤记录、工资条、解除通知", "clue_type": "证据", "relevance": 0.85, "reveal_order": 2},
+        {"clue_id": "clue_03_04", "content": "特殊标注：申请人仍在仲裁时效内", "clue_type": "程序性信息", "relevance": 0.7, "reveal_order": 3}
+      ],
+      "choices": [
+        {"choice_id": "ch_03_01", "display_text": "劳动争议 / 劳动仲裁", "category": "劳动争议", "sub_category": "劳动仲裁", "is_correct": true, "score_value": 100, "feedback": "正确！劳动争议仲裁申请书归入劳动争议/劳动仲裁。"},
+        {"choice_id": "ch_03_02", "display_text": "民商事诉讼 / 合同纠纷", "category": "民商事诉讼", "sub_category": "合同纠纷", "is_correct": false, "score_value": 0, "feedback": "错误：劳动合同争议应优先走劳动仲裁程序，非一般民商事诉讼。", "error_type": "程序误判", "triggers_rejection": true, "rejection_reason": "劳动争议未经仲裁前置程序直接诉讼属于程序错误"},
+        {"choice_id": "ch_03_03", "display_text": "行政文书 / 劳动监察", "category": "行政文书", "sub_category": "劳动监察", "is_correct": false, "score_value": 0, "feedback": "错误：仲裁申请属于准司法程序，非行政监察。", "error_type": "性质误判", "triggers_rejection": true, "rejection_reason": "将仲裁文书误归为行政文书属于性质认定错误"}
+      ],
+      "risk_words": [
+        {"word_id": "rw_04", "word": "违法解除", "severity": 2, "category": "解除合法性", "description": "需审查解除是否符合法定条件和程序", "legal_reference": "劳动合同法第39-41条", "hint": "审查解除通知的理由和程序"},
+        {"word_id": "rw_05", "word": "加班费差额", "severity": 2, "category": "工资争议", "description": "加班费计算基数和时长需核实", "legal_reference": "劳动法第44条", "hint": "核对考勤与工资发放记录"},
+        {"word_id": "rw_06", "word": "仲裁时效", "severity": 3, "category": "时效风险", "description": "劳动争议仲裁时效为一年", "legal_reference": "劳动争议调解仲裁法第27条", "hint": "确认各项请求是否均在时效内"}
+      ]
+    },
+    {
+      "task_id": "task_03_02",
+      "title": "关联文书：解除劳动合同通知归档",
+      "description": "与上一份仲裁申请关联的解除劳动合同通知，需交叉审查。",
+      "document_type": "通知文书",
+      "correct_category": "劳动争议",
+      "correct_sub_category": "解除通知",
+      "clues": [
+        {"clue_id": "clue_03_05", "content": "文书标题：解除劳动合同通知书", "clue_type": "标题", "relevance": 1.0, "reveal_order": 0},
+        {"clue_id": "clue_03_06", "content": "解除理由：以不能胜任工作为由，依据劳动合同法第40条", "clue_type": "解除依据", "relevance": 1.0, "reveal_order": 1},
+        {"clue_id": "clue_03_07", "content": "备注：未提前30日书面通知，选择额外支付一个月工资代通知金", "clue_type": "程序性信息", "relevance": 0.9, "reveal_order": 2}
+      ],
+      "choices": [
+        {"choice_id": "ch_03_04", "display_text": "劳动争议 / 解除通知", "category": "劳动争议", "sub_category": "解除通知", "is_correct": true, "score_value": 100, "feedback": "正确！与仲裁申请关联的解除通知归入劳动争议/解除通知。"},
+        {"choice_id": "ch_03_05", "display_text": "行政文书 / 人事管理", "category": "行政文书", "sub_category": "人事管理", "is_correct": false, "score_value": 0, "feedback": "错误：解除通知与劳动争议仲裁直接关联，应归入劳动争议类。", "error_type": "关联误判", "triggers_rejection": true, "rejection_reason": "关联文书未与主文书归入同一类别将导致审查退回"}
+      ],
+      "risk_words": [
+        {"word_id": "rw_07", "word": "不能胜任工作", "severity": 3, "category": "解除理由审查", "description": "不能胜任解除需满足培训或调岗前置条件", "legal_reference": "劳动合同法第40条第2项", "hint": "是否经过培训或调岗程序？"},
+        {"word_id": "rw_08", "word": "代通知金", "severity": 1, "category": "程序合规", "description": "代通知金支付符合法律规定", "legal_reference": "劳动合同法第40条", "hint": "代通知金支付属合规操作"}
+      ]
+    }
+  ]
+}

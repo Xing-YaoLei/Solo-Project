@@ -1,0 +1,10 @@
+[gd_resource type="Resource" script_class="MaterialsConfig" load_steps=2 format=3]
+
+[ext_resource type="Script" path="res://scripts/resources/materials_config.gd" id="1"]
+
+[resource]
+script = ExtResource("1")
+material_ids = PackedStringArray("mat_contract_01", "mat_lawsuit_01", "mat_arbitration_01", "mat_notice_01")
+material_types = PackedStringArray("合同文书", "诉讼文书", "仲裁文书", "通知文书")
+file_paths = PackedStringArray("res://assets/documents/contract_template.tscn", "res://assets/documents/lawsuit_template.tscn", "res://assets/documents/arbitration_template.tscn", "res://assets/documents/notice_template.tscn")
+descriptions = PackedStringArray("各类合同文书模板", "民事刑事诉讼文书模板", "劳动争议等仲裁文书模板", "各类通知文书模板")

@@ -1,0 +1,11 @@
+[gd_resource type="Resource" script_class="TutorialsConfig" load_steps=2 format=3]
+
+[ext_resource type="Script" path="res://scripts/resources/tutorials_config.gd" id="1"]
+
+[resource]
+script = ExtResource("1")
+tutorial_ids = PackedStringArray("tut_01", "tut_02", "tut_03", "tut_04", "tut_05", "tut_06")
+titles = PackedStringArray("如何归档文书", "识别文书类型", "风险关键词标注", "多文书联审流程", "知识产权风险规避", "跨领域联审策略")
+content_texts = PackedStringArray("欢迎来到法律文书归档系统！请根据文书内容选择正确的归档类别。", "仔细阅读文书标题和内容，判断文书属于合同、诉讼、仲裁还是通知类别。", "某些文书包含风险关键词，请仔细标注以规避审核退回风险。", "当多份文书相互关联时，需交叉审查并归入正确类别。", "知识产权文书归档需特别注意侵权风险词识别和跨类保护判定。", "刑民行交叉案件中，需优先确定案件性质，再按三线并行方式归档。")
+trigger_levels = PackedStringArray("level_01", "level_01", "level_02", "level_03", "level_04", "level_05")
+order_indices = PackedInt32Array(0, 1, 0, 0, 0, 0)

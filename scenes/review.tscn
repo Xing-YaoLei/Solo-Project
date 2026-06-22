@@ -1,0 +1,161 @@
+[gd_scene load_steps=3 format=3]
+
+[ext_resource type="Script" path="res://scripts/ui/review.gd" id="1_script"]
+
+[sub_resource type="StyleBoxFlat" id="StyleBoxFlat_panel"]
+content_margin_left = 8.0
+content_margin_top = 6.0
+content_margin_right = 8.0
+content_margin_bottom = 6.0
+bg_color = Color(0.08, 0.1, 0.2, 0.9)
+corner_radius_top_left = 6
+corner_radius_top_right = 6
+corner_radius_bottom_left = 6
+corner_radius_bottom_right = 6
+
+[node name="Review" type="Control"]
+layout_mode = 3
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+grow_horizontal = 2
+grow_vertical = 2
+script = ExtResource("1_script")
+
+[node name="Background" type="ColorRect" parent="."]
+layout_mode = 1
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+color = Color(0.07, 0.07, 0.12, 1)
+
+[node name="TopBar" type="HBoxContainer" parent="."]
+layout_mode = 1
+anchors_preset = 15
+anchor_right = 1.0
+offset_left = 20.0
+offset_top = 10.0
+offset_right = -20.0
+offset_bottom = 50.0
+grow_horizontal = 2
+theme_override_constants/separation = 15
+
+[node name="TitleLabel" type="Label" parent="TopBar"]
+layout_mode = 2
+theme_override_font_sizes/font_size = 26
+theme_override_colors/font_color = Color(0.9, 0.9, 0.95, 1)
+text = "🔍 复盘回放"
+size_flags_horizontal = 3
+
+[node name="BackButton" type="Button" parent="TopBar"]
+layout_mode = 2
+custom_minimum_size = Vector2(100, 35)
+theme_override_font_sizes/font_size = 16
+text = "返回"
+
+[node name="MainLayout" type="HBoxContainer" parent="."]
+layout_mode = 1
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+offset_left = 20.0
+offset_top = 60.0
+offset_right = -20.0
+offset_bottom = -15.0
+grow_horizontal = 2
+grow_vertical = 2
+theme_override_constants/separation = 12
+
+[node name="LeftPanel" type="PanelContainer" parent="MainLayout"]
+layout_mode = 2
+size_flags_horizontal = 3
+size_flags_stretch_ratio = 0.4
+theme_override_styles/panel = SubResource("StyleBoxFlat_panel")
+
+[node name="ReplayTitle" type="Label" parent="MainLayout/LeftPanel"]
+layout_mode = 2
+theme_override_font_sizes/font_size = 16
+theme_override_colors/font_color = Color(0.5, 0.8, 1.0, 1)
+text = "回放列表"
+
+[node name="ReplayList" type="ItemList" parent="MainLayout/LeftPanel"]
+layout_mode = 2
+size_flags_vertical = 3
+custom_minimum_size = Vector2(0, 200)
+item_count = 0
+
+[node name="RightPanel" type="VBoxContainer" parent="MainLayout"]
+layout_mode = 2
+size_flags_horizontal = 3
+size_flags_stretch_ratio = 0.6
+theme_override_constants/separation = 8
+
+[node name="ActionScroll" type="ScrollContainer" parent="MainLayout/RightPanel"]
+layout_mode = 2
+size_flags_vertical = 3
+size_flags_stretch_ratio = 1.0
+custom_minimum_size = Vector2(0, 150)
+
+[node name="ActionTimeline" type="VBoxContainer" parent="MainLayout/RightPanel/ActionScroll"]
+layout_mode = 2
+size_flags_horizontal = 3
+
+[node name="StuckSection" type="PanelContainer" parent="MainLayout/RightPanel"]
+layout_mode = 2
+size_flags_stretch_ratio = 0.4
+theme_override_styles/panel = SubResource("StyleBoxFlat_panel")
+
+[node name="StuckTitle" type="Label" parent="MainLayout/RightPanel/StuckSection"]
+layout_mode = 2
+theme_override_font_sizes/font_size = 15
+theme_override_colors/font_color = Color(1.0, 0.5, 0.5, 1)
+text = "📍 卡顿位置"
+
+[node name="StuckMarkers" type="VBoxContainer" parent="MainLayout/RightPanel/StuckSection"]
+layout_mode = 2
+
+[node name="JumpToStuckButton" type="Button" parent="MainLayout/RightPanel/StuckSection"]
+layout_mode = 2
+custom_minimum_size = Vector2(0, 30)
+theme_override_font_sizes/font_size = 13
+text = "跳转到首个卡顿位置"
+disabled = true
+
+[node name="DetailPanel" type="PanelContainer" parent="MainLayout/RightPanel"]
+layout_mode = 2
+theme_override_styles/panel = SubResource("StyleBoxFlat_panel")
+
+[node name="ReplayDetailLabel" type="RichTextLabel" parent="MainLayout/RightPanel/DetailPanel"]
+layout_mode = 2
+bbcode_enabled = true
+theme_override_font_sizes/normal_font_size = 14
+theme_override_colors/default_color = Color(0.8, 0.8, 0.85, 1)
+text = "选择一个回放查看详情"
+fit_content = true
+custom_minimum_size = Vector2(0, 80)
+
+[node name="NavSection" type="HBoxContainer" parent="MainLayout/RightPanel"]
+layout_mode = 2
+theme_override_constants/separation = 10
+
+[node name="PrevActionButton" type="Button" parent="MainLayout/RightPanel/NavSection"]
+layout_mode = 2
+custom_minimum_size = Vector2(100, 35)
+theme_override_font_sizes/font_size = 14
+text = "◀ 上一步"
+disabled = true
+
+[node name="ActionCounterLabel" type="Label" parent="MainLayout/RightPanel/NavSection"]
+layout_mode = 2
+theme_override_font_sizes/font_size = 14
+theme_override_colors/font_color = Color(0.7, 0.7, 0.8, 1)
+text = "0/0"
+size_flags_horizontal = 3
+horizontal_alignment = 1
+
+[node name="NextActionButton" type="Button" parent="MainLayout/RightPanel/NavSection"]
+layout_mode = 2
+custom_minimum_size = Vector2(100, 35)
+theme_override_font_sizes/font_size = 14
+text = "下一步 ▶"
+disabled = true

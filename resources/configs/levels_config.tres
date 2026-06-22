@@ -1,0 +1,25 @@
+[gd_resource type="Resource" script_class="LevelsConfig" load_steps=2 format=3]
+
+[ext_resource type="Script" path="res://scripts/resources/levels_config.gd" id="1"]
+
+[resource]
+script = ExtResource("1")
+level_ids = PackedStringArray("level_01", "level_02", "level_03", "level_04", "level_05")
+level_names = PackedStringArray("初识归档：合同文书", "风险筛查：借贷纠纷", "综合调度：多文书联审", "风险规避：知识产权", "终极调度：跨领域联审")
+unlock_requirements = [{
+"level_id": "level_01",
+"required_level": ""
+}, {
+"level_id": "level_02",
+"required_level": "level_01"
+}, {
+"level_id": "level_03",
+"required_level": "level_02"
+}, {
+"level_id": "level_04",
+"required_level": "level_03"
+}, {
+"level_id": "level_05",
+"required_level": "level_04"
+}]
+level_descriptions = PackedStringArray("将一份买卖合同正确归入对应法律类别", "在归档民间借贷纠纷文书时识别并标注风险关键词", "同时处理多份相互关联的法律文书，完成归档并规避审核退回风险", "归档知识产权文书时识别侵权风险词并规避审查退回", "同时处理刑事、民事、行政多领域交叉文书，完成全链路归档调度")
