@@ -1,0 +1,777 @@
+// Prisma schema for Audit Evidence Platform
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+// ============ 用户与权限 ============
+
+enum UserRole {
+  AUDITOR          // 审计员
+  BUSINESS_OWNER   // 业务负责人
+  COMPLIANCE_OFFICER // 合规官
+  MANAGEMENT       // 管理层
+  ADMIN            // 系统管理员
+}
+
+enum Permission {
+  // 任务管理
+  TASK_CREATE
+  TASK_ASSIGN
+  TASK_VIEW
+  TASK_EDIT
+  TASK_BATCH_UPDATE
+  TASK_DELETE
+  
+  // 证据归档
+  EVIDENCE_CREATE
+  EVIDENCE_UPLOAD
+  EVIDENCE_VIEW
+  EVIDENCE_EDIT
+  EVIDENCE_SUBMIT
+  EVIDENCE_DELETE
+  
+  // 复核
+  REVIEW_CONDUCT
+  REVIEW_APPROVE
+  REVIEW_REJECT
+  REVIEW_VIEW
+  
+  // 检查清单
+  CHECKLIST_CREATE
+  CHECKLIST_VIEW
+  CHECKLIST_EDIT
+  CHECKLIST_EXECUTE
+  
+  // 抽样记录
+  SAMPLING_CREATE
+  SAMPLING_VIEW
+  SAMPLING_EDIT
+  SAMPLING_APPROVE
+  
+  // 通报模板
+  TEMPLATE_CREATE
+  TEMPLATE_VIEW
+  TEMPLATE_EDIT
+  TEMPLATE_USE
+  
+  // 统计分析
+  STATISTICS_VIEW
+  STATISTICS_EXPORT
+  
+  // 系统管理
+  USER_MANAGE
+  ROLE_MANAGE
+  AUDIT_LOG_VIEW
+  UNAUTHORIZED_VIEW
+}
+
+model User {
+  id        String   @id @default(uuid())
+  username  String   @unique
+  email     String   @unique
+  password  String
+  fullName  String
+  role      UserRole
+  department String?
+  position  String?
+  phone     String?
+  isActive  Boolean  @default(true)
+  avatarUrl String?
+  
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+  
+  // 分配给该用户的任务
+  assignedTasks    AuditTask[] @relation("AssignedTasks")
+  // 该用户创建的任务
+  createdTasks     AuditTask[] @relation("CreatedTasks")
+  // 作为业务负责人的任务
+  businessOwnerTasks AuditTask[] @relation("BusinessOwnerTasks")
+  // 该用户提交的证据
+  submittedEvidences Evidence[] @relation("SubmittedEvidences")
+  // 上传的附件
+  attachments      Attachment[] @relation("AttachmentUploader")
+  // 发起的补附件请求
+  supplementsRequested EvidenceSupplement[]
+  // 该用户负责的复核
+  reviews          ReviewRecord[] @relation("Reviewer")
+  // 创建的检查清单
+  createdChecklists Checklist[]
+  // 该用户执行的检查
+  checklistExecutions ChecklistExecution[] @relation("Executor")
+  // 检查项结果勾选
+  checkedItemResults ChecklistItemResult[]
+  // 创建的抽样
+  samplingRecordsCreated SamplingRecord[] @relation("SamplingCreatedBy")
+  // 审批的抽样
+  samplingRecordsApproved SamplingRecord[] @relation("SamplingApprovedBy")
+  // 创建的通报模板
+  notificationTemplates NotificationTemplate[]
+  // 收到的通知
+  receivedNotifications Notification[]
+  // 产生的操作日志
+  operationLogs OperationLog[]
+  // 越权记录（作为越权者）
+  unauthorizedAccesses UnauthorizedAccess[] @relation("UnauthorizedUser")
+  // 处理的越权记录
+  handledUnauthorizedAccesses UnauthorizedAccess[] @relation("UnauthorizedHandler")
+  // 创建的问题
+  issuesCreated Issue[] @relation("IssueCreatedBy")
+  // 负责的问题
+  ownedIssues Issue[] @relation("IssueOwner")
+  
+  @@index([role])
+  @@index([department])
+}
+
+// ============ 审计任务 ============
+
+enum TaskStatus {
+  DRAFT        // 草稿
+  PENDING      // 待分派
+  ASSIGNED     // 已分派
+  IN_PROGRESS  // 进行中
+  SUBMITTED    // 已提交
+  REVIEWING    // 复核中
+  APPROVED     // 已通过
+  REJECTED     // 已驳回
+  ARCHIVED     // 已归档
+}
+
+enum TaskPriority {
+  LOW
+  MEDIUM
+  HIGH
+  URGENT
+}
+
+enum AuditType {
+  ROUTINE       // 例行审计
+  SPECIAL       // 专项审计
+  COMPLIANCE    // 合规审计
+  INVESTIGATION // 调查审计
+}
+
+model AuditTask {
+  id          String   @id @default(uuid())
+  taskNo      String   @unique
+  title       String
+  description String?
+  
+  auditType   AuditType
+  priority    TaskPriority @default(MEDIUM)
+  status      TaskStatus   @default(DRAFT)
+  
+  department  String?
+  auditPeriod String? // 审计期间 如"2024Q1"
+  
+  // 关联人
+  createdById String
+  createdBy   User     @relation("CreatedTasks", fields: [createdById], references: [id])
+  assignedToId String?
+  assignedTo   User?    @relation("AssignedTasks", fields: [assignedToId], references: [id])
+  businessOwnerId String?
+  businessOwner   User? @relation("BusinessOwnerTasks", fields: [businessOwnerId], references: [id])
+  
+  // 时间
+  dueDate     DateTime?
+  assignedAt  DateTime?
+  startedAt   DateTime?
+  submittedAt DateTime?
+  completedAt DateTime?
+  
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+  
+  // 关联
+  evidences       Evidence[]
+  reviews         ReviewRecord[]
+  checklistExecs  ChecklistExecution[]
+  samplingRecords SamplingRecord[]
+  operationLogs   OperationLog[]
+  notifications   Notification[]
+  issues          Issue[]
+  
+  // 问题复发追踪
+  relatedTaskIds String[] @default([])
+  
+  @@index([status])
+  @@index([priority])
+  @@index([assignedToId])
+  @@index([auditType])
+  @@index([createdAt])
+}
+
+// ============ 证据归档 ============
+
+enum EvidenceStatus {
+  DRAFT       // 草稿
+  SUBMITTED   // 已提交
+  REVIEWING   // 复核中
+  APPROVED    // 已通过
+  REJECTED    // 已驳回
+  NEED_SUPPLEMENT // 需补附件
+  ARCHIVED    // 已归档
+}
+
+enum EvidenceCategory {
+  DOCUMENT      // 文档
+  FINANCIAL     // 财务凭证
+  CONTRACT      // 合同
+  REPORT        // 报告
+  RECORD        // 系统记录
+  MEETING_MINUTE // 会议纪要
+  OTHER         // 其他
+}
+
+model Evidence {
+  id          String   @id @default(uuid())
+  evidenceNo  String   @unique
+  title       String
+  description String?
+  
+  category    EvidenceCategory
+  status      EvidenceStatus @default(DRAFT)
+  
+  // 所属任务
+  taskId      String
+  task        AuditTask @relation(fields: [taskId], references: [id])
+  
+  // 提交人
+  submittedById String?
+  submittedBy   User? @relation("SubmittedEvidences", fields: [submittedById], references: [id])
+  
+  // 关联单据
+  relatedDocumentNo String? // 单据编号
+  relatedDocumentType String? // 单据类型
+  relatedDocumentDate DateTime? // 单据日期
+  relatedDocumentAmount Decimal? @db.Decimal(18, 2) // 单据金额
+  
+  submittedAt DateTime?
+  archivedAt  DateTime?
+  
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+  
+  // 关联
+  attachments   Attachment[]
+  reviews       ReviewRecord[]
+  operationLogs OperationLog[]
+  samplingItems SamplingItem[]
+  relatedNotifications Notification[]
+  issues        Issue[]
+  checklistItemResults ChecklistItemResult[]
+  
+  // 补附件历史
+  supplementHistory EvidenceSupplement[]
+  
+  @@index([taskId])
+  @@index([status])
+  @@index([category])
+  @@index([relatedDocumentNo])
+  @@index([submittedAt])
+}
+
+model Attachment {
+  id          String   @id @default(uuid())
+  fileName    String
+  originalName String
+  filePath    String
+  fileSize    Int      // bytes
+  mimeType    String?
+  fileHash    String?  // MD5 for integrity
+  
+  evidenceId  String
+  evidence    Evidence @relation(fields: [evidenceId], references: [id])
+  
+  // 版本
+  version     Int      @default(1)
+  isSupplement Boolean @default(false)
+  
+  uploadedById String?
+  uploadedBy   User?   @relation("AttachmentUploader", fields: [uploadedById], references: [id])
+  
+  // 作为补充附件的反向关系
+  supplementId  String?
+  supplementFor EvidenceSupplement? @relation("SupplementAttachments", fields: [supplementId], references: [id])
+  
+  createdAt   DateTime @default(now())
+  
+  @@index([evidenceId])
+  @@index([fileHash])
+}
+
+model EvidenceSupplement {
+  id          String   @id @default(uuid())
+  evidenceId  String
+  evidence    Evidence @relation(fields: [evidenceId], references: [id])
+  
+  reason      String
+  requestedById String
+  requestedBy   User   @relation(fields: [requestedById], references: [id])
+  
+  requestedAt DateTime @default(now())
+  completedAt DateTime?
+  isCompleted Boolean  @default(false)
+  
+  supplementAttachments Attachment[] @relation("SupplementAttachments")
+  
+  @@index([evidenceId])
+  @@index([isCompleted])
+}
+
+// ============ 复核记录 ============
+
+enum ReviewResult {
+  APPROVED
+  REJECTED
+  NEED_REVISION
+}
+
+enum ReviewTargetType {
+  EVIDENCE
+  TASK
+  CHECKLIST
+  SAMPLING
+}
+
+model ReviewRecord {
+  id          String   @id @default(uuid())
+  
+  targetType  ReviewTargetType
+  targetId    String   // 可以是Evidence.id或AuditTask.id等
+  
+  // 关联
+  evidenceId  String?
+  evidence    Evidence? @relation(fields: [evidenceId], references: [id])
+  taskId      String?
+  task        AuditTask?  @relation(fields: [taskId], references: [id])
+  
+  // 复核人
+  reviewerId  String
+  reviewer    User     @relation("Reviewer", fields: [reviewerId], references: [id])
+  
+  result      ReviewResult
+  comment     String?
+  
+  reviewRound Int      @default(1)
+  
+  reviewedAt  DateTime @default(now())
+  createdAt   DateTime @default(now())
+  
+  // 追踪到原始记录（保留快照）
+  snapshot    Json?    // 当时的目标对象快照
+  
+  @@index([targetType, targetId])
+  @@index([reviewerId])
+  @@index([reviewedAt])
+  @@index([result])
+}
+
+// ============ 检查清单 ============
+
+model Checklist {
+  id          String   @id @default(uuid())
+  title       String
+  description String?
+  category    String?
+  version     String?
+  isActive    Boolean  @default(true)
+  
+  createdById String
+  createdBy   User     @relation(fields: [createdById], references: [id])
+  
+  items       ChecklistItem[]
+  
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+  
+  executions  ChecklistExecution[]
+}
+
+model ChecklistItem {
+  id          String   @id @default(uuid())
+  checklistId String
+  checklist   Checklist @relation(fields: [checklistId], references: [id], onDelete: Cascade)
+  
+  order       Int      @default(0)
+  content     String   // 检查项内容
+  requirement String?  // 检查要求
+  evidenceNeeded Boolean @default(false) // 是否需要证据
+  
+  // 检查项结果
+  itemResults ChecklistItemResult[]
+
+  createdAt   DateTime @default(now())
+  
+  @@index([checklistId])
+}
+
+model ChecklistExecution {
+  id          String   @id @default(uuid())
+  checklistId String
+  checklist   Checklist @relation(fields: [checklistId], references: [id])
+  
+  taskId      String
+  task        AuditTask @relation(fields: [taskId], references: [id])
+  
+  executedById String
+  executedBy   User   @relation("Executor", fields: [executedById], references: [id])
+  
+  startedAt   DateTime @default(now())
+  completedAt DateTime?
+  
+  results     ChecklistItemResult[]
+  
+  @@index([taskId])
+  @@index([executedById])
+}
+
+model ChecklistItemResult {
+  id            String   @id @default(uuid())
+  executionId   String
+  execution     ChecklistExecution @relation(fields: [executionId], references: [id], onDelete: Cascade)
+  itemId        String
+  item          ChecklistItem @relation(fields: [itemId], references: [id])
+  
+  isPass        Boolean?
+  remark        String?
+  evidenceId    String?
+  evidence      Evidence? @relation(fields: [evidenceId], references: [id])
+  
+  checkedById   String?
+  checkedBy     User? @relation(fields: [checkedById], references: [id])
+  checkedAt     DateTime?
+  
+  @@index([executionId])
+  @@index([itemId])
+}
+
+// ============ 抽样记录 ============
+
+enum SamplingMethod {
+  RANDOM        // 随机抽样
+  SYSTEMATIC    // 系统抽样
+  STRATIFIED    // 分层抽样
+  JUDGMENT      // 判断抽样
+  BLOCK         // 整群抽样
+}
+
+enum SamplingStatus {
+  DRAFT
+  IN_PROGRESS
+  COMPLETED
+  APPROVED
+  REJECTED
+}
+
+model SamplingRecord {
+  id          String   @id @default(uuid())
+  samplingNo  String   @unique
+  title       String
+  
+  taskId      String
+  task        AuditTask @relation(fields: [taskId], references: [id])
+  
+  method      SamplingMethod
+  population  Int      // 总体数量
+  sampleSize  Int      // 样本数量
+  confidenceLevel Decimal? @db.Decimal(5, 4) // 置信水平
+  
+  createdById String
+  createdBy   User     @relation("SamplingCreatedBy", fields: [createdById], references: [id])
+  approvedById String?
+  approvedBy   User? @relation("SamplingApprovedBy", fields: [approvedById], references: [id])
+  
+  status      SamplingStatus @default(DRAFT)
+  remark      String?
+  
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+  approvedAt  DateTime?
+  
+  samples     SamplingItem[]
+  
+  @@index([taskId])
+  @@index([status])
+}
+
+model SamplingItem {
+  id          String   @id @default(uuid())
+  samplingId  String
+  sampling    SamplingRecord @relation(fields: [samplingId], references: [id], onDelete: Cascade)
+  
+  itemNo      String   // 样本编号
+  documentNo  String?  // 关联单据号
+  description String?
+  amount      Decimal? @db.Decimal(18, 2)
+  
+  // 检查结果
+  isDefect    Boolean?
+  defectType  String?
+  defectLevel String?  // LOW/MEDIUM/HIGH/CRITICAL
+  remark      String?
+  
+  // 关联证据
+  evidenceId  String?
+  evidence    Evidence? @relation(fields: [evidenceId], references: [id])
+  
+  // 关联的问题
+  issues      Issue[]
+
+  createdAt   DateTime @default(now())
+  
+  @@index([samplingId])
+  @@index([isDefect])
+}
+
+// ============ 通报模板 ============
+
+model NotificationTemplate {
+  id          String   @id @default(uuid())
+  name        String
+  category    String   // 如："TASK_ASSIGN" "REVIEW_REMINDER" "SUPPLEMENT_REMINDER"
+  
+  subject     String
+  content     String   // 支持变量替换 {taskTitle} {userName}等
+  
+  variables   String[] @default([])
+  
+  isActive    Boolean  @default(true)
+  version     Int      @default(1)
+  
+  createdById String
+  createdBy   User     @relation(fields: [createdById], references: [id])
+  
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+  
+  @@index([category])
+  @@unique([category, version])
+}
+
+// ============ 通知消息 ============
+
+enum NotificationType {
+  TASK_ASSIGNED
+  TASK_DUE_REMINDER
+  EVIDENCE_REVIEW_NEEDED
+  EVIDENCE_REVIEWED
+  SUPPLEMENT_REQUESTED
+  SUPPLEMENT_COMPLETED
+  CHECKLIST_DUE
+  SYSTEM
+}
+
+model Notification {
+  id          String   @id @default(uuid())
+  
+  type        NotificationType
+  title       String
+  content     String?
+  
+  recipientId String
+  recipient   User     @relation(fields: [recipientId], references: [id])
+  
+  taskId      String?
+  task        AuditTask? @relation(fields: [taskId], references: [id])
+  evidenceId  String?
+  evidence    Evidence? @relation(fields: [evidenceId], references: [id])
+  
+  isRead      Boolean  @default(false)
+  readAt      DateTime?
+  
+  // 动作链接
+  actionType  String?
+  actionUrl   String?
+  
+  createdAt   DateTime @default(now())
+  
+  @@index([recipientId, isRead])
+  @@index([taskId])
+  @@index([createdAt])
+}
+
+// ============ 操作日志（痕迹追踪） ============
+
+enum OperationAction {
+  CREATE
+  UPDATE
+  DELETE
+  SUBMIT
+  REVIEW
+  APPROVE
+  REJECT
+  ASSIGN
+  UPLOAD
+  DOWNLOAD
+  EXPORT
+  BATCH_UPDATE
+  ARCHIVE
+  UNARCHIVE
+}
+
+model OperationLog {
+  id          String   @id @default(uuid())
+  
+  operatorId  String
+  operator    User     @relation(fields: [operatorId], references: [id])
+  operatorName String   // 冗余，便于快速查询
+  
+  targetType  String   // AuditTask / Evidence / Checklist等
+  targetId    String
+  
+  action      OperationAction
+  description String?
+  
+  // 变更详情
+  beforeData  Json?
+  afterData   Json?
+  
+  // IP与设备
+  ipAddress   String?
+  userAgent   String?
+  
+  createdAt   DateTime @default(now())
+  
+  // 反向关联
+  taskId      String?
+  task        AuditTask? @relation(fields: [taskId], references: [id])
+  evidenceId  String?
+  evidence    Evidence? @relation(fields: [evidenceId], references: [id])
+  
+  @@index([targetType, targetId])
+  @@index([operatorId])
+  @@index([action])
+  @@index([createdAt])
+  @@index([taskId])
+}
+
+// ============ 越权操作记录（独立处理） ============
+
+enum UnauthorizedSeverity {
+  LOW       // 低：未造成影响
+  MEDIUM    // 中：存在潜在风险
+  HIGH      // 高：存在严重风险
+  CRITICAL  // 严重：造成实际损失
+}
+
+enum UnauthorizedStatus {
+  PENDING    // 待处理
+  INVESTIGATING // 调查中
+  RESOLVED   // 已处理
+  DISMISSED  // 已驳回
+}
+
+model UnauthorizedAccess {
+  id          String   @id @default(uuid())
+  
+  // 谁越权
+  userId      String
+  user        User     @relation("UnauthorizedUser", fields: [userId], references: [id])
+  userName    String
+  userRole    UserRole
+  
+  // 越权详情
+  resourceType String  // 如 Evidence / AuditTask
+  resourceId   String
+  resourceTitle String?
+  
+  action      String   // VIEW / EDIT / DELETE / APPROVE等
+  attemptedPermission Permission?
+  
+  // 严重度
+  severity    UnauthorizedSeverity
+  status      UnauthorizedStatus @default(PENDING)
+  
+  // 处理
+  handledById String?
+  handledBy   User? @relation("UnauthorizedHandler", fields: [handledById], references: [id])
+  handlingNote String?
+  handledAt   DateTime?
+  
+  // 技术信息
+  ipAddress   String?
+  userAgent   String?
+  requestParams Json?
+  
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+  
+  @@index([userId])
+  @@index([resourceType, resourceId])
+  @@index([severity])
+  @@index([status])
+  @@index([createdAt])
+}
+
+// ============ 问题与缺陷追踪（用于复发统计） ============
+
+enum IssueSeverity {
+  MINOR
+  MODERATE
+  MAJOR
+  CRITICAL
+}
+
+enum IssueStatus {
+  IDENTIFIED
+  MITIGATING
+  RESOLVED
+  RECURRED  // 复发
+  CLOSED
+}
+
+model Issue {
+  id          String   @id @default(uuid())
+  issueNo     String   @unique
+  title       String
+  description String?
+  
+  severity    IssueSeverity
+  status      IssueStatus
+  isRecurred  Boolean  @default(false)
+  
+  // 关联
+  taskId      String?
+  task        AuditTask? @relation(fields: [taskId], references: [id])
+  evidenceId  String?
+  evidence    Evidence? @relation(fields: [evidenceId], references: [id])
+  samplingItemId String?
+  samplingItem SamplingItem? @relation(fields: [samplingItemId], references: [id])
+  
+  // 复发链
+  parentIssueId String?
+  parentIssue   Issue? @relation("IssueLinks", fields: [parentIssueId], references: [id])
+  childIssues   Issue[]  @relation("IssueLinks")
+  recurrenceCount Int  @default(0)
+  
+  // 分类（用于统计维度）
+  category    String?
+  subCategory String?
+  department  String?
+  
+  // 时间
+  identifiedAt DateTime @default(now())
+  resolvedAt   DateTime?
+  dueDate      DateTime?
+  
+  createdById  String
+  createdBy    User     @relation("IssueCreatedBy", fields: [createdById], references: [id])
+  ownerId      String?
+  owner        User?    @relation("IssueOwner", fields: [ownerId], references: [id])
+  
+  createdAt    DateTime @default(now())
+  updatedAt    DateTime @updatedAt
+  
+  @@index([status])
+  @@index([severity])
+  @@index([category, subCategory])
+  @@index([department])
+  @@index([identifiedAt])
+}

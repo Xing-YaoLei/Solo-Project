@@ -1,0 +1,20 @@
+{
+  "name": "audit-evidence-platform",
+  "version": "1.0.0",
+  "private": true,
+  "packageManager": "pnpm@9.0.0",
+  "scripts": {
+    "dev": "pnpm -r --parallel dev",
+    "dev:web": "pnpm --filter @audit/web dev",
+    "dev:api": "pnpm --filter @audit/api start:dev",
+    "build": "pnpm -r build",
+    "build:api": "pnpm --filter @audit/api build",
+    "build:web": "pnpm --filter @audit/web build",
+    "prisma:generate": "pnpm --filter @audit/api prisma generate",
+    "prisma:migrate": "pnpm --filter @audit/api prisma migrate dev",
+    "prisma:studio": "pnpm --filter @audit/api prisma studio"
+  },
+  "engines": {
+    "node": ">=18.17.0"
+  }
+}
