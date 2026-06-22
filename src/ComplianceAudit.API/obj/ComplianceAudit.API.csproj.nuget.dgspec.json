@@ -1,0 +1,282 @@
+{
+  "format": 1,
+  "restore": {
+    "/Users/yaoleyxing/Developer/solo-mange-pro/MP0467/src/ComplianceAudit.API/ComplianceAudit.API.csproj": {}
+  },
+  "projects": {
+    "/Users/yaoleyxing/Developer/solo-mange-pro/MP0467/src/ComplianceAudit.API/ComplianceAudit.API.csproj": {
+      "version": "1.0.0",
+      "restore": {
+        "projectUniqueName": "/Users/yaoleyxing/Developer/solo-mange-pro/MP0467/src/ComplianceAudit.API/ComplianceAudit.API.csproj",
+        "projectName": "ComplianceAudit.API",
+        "projectPath": "/Users/yaoleyxing/Developer/solo-mange-pro/MP0467/src/ComplianceAudit.API/ComplianceAudit.API.csproj",
+        "packagesPath": "/Users/yaoleyxing/.nuget/packages/",
+        "outputPath": "/Users/yaoleyxing/Developer/solo-mange-pro/MP0467/src/ComplianceAudit.API/obj/",
+        "projectStyle": "PackageReference",
+        "configFilePaths": [
+          "/Users/yaoleyxing/.nuget/NuGet/NuGet.Config"
+        ],
+        "originalTargetFrameworks": [
+          "net9.0"
+        ],
+        "sources": {
+          "/opt/homebrew/Cellar/dotnet@9/9.0.117/libexec/library-packs": {},
+          "https://api.nuget.org/v3/index.json": {}
+        },
+        "frameworks": {
+          "net9.0": {
+            "targetAlias": "net9.0",
+            "projectReferences": {
+              "/Users/yaoleyxing/Developer/solo-mange-pro/MP0467/src/ComplianceAudit.Core/ComplianceAudit.Core/ComplianceAudit.Core.csproj": {
+                "projectPath": "/Users/yaoleyxing/Developer/solo-mange-pro/MP0467/src/ComplianceAudit.Core/ComplianceAudit.Core/ComplianceAudit.Core.csproj"
+              },
+              "/Users/yaoleyxing/Developer/solo-mange-pro/MP0467/src/ComplianceAudit.Infrastructure/ComplianceAudit.Infrastructure/ComplianceAudit.Infrastructure.csproj": {
+                "projectPath": "/Users/yaoleyxing/Developer/solo-mange-pro/MP0467/src/ComplianceAudit.Infrastructure/ComplianceAudit.Infrastructure/ComplianceAudit.Infrastructure.csproj"
+              }
+            }
+          }
+        },
+        "warningProperties": {
+          "warnAsError": [
+            "NU1605"
+          ]
+        },
+        "restoreAuditProperties": {
+          "enableAudit": "true",
+          "auditLevel": "low",
+          "auditMode": "direct"
+        },
+        "SdkAnalysisLevel": "9.0.100"
+      },
+      "frameworks": {
+        "net9.0": {
+          "targetAlias": "net9.0",
+          "dependencies": {
+            "Hangfire": {
+              "target": "Package",
+              "version": "[1.8.14, )"
+            },
+            "Hangfire.AspNetCore": {
+              "target": "Package",
+              "version": "[1.8.14, )"
+            },
+            "Hangfire.Dashboard.Basic.Authentication": {
+              "target": "Package",
+              "version": "[7.0.1, )"
+            },
+            "Hangfire.SqlServer": {
+              "target": "Package",
+              "version": "[1.8.14, )"
+            },
+            "Microsoft.AspNetCore.Authentication.JwtBearer": {
+              "target": "Package",
+              "version": "[9.0.0, )"
+            },
+            "Microsoft.AspNetCore.OpenApi": {
+              "target": "Package",
+              "version": "[9.0.0, )"
+            },
+            "Swashbuckle.AspNetCore": {
+              "target": "Package",
+              "version": "[6.9.0, )"
+            }
+          },
+          "imports": [
+            "net461",
+            "net462",
+            "net47",
+            "net471",
+            "net472",
+            "net48",
+            "net481"
+          ],
+          "assetTargetFallback": true,
+          "warn": true,
+          "frameworkReferences": {
+            "Microsoft.AspNetCore.App": {
+              "privateAssets": "none"
+            },
+            "Microsoft.NETCore.App": {
+              "privateAssets": "all"
+            }
+          },
+          "runtimeIdentifierGraphPath": "/opt/homebrew/Cellar/dotnet@9/9.0.117/libexec/sdk/9.0.117/PortableRuntimeIdentifierGraph.json"
+        }
+      }
+    },
+    "/Users/yaoleyxing/Developer/solo-mange-pro/MP0467/src/ComplianceAudit.Core/ComplianceAudit.Core/ComplianceAudit.Core.csproj": {
+      "version": "1.0.0",
+      "restore": {
+        "projectUniqueName": "/Users/yaoleyxing/Developer/solo-mange-pro/MP0467/src/ComplianceAudit.Core/ComplianceAudit.Core/ComplianceAudit.Core.csproj",
+        "projectName": "ComplianceAudit.Core",
+        "projectPath": "/Users/yaoleyxing/Developer/solo-mange-pro/MP0467/src/ComplianceAudit.Core/ComplianceAudit.Core/ComplianceAudit.Core.csproj",
+        "packagesPath": "/Users/yaoleyxing/.nuget/packages/",
+        "outputPath": "/Users/yaoleyxing/Developer/solo-mange-pro/MP0467/src/ComplianceAudit.Core/ComplianceAudit.Core/obj/",
+        "projectStyle": "PackageReference",
+        "configFilePaths": [
+          "/Users/yaoleyxing/.nuget/NuGet/NuGet.Config"
+        ],
+        "originalTargetFrameworks": [
+          "net9.0"
+        ],
+        "sources": {
+          "/opt/homebrew/Cellar/dotnet@9/9.0.117/libexec/library-packs": {},
+          "https://api.nuget.org/v3/index.json": {}
+        },
+        "frameworks": {
+          "net9.0": {
+            "targetAlias": "net9.0",
+            "projectReferences": {}
+          }
+        },
+        "warningProperties": {
+          "warnAsError": [
+            "NU1605"
+          ]
+        },
+        "restoreAuditProperties": {
+          "enableAudit": "true",
+          "auditLevel": "low",
+          "auditMode": "direct"
+        },
+        "SdkAnalysisLevel": "9.0.100"
+      },
+      "frameworks": {
+        "net9.0": {
+          "targetAlias": "net9.0",
+          "dependencies": {
+            "Microsoft.Extensions.Identity.Stores": {
+              "target": "Package",
+              "version": "[9.0.0, )"
+            },
+            "System.ComponentModel.Annotations": {
+              "target": "Package",
+              "version": "[5.0.0, )"
+            }
+          },
+          "imports": [
+            "net461",
+            "net462",
+            "net47",
+            "net471",
+            "net472",
+            "net48",
+            "net481"
+          ],
+          "assetTargetFallback": true,
+          "warn": true,
+          "frameworkReferences": {
+            "Microsoft.NETCore.App": {
+              "privateAssets": "all"
+            }
+          },
+          "runtimeIdentifierGraphPath": "/opt/homebrew/Cellar/dotnet@9/9.0.117/libexec/sdk/9.0.117/PortableRuntimeIdentifierGraph.json"
+        }
+      }
+    },
+    "/Users/yaoleyxing/Developer/solo-mange-pro/MP0467/src/ComplianceAudit.Infrastructure/ComplianceAudit.Infrastructure/ComplianceAudit.Infrastructure.csproj": {
+      "version": "1.0.0",
+      "restore": {
+        "projectUniqueName": "/Users/yaoleyxing/Developer/solo-mange-pro/MP0467/src/ComplianceAudit.Infrastructure/ComplianceAudit.Infrastructure/ComplianceAudit.Infrastructure.csproj",
+        "projectName": "ComplianceAudit.Infrastructure",
+        "projectPath": "/Users/yaoleyxing/Developer/solo-mange-pro/MP0467/src/ComplianceAudit.Infrastructure/ComplianceAudit.Infrastructure/ComplianceAudit.Infrastructure.csproj",
+        "packagesPath": "/Users/yaoleyxing/.nuget/packages/",
+        "outputPath": "/Users/yaoleyxing/Developer/solo-mange-pro/MP0467/src/ComplianceAudit.Infrastructure/ComplianceAudit.Infrastructure/obj/",
+        "projectStyle": "PackageReference",
+        "configFilePaths": [
+          "/Users/yaoleyxing/.nuget/NuGet/NuGet.Config"
+        ],
+        "originalTargetFrameworks": [
+          "net9.0"
+        ],
+        "sources": {
+          "/opt/homebrew/Cellar/dotnet@9/9.0.117/libexec/library-packs": {},
+          "https://api.nuget.org/v3/index.json": {}
+        },
+        "frameworks": {
+          "net9.0": {
+            "targetAlias": "net9.0",
+            "projectReferences": {
+              "/Users/yaoleyxing/Developer/solo-mange-pro/MP0467/src/ComplianceAudit.Core/ComplianceAudit.Core/ComplianceAudit.Core.csproj": {
+                "projectPath": "/Users/yaoleyxing/Developer/solo-mange-pro/MP0467/src/ComplianceAudit.Core/ComplianceAudit.Core/ComplianceAudit.Core.csproj"
+              }
+            }
+          }
+        },
+        "warningProperties": {
+          "warnAsError": [
+            "NU1605"
+          ]
+        },
+        "restoreAuditProperties": {
+          "enableAudit": "true",
+          "auditLevel": "low",
+          "auditMode": "direct"
+        },
+        "SdkAnalysisLevel": "9.0.100"
+      },
+      "frameworks": {
+        "net9.0": {
+          "targetAlias": "net9.0",
+          "dependencies": {
+            "Hangfire": {
+              "target": "Package",
+              "version": "[1.8.14, )"
+            },
+            "Hangfire.AspNetCore": {
+              "target": "Package",
+              "version": "[1.8.14, )"
+            },
+            "Hangfire.SqlServer": {
+              "target": "Package",
+              "version": "[1.8.14, )"
+            },
+            "Microsoft.AspNetCore.Identity.EntityFrameworkCore": {
+              "target": "Package",
+              "version": "[9.0.0, )"
+            },
+            "Microsoft.EntityFrameworkCore": {
+              "target": "Package",
+              "version": "[9.0.0, )"
+            },
+            "Microsoft.EntityFrameworkCore.SqlServer": {
+              "target": "Package",
+              "version": "[9.0.0, )"
+            },
+            "Microsoft.EntityFrameworkCore.Tools": {
+              "include": "Runtime, Build, Native, ContentFiles, Analyzers, BuildTransitive",
+              "suppressParent": "All",
+              "target": "Package",
+              "version": "[9.0.0, )"
+            },
+            "Microsoft.Extensions.Configuration": {
+              "target": "Package",
+              "version": "[9.0.0, )"
+            },
+            "Microsoft.Extensions.DependencyInjection": {
+              "target": "Package",
+              "version": "[9.0.0, )"
+            }
+          },
+          "imports": [
+            "net461",
+            "net462",
+            "net47",
+            "net471",
+            "net472",
+            "net48",
+            "net481"
+          ],
+          "assetTargetFallback": true,
+          "warn": true,
+          "frameworkReferences": {
+            "Microsoft.NETCore.App": {
+              "privateAssets": "all"
+            }
+          },
+          "runtimeIdentifierGraphPath": "/opt/homebrew/Cellar/dotnet@9/9.0.117/libexec/sdk/9.0.117/PortableRuntimeIdentifierGraph.json"
+        }
+      }
+    }
+  }
+}
