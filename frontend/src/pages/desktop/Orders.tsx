@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import {
   Table,
   Button,
@@ -14,12 +14,28 @@ import {
   Row,
   Col,
   Statistic,
+  Drawer,
+  List,
+  Badge,
+  Progress,
+  Upload,
 } from 'antd';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { useNavigate } from '@tanstack/react-router';
-import { PlusOutlined, ExportOutlined, SearchOutlined, EyeOutlined } from '@ant-design/icons';
+import {
+  PlusOutlined,
+  ExportOutlined,
+  SearchOutlined,
+  EyeOutlined,
+  DownloadOutlined,
+  InboxOutlined,
+  CheckCircleOutlined,
+  ClockCircleOutlined,
+  CloseCircleOutlined,
+} from '@ant-design/icons';
 import { orderAPI, dispatchRuleAPI, userAPI, analyticsAPI } from '@/services/api';
 import { OrderStatus, OrderStatusText, OrderStatusColor, type Order } from '@/types';
+import { useAuthStore } from '@/hooks/useStore';
 import dayjs from 'dayjs';
 import type { Dayjs } from 'dayjs';
 
@@ -69,12 +85,103 @@ export default function DesktopOrders() {
     onError: () => message.error('创建失败'),
   });
 
+  const [exportDrawerOpen, setExportDrawerOpen] = useState(false);
+  const [exportTasks, setExportTasks] = useState<
+    Array<{
+      task_id: string;
+      status: 'pending' | 'processing' | 'completed' | 'failed';
+      filename?: string;
+      url?: string;
+      count?: number;
+      created_at: number;
+    }>
+  >([]);
+  const pollingRef = useRef<number | null>(null);
+
   const exportMutation = useMutation({
     mutationFn: (filters: any) => analyticsAPI.exportOrders(filters),
     onSuccess: (response) => {
-      message.info(`导出任务已提交，任务ID: ${response.data.task_id}`);
+      const taskId = response.data.task_id;
+      const newTask = {
+        task_id: taskId,
+        status: 'pending' as const,
+        created_at: Date.now(),
+      };
+      setExportTasks((prev) => [newTask, ...prev]);
+      message.success('导出任务已提交，可在导出任务中查看进度');
+      setExportDrawerOpen(true);
+      startPolling();
     },
   });
+
+  const startPolling = () => {
+    if (pollingRef.current) return;
+    pollingRef.current = setInterval(() => {
+      setExportTasks((prev) => {
+        const pendingTasks = prev.filter((t) => t.status === 'pending' || t.status === 'processing');
+        if (pendingTasks.length === 0) {
+          if (pollingRef.current) {
+            clearInterval(pollingRef.current);
+            pollingRef.current = null;
+          }
+          return prev;
+        }
+        return prev;
+      });
+    }, 3000);
+  };
+
+  useEffect(() => {
+    const checkTasks = async () => {
+      const pendingTasks = exportTasks.filter((t) => t.status === 'pending' || t.status === 'processing');
+      for (const task of pendingTasks) {
+        try {
+          const response = await analyticsAPI.getExportStatus(task.task_id);
+          const data = response.data;
+          if (data.state === 'SUCCESS') {
+            setExportTasks((prev) =>
+              prev.map((t) =>
+                t.task_id === task.task_id
+                  ? {
+                      ...t,
+                      status: 'completed',
+                      filename: data.result.filename,
+                      url: data.result.url,
+                      count: data.result.count,
+                    }
+                  : t
+              )
+            );
+          } else if (data.state === 'FAILURE') {
+            setExportTasks((prev) =>
+              prev.map((t) =>
+                t.task_id === task.task_id
+                  ? { ...t, status: 'failed' }
+                  : t
+              )
+            );
+          }
+        } catch (e) {
+          console.error('检查导出任务状态失败', e);
+        }
+      }
+    };
+
+    const hasPending = exportTasks.some((t) => t.status === 'pending' || t.status === 'processing');
+    if (hasPending) {
+      checkTasks();
+      const timer = setInterval(checkTasks, 3000);
+      return () => clearInterval(timer);
+    }
+  }, [exportTasks]);
+
+  useEffect(() => {
+    return () => {
+      if (pollingRef.current) {
+        clearInterval(pollingRef.current);
+      }
+    };
+  }, []);
 
   const handleSearch = (values: any) => {
     setFilters((prev) => ({
@@ -94,9 +201,11 @@ export default function DesktopOrders() {
   };
 
   const handleCreate = (values: any) => {
+    const sitePhotoUrl = values.site_photo?.fileList?.[0]?.response?.url || undefined;
     const data = {
       ...values,
       deadline: values.deadline?.toISOString(),
+      site_photo_url: sitePhotoUrl,
     };
     createMutation.mutate(data);
   };
@@ -212,8 +321,25 @@ export default function DesktopOrders() {
           <Button type="primary" icon={<PlusOutlined />} onClick={() => setIsModalOpen(true)}>
             新建工单
           </Button>
-          <Button icon={<ExportOutlined />} onClick={handleExport} loading={exportMutation.isPending}>
-            导出Excel
+          <Badge count={exportTasks.filter((t) => t.status === 'pending' || t.status === 'processing').length}>
+            <Button
+              icon={<ExportOutlined />}
+              onClick={handleExport}
+              loading={exportMutation.isPending}
+            >
+              导出Excel
+            </Button>
+          </Badge>
+          <Button
+            icon={<DownloadOutlined />}
+            onClick={() => setExportDrawerOpen(true)}
+          >
+            导出任务
+            {exportTasks.filter((t) => t.status === 'completed').length > 0 && (
+              <span className="ml-1 text-green-500">
+                ({exportTasks.filter((t) => t.status === 'completed').length})
+              </span>
+            )}
           </Button>
         </Space>
       </div>
@@ -366,6 +492,33 @@ export default function DesktopOrders() {
                 <Input.TextArea rows={4} placeholder="请详细描述问题" />
               </Form.Item>
             </Col>
+            <Col span={24}>
+              <Form.Item name="site_photo" label="现场照片">
+                <Upload.Dragger
+                  name="file"
+                  action="/api/upload"
+                  listType="picture-card"
+                  maxCount={1}
+                  accept="image/*"
+                  beforeUpload={(file) => {
+                    const isImage = file.type.startsWith('image/');
+                    if (!isImage) {
+                      message.error('只能上传图片文件!');
+                    }
+                    return isImage;
+                  }}
+                  headers={{
+                    Authorization: `Bearer ${useAuthStore.getState().token}`,
+                  }}
+                >
+                  <div>
+                    <PlusOutlined />
+                    <div className="mt-2">上传现场照片</div>
+                    <div className="text-xs text-gray-400">支持 jpg、png 格式</div>
+                  </div>
+                </Upload.Dragger>
+              </Form.Item>
+            </Col>
             <Col span={24} className="text-right">
               <Space>
                 <Button onClick={() => setIsModalOpen(false)}>取消</Button>
@@ -377,6 +530,97 @@ export default function DesktopOrders() {
           </Row>
         </Form>
       </Modal>
+
+      <Drawer
+        title="导出任务"
+        placement="right"
+        width={420}
+        onClose={() => setExportDrawerOpen(false)}
+        open={exportDrawerOpen}
+      >
+        {exportTasks.length === 0 ? (
+          <div className="text-center py-16 text-gray-400">
+            <InboxOutlined style={{ fontSize: 48, marginBottom: 16 }} />
+            <div>暂无导出任务</div>
+            <div className="text-xs mt-2">点击"导出Excel"按钮开始导出</div>
+          </div>
+        ) : (
+          <List
+            itemLayout="horizontal"
+            dataSource={exportTasks}
+            renderItem={(item) => (
+              <List.Item key={item.task_id}>
+                <List.Item.Meta
+                  avatar={
+                    <div className="flex items-center justify-center w-10 h-10 rounded-full bg-gray-100">
+                      {item.status === 'completed' ? (
+                        <CheckCircleOutlined className="text-green-500 text-xl" />
+                      ) : item.status === 'failed' ? (
+                        <CloseCircleOutlined className="text-red-500 text-xl" />
+                      ) : (
+                        <ClockCircleOutlined className="text-blue-500 text-xl" />
+                      )}
+                    </div>
+                  }
+                  title={
+                    <div className="flex items-center justify-between">
+                      <span className="font-medium">
+                        {item.filename || '工单数据导出'}
+                      </span>
+                      <Tag
+                        color={
+                          item.status === 'completed'
+                            ? 'success'
+                            : item.status === 'failed'
+                            ? 'error'
+                            : 'processing'
+                        }
+                      >
+                        {item.status === 'completed'
+                          ? '已完成'
+                          : item.status === 'failed'
+                          ? '失败'
+                          : '处理中'}
+                      </Tag>
+                    </div>
+                  }
+                  description={
+                    <div>
+                      <div className="text-xs text-gray-500 mb-2">
+                        创建时间: {dayjs(item.created_at).format('YYYY-MM-DD HH:mm:ss')}
+                      </div>
+                      {item.status === 'pending' && (
+                        <Progress percent={20} status="active" size="small" />
+                      )}
+                      {item.status === 'processing' && (
+                        <Progress percent={60} status="active" size="small" />
+                      )}
+                      {item.status === 'completed' && (
+                        <div className="flex items-center gap-2 mt-2">
+                          <span className="text-xs text-gray-500">
+                            共 {item.count} 条数据
+                          </span>
+                          <Button
+                            type="link"
+                            size="small"
+                            icon={<DownloadOutlined />}
+                            onClick={() => window.open(item.url, '_blank')}
+                          >
+                            下载
+                          </Button>
+                        </div>
+                      )}
+                      {item.status === 'failed' && (
+                        <div className="text-xs text-red-500">导出失败，请重试</div>
+                      )}
+                    </div>
+                  }
+                />
+              </List.Item>
+            )}
+          />
+        )}
+      </Drawer>
     </div>
   );
 }

@@ -59,6 +59,8 @@ def export_orders_to_excel(filters: dict, user_id: int):
 
         print(f"[导出] 用户 {user_id} 导出工单数据，文件: {filepath}")
 
-        return {"status": "completed", "filepath": filepath, "filename": filename, "count": len(orders)}
+        download_url = f"/uploads/{filename}"
+
+        return {"status": "completed", "filepath": filepath, "filename": filename, "url": download_url, "count": len(orders)}
     finally:
         db.close()
