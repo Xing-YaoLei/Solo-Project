@@ -72,8 +72,8 @@ st.markdown("""
 """, unsafe_allow_html=True)
 
 
-@st.cache_data(ttl=3600)
-def load_data():
+@st.cache_data(ttl=3600, show_spinner="正在加载数据...")
+def load_data(version: int = 2026062203):
     data = generate_all_data()
     for name, df in data.items():
         dw.register_polars(name, df)
@@ -755,57 +755,80 @@ elif page == "🔄 版本-转化复盘":
 
     st.success(
         "📊 将案件系统的版本迭代、审核质量与内容发布转化率打通联动，"
-        "直接呈现「版本优化 -> 转化改善」的业务链路，减少运营手算。"
+        "直接呈现「版本优化 → 转化改善」的业务链路，各分组独立计算转化率、目标差距与改善幅度。"
     )
 
-    col1, col2, col3, col4, col5 = st.columns(5)
-
     overview = retro["overview"]
+    col1, col2, col3, col4, col5, col6 = st.columns(6)
+
     with col1:
         st.metric("总案件数", overview["total_cases"])
     with col2:
         st.metric(
             "一次通过率",
             f"{overview['one_pass_rate']}%",
-            delta=f"{overview['one_pass_rate']}%"
         )
     with col3:
         st.metric(
             "迭代案件占比",
             f"{overview['iteration_ratio']}%",
-            delta=f"{overview['iteration_ratio']}%"
         )
     with col4:
         st.metric("平均版本数", overview["avg_versions"])
     with col5:
         st.metric("平均退回次数", overview["avg_reject_times"])
+    with col6:
+        st.metric(
+            "内容关联率",
+            f"{overview['content_link_ratio']}%",
+            help="发布内容中关联到具体案件的比例",
+        )
 
     best_vg = retro["best_version_group"]
     best_q = retro["best_quality"]
 
     col1, col2 = st.columns(2)
     with col1:
-        st.info(f"🏆 最佳版本分组：**{best_vg['group']}**，转化提升 **{best_vg['improvement_pct']}%**")
+        st.info(
+            f"🏆 最佳版本分组：**{best_vg['group']}**，转化提升 **{best_vg['improvement_pct']}%**，"
+            f"目标差距 **{best_vg['target_gap']}%**"
+        )
     with col2:
-        st.info(f"✅ 最佳审核质量：**{best_q['quality']}**，对应平均转化率 **{best_q['avg_conversion_rate']}%**")
+        st.info(
+            f"✅ 最佳审核质量：**{best_q['quality']}**，对应平均转化率 **{best_q['avg_conversion_rate']}%**，"
+            f"目标差距 **{best_q['target_gap']}%**"
+        )
 
-    st.markdown('<div class="section-header">版本分组转化改善对比</div>', unsafe_allow_html=True)
+    st.markdown('<div class="section-header">版本分组转化改善对比（各分组独立计算）</div>', unsafe_allow_html=True)
 
     vg_detail = retro["version_group_detail"]
 
-    col1, col2 = st.columns(2)
+    col1, col2, col3 = st.columns(3)
 
     with col1:
-        fig = px.bar(
-            vg_detail.to_pandas(),
-            x="version_group",
-            y="avg_conversion_rate",
-            color="conversion_improvement_pct",
-            color_continuous_scale="RdYlGn",
-            text="avg_conversion_rate",
-            title="各版本分组平均转化率 (基准=V1 一次成型)",
+        fig = go.Figure()
+        fig.add_trace(go.Bar(
+            x=vg_detail["version_group"].to_list(),
+            y=vg_detail["avg_conversion_rate"].to_list(),
+            name="实际转化率",
+            marker_color="#2e75b6",
+            text=vg_detail["avg_conversion_rate"].to_list(),
+            textposition="inside",
+        ))
+        fig.add_trace(go.Scatter(
+            x=vg_detail["version_group"].to_list(),
+            y=vg_detail["avg_target_rate"].to_list(),
+            name="目标转化率",
+            mode="markers",
+            marker=dict(color="#c53030", size=10, symbol="line-ns-open"),
+        ))
+        fig.update_layout(
+            height=380,
+            title="各版本分组：实际转化率 vs 目标转化率",
+            xaxis_title="版本分组",
+            yaxis_title="转化率 (%)",
+            legend=dict(orientation="h", y=1.1),
         )
-        fig.update_layout(height=400, xaxis_title="版本分组", yaxis_title="平均转化率 (%)")
         st.plotly_chart(fig, use_container_width=True)
 
     with col2:
@@ -821,46 +844,107 @@ elif page == "🔄 版本-转化复盘":
         ))
         fig.add_hline(y=0, line_dash="dash", line_color="#666")
         fig.update_layout(
-            height=400,
+            height=380,
             title="相比 V1 一次成型的转化率提升 (%)",
             xaxis_title="版本分组",
             yaxis_title="转化改善 (%)",
         )
         st.plotly_chart(fig, use_container_width=True)
 
-    st.markdown('<div class="section-header">审核质量-转化率矩阵</div>', unsafe_allow_html=True)
+    with col3:
+        fig = go.Figure()
+        gap_colors = ["#38a169" if v <= 0 else "#c53030" for v in vg_detail["avg_target_gap"].to_list()]
+        fig.add_trace(go.Bar(
+            x=vg_detail["version_group"].to_list(),
+            y=vg_detail["avg_target_gap"].to_list(),
+            name="目标差距",
+            marker_color=gap_colors,
+            text=vg_detail["avg_target_gap"].to_list(),
+            textposition="outside",
+        ))
+        fig.add_hline(y=0, line_dash="dash", line_color="#666")
+        fig.update_layout(
+            height=380,
+            title="各版本分组目标差距 (负数=超额完成)",
+            xaxis_title="版本分组",
+            yaxis_title="目标差距 (%)",
+        )
+        st.plotly_chart(fig, use_container_width=True)
+
+    st.markdown('<div class="section-header">审核质量矩阵（各分组独立计算）</div>', unsafe_allow_html=True)
 
     q_matrix = retro["quality_matrix"]
 
-    col1, col2 = st.columns(2)
+    col1, col2, col3 = st.columns(3)
+
     with col1:
-        fig = px.bar(
-            q_matrix.to_pandas(),
-            x="review_quality",
-            y="avg_conversion_rate",
-            color="avg_conversion_rate",
-            color_continuous_scale="Viridis",
-            text="avg_conversion_rate",
-            title="不同审核质量对应的平均转化率",
+        fig = go.Figure()
+        fig.add_trace(go.Bar(
+            x=q_matrix["review_quality"].to_list(),
+            y=q_matrix["avg_conversion_rate"].to_list(),
+            name="实际转化率",
+            marker_color="#2e75b6",
+            text=q_matrix["avg_conversion_rate"].to_list(),
+            textposition="inside",
+        ))
+        fig.add_trace(go.Scatter(
+            x=q_matrix["review_quality"].to_list(),
+            y=q_matrix["avg_target_rate"].to_list(),
+            name="目标转化率",
+            mode="markers",
+            marker=dict(color="#c53030", size=10, symbol="line-ns-open"),
+        ))
+        fig.update_layout(
+            height=380,
+            title="各审核质量：实际转化率 vs 目标转化率",
+            xaxis_title="审核质量",
+            yaxis_title="转化率 (%)",
+            legend=dict(orientation="h", y=1.1),
         )
-        fig.update_layout(height=350, xaxis_title="审核质量", yaxis_title="平均转化率 (%)")
         st.plotly_chart(fig, use_container_width=True)
 
     with col2:
-        st.dataframe(
-            q_matrix.to_pandas(),
-            use_container_width=True,
-            hide_index=True,
-            column_config={
-                "review_quality": st.column_config.Column("审核质量", width="medium"),
-                "total_cases": st.column_config.Column("案件数", width="small"),
-                "avg_conversion_rate": st.column_config.NumberColumn("平均转化率(%)", format="%.2f"),
-                "avg_period_conversions": st.column_config.Column("周期均转化数", width="small"),
-                "vs_baseline_diff": st.column_config.NumberColumn("相对差值(%)", format="%.2f"),
-            },
+        fig = go.Figure()
+        gap_colors = ["#38a169" if v <= 0 else "#c53030" for v in q_matrix["avg_target_gap"].to_list()]
+        fig.add_trace(go.Bar(
+            x=q_matrix["review_quality"].to_list(),
+            y=q_matrix["avg_target_gap"].to_list(),
+            name="目标差距",
+            marker_color=gap_colors,
+            text=q_matrix["avg_target_gap"].to_list(),
+            textposition="outside",
+        ))
+        fig.add_hline(y=0, line_dash="dash", line_color="#666")
+        fig.update_layout(
+            height=380,
+            title="各审核质量目标差距 (负数=超额完成)",
+            xaxis_title="审核质量",
+            yaxis_title="目标差距 (%)",
         )
+        st.plotly_chart(fig, use_container_width=True)
 
-    st.markdown('<div class="section-header">版本迭代与转化趋势联动</div>', unsafe_allow_html=True)
+    with col3:
+        fig = go.Figure()
+        colors = ["#38a169" if v > 80 else "#c53030" for v in q_matrix["achievement_ratio_pct"].to_list()]
+        fig.add_trace(go.Bar(
+            x=q_matrix["review_quality"].to_list(),
+            y=q_matrix["achievement_ratio_pct"].to_list(),
+            name="目标达成率",
+            marker_color=colors,
+            text=q_matrix["achievement_ratio_pct"].to_list(),
+            textposition="outside",
+        ))
+        fig.add_hline(y=80, line_dash="dash", line_color="#666", annotation_text="达标线 80%")
+        fig.update_layout(
+            height=380,
+            title="各审核质量目标达成率 (%)",
+            xaxis_title="审核质量",
+            yaxis_title="目标达成率 (%)",
+            yaxis=dict(range=[0, 100]),
+        )
+        st.plotly_chart(fig, use_container_width=True)
+
+    st.markdown('<div class="section-header">版本分组分周期趋势</div>', unsafe_allow_html=True)
 
     period_choice = st.selectbox(
         "统计周期",
@@ -869,6 +953,36 @@ elif page == "🔄 版本-转化复盘":
         format_func=lambda x: {"week": "按周", "month": "按月"}[x],
         key="retro_period",
     )
+
+    vg_trend = version_conversion.version_group_period_trend(period_choice)
+
+    fig = px.line(
+        vg_trend.to_pandas(),
+        x="period",
+        y="avg_conversion_rate",
+        color="version_group",
+        title="各版本分组转化率趋势",
+        markers=True,
+    )
+    fig.update_layout(height=400, xaxis_title="周期", yaxis_title="平均转化率 (%)")
+    st.plotly_chart(fig, use_container_width=True)
+
+    st.markdown('<div class="section-header">审核质量分周期趋势</div>', unsafe_allow_html=True)
+
+    q_trend = version_conversion.quality_period_trend(period_choice)
+
+    fig = px.line(
+        q_trend.to_pandas(),
+        x="period",
+        y="avg_conversion_rate",
+        color="review_quality",
+        title="各审核质量转化率趋势",
+        markers=True,
+    )
+    fig.update_layout(height=400, xaxis_title="周期", yaxis_title="平均转化率 (%)")
+    st.plotly_chart(fig, use_container_width=True)
+
+    st.markdown('<div class="section-header">版本迭代与转化趋势联动</div>', unsafe_allow_html=True)
 
     v_vs_c = version_conversion.version_iteration_vs_conversion(period_choice)
 
@@ -882,8 +996,8 @@ elif page == "🔄 版本-转化复盘":
     ))
     fig.add_trace(go.Scatter(
         x=v_vs_c["period"].to_list(),
-        y=v_vs_c["period_avg_conversion_rate"].to_list(),
-        name="平均转化率",
+        y=v_vs_c["avg_conversion_rate"].to_list(),
+        name="实际转化率",
         mode="lines+markers",
         marker_color="#c53030",
         line=dict(width=3),
@@ -891,7 +1005,7 @@ elif page == "🔄 版本-转化复盘":
     ))
     fig.add_trace(go.Scatter(
         x=v_vs_c["period"].to_list(),
-        y=v_vs_c["period_avg_target_rate"].to_list(),
+        y=v_vs_c["avg_target_rate"].to_list(),
         name="目标转化率",
         mode="lines",
         marker_color="#b7791f",
@@ -916,9 +1030,9 @@ elif page == "🔄 版本-转化复盘":
     st.dataframe(
         trend_detail.select([
             "period", "avg_case_versions", "version_change",
-            "period_avg_conversion_rate", "conversion_rate_change",
-            "improvement_per_version", "one_pass_ratio_pct",
-            "iteration_ratio_pct",
+            "avg_conversion_rate", "avg_target_rate", "target_gap",
+            "conversion_rate_change", "improvement_per_version",
+            "one_pass_ratio_pct", "iteration_ratio_pct",
         ]).sort("period", descending=True).to_pandas(),
         use_container_width=True,
         hide_index=True,
@@ -926,7 +1040,9 @@ elif page == "🔄 版本-转化复盘":
             "period": st.column_config.Column("周期", width="medium"),
             "avg_case_versions": st.column_config.NumberColumn("平均版本数", format="%.2f"),
             "version_change": st.column_config.NumberColumn("版本数变化", format="%.2f"),
-            "period_avg_conversion_rate": st.column_config.NumberColumn("平均转化率(%)", format="%.2f"),
+            "avg_conversion_rate": st.column_config.NumberColumn("实际转化率(%)", format="%.2f"),
+            "avg_target_rate": st.column_config.NumberColumn("目标转化率(%)", format="%.2f"),
+            "target_gap": st.column_config.NumberColumn("目标差距(%)", format="%.2f"),
             "conversion_rate_change": st.column_config.NumberColumn("转化率变化(%)", format="%.2f"),
             "improvement_per_version": st.column_config.NumberColumn("每版本改善系数", format="%.4f"),
             "one_pass_ratio_pct": st.column_config.NumberColumn("一次通过率(%)", format="%.2f"),
@@ -936,24 +1052,105 @@ elif page == "🔄 版本-转化复盘":
 
     st.caption("💡 每版本改善系数 = 转化率变化 / 平均版本数变化绝对值，用于评估版本迭代的边际转化效益")
 
-    st.markdown('<div class="section-header">版本分组详细指标</div>', unsafe_allow_html=True)
+    col1, col2 = st.columns(2)
+
+    with col1:
+        st.markdown('<div class="section-header">版本分组详细指标</div>', unsafe_allow_html=True)
+        st.dataframe(
+            vg_detail.to_pandas(),
+            use_container_width=True,
+            hide_index=True,
+            column_config={
+                "version_group": st.column_config.Column("版本分组", width="medium"),
+                "content_count": st.column_config.Column("内容数", width="small"),
+                "case_count": st.column_config.Column("关联案件数", width="small"),
+                "avg_conversion_rate": st.column_config.NumberColumn("实际转化率(%)", format="%.2f"),
+                "avg_target_rate": st.column_config.NumberColumn("目标转化率(%)", format="%.2f"),
+                "avg_target_gap": st.column_config.NumberColumn("目标差距(%)", format="%.2f"),
+                "avg_target_achievement_pct": st.column_config.NumberColumn("目标完成度(%)", format="%.2f"),
+                "achievement_ratio_pct": st.column_config.NumberColumn("达标率(%)", format="%.2f"),
+                "conversion_rate_diff": st.column_config.NumberColumn("相对V1差值(%)", format="%.2f"),
+                "conversion_improvement_pct": st.column_config.NumberColumn("相对提升(%)", format="%.2f"),
+                "target_gap_improvement": st.column_config.NumberColumn("差距改善(%)", format="%.2f"),
+                "avg_reject_times": st.column_config.NumberColumn("平均退回次数", format="%.2f"),
+                "avg_word_delta": st.column_config.Column("平均字数增减", width="small"),
+            },
+        )
+
+    with col2:
+        st.markdown('<div class="section-header">审核质量详细指标</div>', unsafe_allow_html=True)
+        st.dataframe(
+            q_matrix.to_pandas(),
+            use_container_width=True,
+            hide_index=True,
+            column_config={
+                "review_quality": st.column_config.Column("审核质量", width="medium"),
+                "content_count": st.column_config.Column("内容数", width="small"),
+                "case_count": st.column_config.Column("关联案件数", width="small"),
+                "avg_conversion_rate": st.column_config.NumberColumn("实际转化率(%)", format="%.2f"),
+                "avg_target_rate": st.column_config.NumberColumn("目标转化率(%)", format="%.2f"),
+                "avg_target_gap": st.column_config.NumberColumn("目标差距(%)", format="%.2f"),
+                "avg_target_achievement_pct": st.column_config.NumberColumn("目标完成度(%)", format="%.2f"),
+                "achievement_ratio_pct": st.column_config.NumberColumn("达标率(%)", format="%.2f"),
+                "vs_baseline_rate_diff": st.column_config.NumberColumn("相对基准差值(%)", format="%.2f"),
+                "vs_baseline_gap_diff": st.column_config.NumberColumn("差距改善(%)", format="%.2f"),
+            },
+        )
+
+    st.markdown('<div class="section-header">内容-案件关联明细（同一分析粒度）</div>', unsafe_allow_html=True)
+
+    enriched_data = version_conversion.get_enriched_data()
+
+    case_type_filter = st.multiselect(
+        "筛选案件类型",
+        options=enriched_data["case_type"].unique().to_list() if enriched_data.height > 0 else [],
+        default=[],
+    )
+
+    vg_filter = st.multiselect(
+        "筛选版本分组",
+        options=enriched_data["version_group"].unique().to_list() if enriched_data.height > 0 else [],
+        default=[],
+    )
+
+    display_data = enriched_data
+    if case_type_filter:
+        display_data = display_data.filter(pl.col("case_type").is_in(case_type_filter))
+    if vg_filter:
+        display_data = display_data.filter(pl.col("version_group").is_in(vg_filter))
 
     st.dataframe(
-        vg_detail.to_pandas(),
+        display_data.select([
+            "schedule_id", "publish_date", "title", "content_type",
+            "related_case_id", "case_type", "version_group",
+            "total_versions", "review_quality", "reject_times",
+            "views", "conversions", "conversion_rate",
+            "target_rate", "target_gap", "target_achievement_pct", "target_status",
+        ]).head(200).to_pandas(),
         use_container_width=True,
         hide_index=True,
         column_config={
-            "version_group": st.column_config.Column("版本分组", width="medium"),
-            "total_cases": st.column_config.Column("案件数", width="small"),
-            "avg_conversion_rate": st.column_config.NumberColumn("平均转化率(%)", format="%.2f"),
-            "avg_period_conversions": st.column_config.Column("周期均转化数", width="small"),
-            "avg_reject_times": st.column_config.NumberColumn("平均退回次数", format="%.2f"),
-            "avg_word_delta": st.column_config.Column("平均字数增减", width="small"),
-            "conversion_rate_diff": st.column_config.NumberColumn("转化差值(%)", format="%.2f"),
-            "conversion_improvement_pct": st.column_config.NumberColumn("相对提升(%)", format="%.2f"),
+            "schedule_id": st.column_config.Column("内容ID", width="small"),
+            "publish_date": st.column_config.Column("发布日期", width="small"),
+            "title": st.column_config.Column("标题", width="large"),
+            "content_type": st.column_config.Column("内容类型", width="small"),
+            "related_case_id": st.column_config.Column("关联案件", width="small"),
+            "case_type": st.column_config.Column("案件类型", width="small"),
+            "version_group": st.column_config.Column("版本分组", width="small"),
+            "total_versions": st.column_config.Column("版本数", width="small"),
+            "review_quality": st.column_config.Column("审核质量", width="small"),
+            "reject_times": st.column_config.Column("退回次数", width="small"),
+            "views": st.column_config.Column("浏览量", width="small"),
+            "conversions": st.column_config.Column("转化数", width="small"),
+            "conversion_rate": st.column_config.NumberColumn("转化率(%)", format="%.2f"),
+            "target_rate": st.column_config.NumberColumn("目标(%)", format="%.2f"),
+            "target_gap": st.column_config.NumberColumn("差距(%)", format="%.2f"),
+            "target_achievement_pct": st.column_config.NumberColumn("完成度(%)", format="%.2f"),
+            "target_status": st.column_config.Column("状态", width="small"),
         },
     )
+    st.caption(f"显示前 200 条，共 {display_data.height} 条关联记录")
 
 st.sidebar.markdown("---")
 st.sidebar.caption("数据更新时间：" + datetime.now().strftime("%Y-%m-%d %H:%M"))
-st.sidebar.caption("数据源：案件系统 | 邮件附件 | 收款流水")
+st.sidebar.caption("数据源：案件系统 | 邮件附件 | 收款流水 | 发布排期")

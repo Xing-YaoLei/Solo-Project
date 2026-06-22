@@ -134,9 +134,24 @@ def generate_payment_flow_data() -> pl.DataFrame:
     return pl.DataFrame(records)
 
 
-def generate_schedule_data() -> pl.DataFrame:
+def generate_schedule_data(case_data: pl.DataFrame) -> pl.DataFrame:
     dates = generate_date_range("2025-01-01", "2026-06-20")
     content_types = ["新法解读", "案例分析", "实务指南", "风险提示", "客户通讯"]
+
+    case_type_to_content = {
+        "民事起诉状": "案例分析",
+        "答辩状": "实务指南",
+        "代理词": "新法解读",
+        "合同审查": "风险提示",
+        "法律意见书": "客户通讯",
+        "律师函": "风险提示",
+        "执行申请书": "实务指南",
+        "仲裁申请书": "案例分析",
+    }
+
+    case_rows = case_data.sort("submit_date").iter_rows(named=True)
+    case_list = list(case_rows)
+    case_idx = 0
 
     records = []
     schedule_id = 1
@@ -147,6 +162,19 @@ def generate_schedule_data() -> pl.DataFrame:
             for _ in range(weekly_count):
                 schedule_id += 1
                 content_type = random.choice(content_types)
+
+                related_case = ""
+                if case_idx < len(case_list):
+                    case = case_list[case_idx]
+                    case_date = datetime.strptime(case["submit_date"], "%Y-%m-%d")
+                    if case_date <= date:
+                        if (
+                            case_type_to_content.get(case["case_type"]) == content_type
+                            or random.random() > 0.4
+                        ):
+                            related_case = case["case_id"]
+                            case_idx += 1
+
                 views = random.randint(50, 2000)
                 conversions = int(views * random.uniform(0.02, 0.15))
                 is_abnormal = random.random() < 0.08
@@ -171,6 +199,7 @@ def generate_schedule_data() -> pl.DataFrame:
                     "is_abnormal": is_abnormal,
                     "abnormal_reason": abnormal_reason,
                     "target_rate": round(random.uniform(8, 12), 2),
+                    "related_case_id": related_case,
                 })
 
     return pl.DataFrame(records)
@@ -232,6 +261,6 @@ def generate_all_data() -> Dict[str, pl.DataFrame]:
         "case_system": case_system,
         "email_attachments": generate_email_attachment_data(),
         "payment_flow": generate_payment_flow_data(),
-        "publish_schedule": generate_schedule_data(),
+        "publish_schedule": generate_schedule_data(case_system),
         "version_history": generate_version_history(case_system),
     }
