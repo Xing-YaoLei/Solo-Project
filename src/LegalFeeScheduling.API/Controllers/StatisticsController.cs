@@ -159,7 +159,7 @@ public class StatisticsController : ControllerBase
                     TotalAmount = totalAmount,
                     PaidAmount = paidAmount,
                     OutstandingAmount = totalAmount - paidAmount,
-                    CollectionRate = totalAmount > 0 ? Math.Round(paidAmount / totalAmount * 100, 2) : 0
+                    CollectionRate = totalAmount > 0 ? Math.Round((decimal)paidAmount / totalAmount, 4) : 0
                 };
             })
             .ToList();

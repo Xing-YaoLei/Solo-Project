@@ -168,24 +168,24 @@ public class QuoteWorkflowService : IQuoteWorkflowService
             throw new InvalidOperationException("已关闭的报价单不能标记为金额异常");
         }
 
-        if (quote.Status == QuoteStatus.AmountException)
-        {
-            return;
-        }
-
-        var oldStatus = quote.Status;
-        quote.Status = QuoteStatus.AmountException;
-
         var statusHistory = new StatusHistory
         {
             Id = Guid.NewGuid(),
             QuoteId = quoteId,
-            FromStatus = oldStatus,
-            ToStatus = QuoteStatus.AmountException,
+            FromStatus = quote.Status,
+            ToStatus = quote.Status,
             ChangedAt = DateTime.UtcNow,
             ChangedBy = userId ?? string.Empty,
-            Remarks = $"金额异常: {reason}"
+            Remarks = quote.Status == QuoteStatus.AmountException
+                ? $"异常备注: {reason}"
+                : $"金额异常: {reason}"
         };
+
+        if (quote.Status != QuoteStatus.AmountException)
+        {
+            quote.Status = QuoteStatus.AmountException;
+            statusHistory.ToStatus = QuoteStatus.AmountException;
+        }
 
         _context.StatusHistories.Add(statusHistory);
         await _context.SaveChangesAsync();
