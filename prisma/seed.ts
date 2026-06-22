@@ -40,9 +40,8 @@ const ticketTitles = [
 
 function generateTicketNo(index: number): string {
   const year = 2024
-  const month = String(Math.floor(Math.random() * 12) + 1).padStart(2, '0')
   const num = String(index + 1).padStart(4, '0')
-  return `AUD-${year}${month}-${num}`
+  return `AUD-${year}-${num}`
 }
 
 function randomDate(daysAgo: number): Date {

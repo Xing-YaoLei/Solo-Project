@@ -15,6 +15,11 @@ interface PermissionLogRow {
   details?: string
 }
 
+interface MatchResult {
+  ticketId: string | null
+  reason: string | null
+}
+
 async function parseCsvContent(content: string): Promise<PermissionLogRow[]> {
   return new Promise((resolve, reject) => {
     Papa.parse(content, {
@@ -61,34 +66,26 @@ async function fetchFileContent(fileUrl: string): Promise<string> {
   }
 }
 
-function matchTicketToLog(log: PermissionLogRow, tickets: Array<{ id: string; ticketNo: string; title: string; department: string | null }>): string | null {
-  if (log.ticket_no) {
-    const matched = tickets.find((t) => t.ticketNo === log.ticket_no)
-    if (matched) return matched.id
+function matchTicketToLog(
+  log: PermissionLogRow,
+  ticketMap: Map<string, string>
+): MatchResult {
+  if (!log.ticket_no || log.ticket_no.trim() === '') {
+    return {
+      ticketId: null,
+      reason: '缺少 ticket_no 字段，无法匹配工单',
+    }
   }
 
-  const searchTerms: string[] = []
-  if (log.user_email) searchTerms.push(log.user_email)
-  if (log.resource) searchTerms.push(log.resource)
-  if (log.details) searchTerms.push(log.details)
-
-  if (searchTerms.length === 0) return null
-
-  for (const term of searchTerms) {
-    const termLower = term.toLowerCase()
-    const matched = tickets.find(
-      (t) =>
-        t.title.toLowerCase().includes(termLower) ||
-        (t.department && t.department.toLowerCase().includes(termLower))
-    )
-    if (matched) return matched.id
+  const ticketId = ticketMap.get(log.ticket_no.trim())
+  if (ticketId) {
+    return { ticketId, reason: null }
   }
 
-  if (tickets.length > 0) {
-    return tickets[Math.floor(Math.random() * tickets.length)].id
+  return {
+    ticketId: null,
+    reason: `工单号 "${log.ticket_no}" 在系统中不存在`,
   }
-
-  return null
 }
 
 export async function POST(request: NextRequest) {
@@ -123,11 +120,11 @@ export async function POST(request: NextRequest) {
     }
 
     const tickets = await prisma.ticket.findMany({
-      select: { id: true, ticketNo: true, title: true, department: true },
-      orderBy: { createdAt: 'desc' },
-      take: 100,
+      select: { id: true, ticketNo: true },
     })
+    const ticketMap = new Map(tickets.map((t) => [t.ticketNo, t.id]))
 
+    const errors: Array<{ row: number; ticket_no: string; reason: string }> = []
     let linkedCount = 0
 
     const result = await prisma.$transaction(async (tx) => {
@@ -142,14 +139,23 @@ export async function POST(request: NextRequest) {
         },
       })
 
-      for (const record of records) {
-        const ticketId = matchTicketToLog(record, tickets)
-        if (!ticketId) continue
+      for (let i = 0; i < records.length; i++) {
+        const record = records[i]
+        const matchResult = matchTicketToLog(record, ticketMap)
+
+        if (!matchResult.ticketId) {
+          errors.push({
+            row: i + 1,
+            ticket_no: record.ticket_no || '',
+            reason: matchResult.reason || '未知原因',
+          })
+          continue
+        }
 
         try {
           const subject = record.action
             ? `权限日志 - ${record.action} - ${record.resource || '未知资源'}`
-            : `权限日志记录`
+            : '权限日志记录'
 
           const bodyPreview = [
             record.timestamp && `时间：${record.timestamp}`,
@@ -163,7 +169,7 @@ export async function POST(request: NextRequest) {
 
           await tx.emailMaterial.create({
             data: {
-              ticketId,
+              ticketId: matchResult.ticketId,
               subject,
               sender: 'permission-audit@company.com',
               recipients: record.user_email || 'compliance@company.com',
@@ -176,12 +182,15 @@ export async function POST(request: NextRequest) {
 
           linkedCount++
         } catch (recordError) {
-          console.error('Error processing record:', recordError)
-          continue
+          errors.push({
+            row: i + 1,
+            ticket_no: record.ticket_no || '',
+            reason: recordError instanceof Error ? recordError.message : '写入失败',
+          })
         }
       }
 
-      const errorRows = records.length - linkedCount
+      const errorRows = errors.length
 
       await tx.importRecord.update({
         where: { id: importRecord.id },
@@ -198,6 +207,7 @@ export async function POST(request: NextRequest) {
       importId: result.importRecord.id,
       totalRecords: records.length,
       linkedTickets: result.linkedCount,
+      errors,
     }
 
     return NextResponse.json(response, { status: 201 })

@@ -185,6 +185,7 @@ export interface PermissionLogImportResponse {
   importId: string
   totalRecords: number
   linkedTickets: number
+  errors?: Array<{ row: number; ticket_no: string; reason: string }>
 }
 
 export interface LoginRequest {
