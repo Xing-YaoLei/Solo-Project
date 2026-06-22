@@ -12,7 +12,7 @@ import {
 } from '@/types'
 import { useGameStore } from '@/store/gameStore'
 import { GAME_WIDTH, GAME_HEIGHT } from '@/game/config'
-import { calculatePaymentCycleDays, formatTime } from '@/lib/gameUtils'
+import { calculatePaymentCycleDays, formatTime, getEffectiveTimeLimit, getModeWarningThreshold, getModeLabel } from '@/lib/gameUtils'
 
 const COLORS = {
   deepIndigo: 0x1b2a4a,
@@ -79,8 +79,8 @@ export class AmountVerifyScene extends Phaser.Scene {
     this.questionData = data
     this.questionId = question.id
     this.maxScore = question.rewardScore
-    this.timeLimit = question.timeLimit ?? 120
     this.trainingMode = store.config.trainingMode
+    this.timeLimit = getEffectiveTimeLimit(question.timeLimit ?? 120, this.trainingMode)
     this.remainingTime = this.timeLimit
     this.elapsedTime = 0
     this.startTime = Date.now()
@@ -115,12 +115,13 @@ export class AmountVerifyScene extends Phaser.Scene {
       })
       .setOrigin(0)
 
-    const modeLabel = this.trainingMode === 'practice' ? '练习模式' : this.trainingMode === 'exam' ? '考试模式' : '限时模式'
+    const modeLabel = getModeLabel(this.trainingMode)
+    const modeColor = this.trainingMode === 'exam' ? '#EF4444' : '#10B981'
     this.add
       .text(24, 38, modeLabel, {
         fontSize: '12px',
         fontFamily: 'Arial',
-        color: '#10B981',
+        color: modeColor,
       })
       .setOrigin(0)
 
@@ -145,8 +146,13 @@ export class AmountVerifyScene extends Phaser.Scene {
         } else {
           this.remainingTime--
           this.timerText.setText(`⏱ ${this.remainingTime}s`)
-          if (this.remainingTime <= 10) {
+          const warnThreshold = getModeWarningThreshold(this.trainingMode)
+          if (this.remainingTime <= warnThreshold) {
             this.timerText.setColor('#EF4444')
+            if (this.trainingMode === 'exam') {
+              const flashOn = this.remainingTime % 2 === 0
+              this.timerText.setAlpha(flashOn ? 1 : 0.4)
+            }
           }
           if (this.remainingTime <= 0) {
             this.timerEvent.remove()

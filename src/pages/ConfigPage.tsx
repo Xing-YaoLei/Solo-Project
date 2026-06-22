@@ -126,7 +126,7 @@ export default function ConfigPage() {
 
         <main className="flex-1 p-6 overflow-auto">
           {activeTab === 'questions' && <QuestionsPanel config={config} updateConfig={updateConfig} />}
-          {activeTab === 'materials' && <MaterialsPanel />}
+          {activeTab === 'materials' && <MaterialsPanel config={config} updateConfig={updateConfig} />}
           {activeTab === 'rewards' && <RewardsPanel config={config} updateConfig={updateConfig} />}
           {activeTab === 'schedule' && <SchedulePanel config={config} updateConfig={updateConfig} />}
           {activeTab === 'mode' && <ModePanel config={config} updateConfig={updateConfig} />}
@@ -429,27 +429,33 @@ function Field({ label, children }: { label: string; children: React.ReactNode }
   )
 }
 
-function MaterialsPanel() {
-  const [materials, setMaterials] = useState<{ id: string; name: string; type: string; size: string; uploadAt: string }[]>([
-    { id: 'm1', name: '报价单模板-A.xlsx', type: 'xlsx', size: '24 KB', uploadAt: '2025-01-15' },
-    { id: 'm2', name: '合同模板-通用版.pdf', type: 'pdf', size: '156 KB', uploadAt: '2025-01-15' },
-    { id: 'm3', name: '流水样本-2025Q1.xlsx', type: 'xlsx', size: '89 KB', uploadAt: '2025-02-01' },
-  ])
+function MaterialsPanel({ config, updateConfig }: { config: GameConfig; updateConfig: (c: GameConfig) => void }) {
+  const materials = config.materials
 
   const handleUpload = () => {
     const name = prompt('请输入素材文件名:')
     if (!name) return
     const ext = name.split('.').pop() || 'unknown'
-    setMaterials([
-      ...materials,
-      {
-        id: `m_${Date.now()}`,
-        name,
-        type: ext,
-        size: `${Math.floor(Math.random() * 200 + 10)} KB`,
-        uploadAt: new Date().toISOString().slice(0, 10),
-      },
-    ])
+    const newMaterial = {
+      id: `m_${Date.now()}`,
+      name,
+      type: ext,
+      size: `${Math.floor(Math.random() * 200 + 10)} KB`,
+      uploadAt: new Date().toISOString().slice(0, 10),
+    }
+    updateConfig({
+      ...config,
+      materials: [...materials, newMaterial],
+    })
+  }
+
+  const handleDelete = (id: string) => {
+    if (confirm('确定删除该素材吗？')) {
+      updateConfig({
+        ...config,
+        materials: materials.filter((x) => x.id !== id),
+      })
+    }
   }
 
   return (
@@ -457,7 +463,7 @@ function MaterialsPanel() {
       <div className="flex items-center justify-between mb-5">
         <div>
           <h2 className="text-xl font-bold text-[#D4A843]">素材管理</h2>
-          <p className="text-sm text-[#64748B] mt-1">管理报价单模板、合同模板、流水样本等素材</p>
+          <p className="text-sm text-[#64748B] mt-1">管理报价单模板、合同模板、流水样本等素材，合同附件关卡将从这里读取可选附件</p>
         </div>
         <button
           onClick={handleUpload}
@@ -480,26 +486,34 @@ function MaterialsPanel() {
             </tr>
           </thead>
           <tbody>
-            {materials.map((m) => (
-              <tr key={m.id} className="border-b border-[#D4A843]/5 hover:bg-[#1B2A4A]/50">
-                <td className="px-4 py-3 text-sm text-white">{m.name}</td>
-                <td className="px-4 py-3">
-                  <span className="px-2 py-0.5 text-xs bg-[#D4A843]/15 text-[#D4A843] rounded uppercase">
-                    {m.type}
-                  </span>
-                </td>
-                <td className="px-4 py-3 text-sm text-[#94A3B8]">{m.size}</td>
-                <td className="px-4 py-3 text-sm text-[#94A3B8]">{m.uploadAt}</td>
-                <td className="px-4 py-3 text-right">
-                  <button
-                    onClick={() => setMaterials(materials.filter((x) => x.id !== m.id))}
-                    className="p-1.5 text-[#64748B] hover:text-[#EF4444] hover:bg-[#EF4444]/10 rounded transition-colors"
-                  >
-                    <Trash2 className="w-4 h-4" />
-                  </button>
+            {materials.length === 0 ? (
+              <tr>
+                <td colSpan={5} className="px-4 py-10 text-center text-[#64748B] text-sm">
+                  暂无素材，点击"上传素材"开始添加
                 </td>
               </tr>
-            ))}
+            ) : (
+              materials.map((m) => (
+                <tr key={m.id} className="border-b border-[#D4A843]/5 hover:bg-[#1B2A4A]/50">
+                  <td className="px-4 py-3 text-sm text-white">{m.name}</td>
+                  <td className="px-4 py-3">
+                    <span className="px-2 py-0.5 text-xs bg-[#D4A843]/15 text-[#D4A843] rounded uppercase">
+                      {m.type}
+                    </span>
+                  </td>
+                  <td className="px-4 py-3 text-sm text-[#94A3B8]">{m.size ?? '-'}</td>
+                  <td className="px-4 py-3 text-sm text-[#94A3B8]">{m.uploadAt ?? '-'}</td>
+                  <td className="px-4 py-3 text-right">
+                    <button
+                      onClick={() => handleDelete(m.id)}
+                      className="p-1.5 text-[#64748B] hover:text-[#EF4444] hover:bg-[#EF4444]/10 rounded transition-colors"
+                    >
+                      <Trash2 className="w-4 h-4" />
+                    </button>
+                  </td>
+                </tr>
+              ))
+            )}
           </tbody>
         </table>
       </div>

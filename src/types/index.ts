@@ -113,11 +113,20 @@ export interface OpenSchedule {
 
 export type TrainingMode = 'practice' | 'timed' | 'exam'
 
+export interface MaterialItem {
+  id: string
+  name: string
+  type: string
+  size?: string
+  uploadAt?: string
+}
+
 export interface GameConfig {
   questions: QuestionItem[]
   rewards: Reward[]
   openSchedule: OpenSchedule[]
   trainingMode: TrainingMode
+  materials: MaterialItem[]
 }
 
 export interface UserProgress {

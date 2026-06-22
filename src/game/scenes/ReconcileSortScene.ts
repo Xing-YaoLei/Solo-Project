@@ -3,7 +3,7 @@ import Matter from 'matter-js'
 import { ReconcileSortData, DiffEntry, TrainingRecord, MistakeEntry, LEVEL_LABELS, TrainingMode } from '@/types'
 import { useGameStore } from '@/store/gameStore'
 import { GAME_WIDTH, GAME_HEIGHT } from '@/game/config'
-import { calculatePaymentCycleDays, formatTime } from '@/lib/gameUtils'
+import { calculatePaymentCycleDays, formatTime, getEffectiveTimeLimit, getModeWarningThreshold, getModeLabel } from '@/lib/gameUtils'
 
 const COLORS = {
   deepIndigo: 0x1B2A4A,
@@ -78,10 +78,10 @@ export class ReconcileSortScene extends Phaser.Scene {
 
     this.questionId = question.id
     this.maxScore = question.rewardScore
-    this.timeLimit = question.timeLimit ?? 120
+    this.trainingMode = store.config.trainingMode
+    this.timeLimit = getEffectiveTimeLimit(question.timeLimit ?? 90, this.trainingMode)
     this.remainingTime = this.timeLimit
     this.questionData = question.data as ReconcileSortData
-    this.trainingMode = store.config.trainingMode
     this.elapsedTime = 0
 
     this.drawBackground()
@@ -128,11 +128,12 @@ export class ReconcileSortScene extends Phaser.Scene {
       fontStyle: 'bold',
     }).setOrigin(0.5, 0)
 
-    const modeLabel = this.trainingMode === 'practice' ? '练习模式' : this.trainingMode === 'exam' ? '考试模式' : '限时模式'
+    const modeLabel = getModeLabel(this.trainingMode)
+    const modeColor = this.trainingMode === 'exam' ? '#EF4444' : '#10B981'
     this.add.text(GAME_WIDTH / 2, 44, modeLabel, {
       fontSize: '12px',
       fontFamily: 'Arial',
-      color: '#10B981',
+      color: modeColor,
     }).setOrigin(0.5, 0)
 
     const timerInitial = this.trainingMode === 'practice'
@@ -401,8 +402,13 @@ export class ReconcileSortScene extends Phaser.Scene {
         } else {
           this.remainingTime--
           this.timerText.setText(`${Math.max(0, this.remainingTime)}s`)
-          if (this.remainingTime <= 10) {
+          const warnThreshold = getModeWarningThreshold(this.trainingMode)
+          if (this.remainingTime <= warnThreshold) {
             this.timerText.setColor('#EF4444')
+            if (this.trainingMode === 'exam') {
+              const flashOn = this.remainingTime % 2 === 0
+              this.timerText.setAlpha(flashOn ? 1 : 0.4)
+            }
           }
           if (this.remainingTime <= 0) {
             this.timerEvent.remove()

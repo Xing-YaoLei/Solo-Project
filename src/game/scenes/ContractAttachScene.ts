@@ -11,7 +11,7 @@ import {
 } from '@/types'
 import { useGameStore } from '@/store/gameStore'
 import { GAME_WIDTH, GAME_HEIGHT } from '@/game/config'
-import { calculatePaymentCycleDays, formatTime } from '@/lib/gameUtils'
+import { calculatePaymentCycleDays, formatTime, getEffectiveTimeLimit, getModeWarningThreshold, getModeLabel } from '@/lib/gameUtils'
 
 const COLORS = {
   deepIndigo: 0x1B2A4A,
@@ -74,6 +74,7 @@ export class ContractAttachScene extends Phaser.Scene {
   private timerEvent!: Phaser.Time.TimerEvent
   private submitted = false
   private POOL_Y = 0
+  private mergedAttachmentPool: AttachmentEntry[] = []
 
   private attachmentCards: AttachmentCardData[] = []
   private dropZones: DropZoneData[] = []
@@ -96,12 +97,23 @@ export class ContractAttachScene extends Phaser.Scene {
 
     this.questionId = question.id
     this.maxScore = question.rewardScore
-    this.timeLimit = question.timeLimit ?? 120
+    this.trainingMode = store.config.trainingMode
+    this.timeLimit = getEffectiveTimeLimit(question.timeLimit ?? 120, this.trainingMode)
     this.remainingTime = this.timeLimit
     this.questionData = question.data as ContractAttachData
-    this.trainingMode = store.config.trainingMode
     this.elapsedTime = 0
     this.POOL_Y = GAME_HEIGHT - 130
+
+    const qbAttachments = this.questionData.attachmentPool
+    const materialAttachments: AttachmentEntry[] = store.config.materials
+      .filter((m) => ['pdf', 'xlsx', 'xls', 'doc', 'docx', 'jpg', 'jpeg', 'png'].includes(m.type.toLowerCase()))
+      .filter((m) => !qbAttachments.some((a) => a.name === m.name))
+      .map((m) => ({
+        id: `mat_${m.id}`,
+        name: m.name.replace(/\.[^.]+$/, ''),
+        type: m.type.toLowerCase(),
+      }))
+    this.mergedAttachmentPool = [...qbAttachments, ...materialAttachments]
 
     this.drawBackground()
     this.drawTitle()
@@ -147,11 +159,12 @@ export class ContractAttachScene extends Phaser.Scene {
       fontStyle: 'bold',
     }).setOrigin(0.5, 0)
 
-    const modeLabel = this.trainingMode === 'practice' ? '练习模式' : this.trainingMode === 'exam' ? '考试模式' : '限时模式'
+    const modeLabel = getModeLabel(this.trainingMode)
+    const modeColor = this.trainingMode === 'exam' ? '#EF4444' : '#10B981'
     this.add.text(GAME_WIDTH / 2, 44, modeLabel, {
       fontSize: '12px',
       fontFamily: 'Arial',
-      color: '#10B981',
+      color: modeColor,
     }).setOrigin(0.5, 0)
 
     const timerInitial = this.trainingMode === 'practice'
@@ -292,7 +305,7 @@ export class ContractAttachScene extends Phaser.Scene {
     poolBg.fillStyle(0x0F1D36, 0.5)
     poolBg.fillRoundedRect(30, this.POOL_Y - 8, GAME_WIDTH - 60, ATTACH_CARD_H + 32, 10)
 
-    const attachments = [...this.questionData.attachmentPool]
+    const attachments = [...this.mergedAttachmentPool]
     this.shuffleArray(attachments)
 
     const totalWidth = attachments.length * ATTACH_CARD_W + (attachments.length - 1) * ATTACH_CARD_GAP
@@ -566,8 +579,13 @@ export class ContractAttachScene extends Phaser.Scene {
         } else {
           this.remainingTime--
           this.timerText.setText(`${Math.max(0, this.remainingTime)}s`)
-          if (this.remainingTime <= 10) {
+          const warnThreshold = getModeWarningThreshold(this.trainingMode)
+          if (this.remainingTime <= warnThreshold) {
             this.timerText.setColor('#EF4444')
+            if (this.trainingMode === 'exam') {
+              const flashOn = this.remainingTime % 2 === 0
+              this.timerText.setAlpha(flashOn ? 1 : 0.4)
+            }
           }
           if (this.remainingTime <= 0) {
             this.timerEvent.remove()
@@ -598,7 +616,7 @@ export class ContractAttachScene extends Phaser.Scene {
         correct++
       } else {
         const placedName = placedCard ? placedCard.entry.name : '(未放置)'
-        const correctEntry = this.questionData.attachmentPool.find((a) => a.id === expectedAttachId)
+        const correctEntry = this.mergedAttachmentPool.find((a) => a.id === expectedAttachId)
         mistakes.push({
           description: `条款"${clause.clause}": 应为"${correctEntry?.name ?? expectedAttachId}", 实为"${placedName}"`,
           reason: '附件匹配错误',

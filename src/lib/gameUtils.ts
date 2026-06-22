@@ -57,6 +57,27 @@ export function formatDate(dateStr: string): string {
   })
 }
 
+export function getEffectiveTimeLimit(baseLimit: number, mode: TrainingMode): number {
+  if (mode === 'exam') {
+    return Math.max(15, Math.round(baseLimit * 0.7))
+  }
+  return baseLimit
+}
+
+export function getModeWarningThreshold(mode: TrainingMode): number {
+  if (mode === 'exam') return 30
+  if (mode === 'timed') return 10
+  return 0
+}
+
+export function getModeLabel(mode: TrainingMode): string {
+  switch (mode) {
+    case 'practice': return '练习模式'
+    case 'timed': return '限时模式'
+    case 'exam': return '考试模式'
+  }
+}
+
 export const QUESTION_TYPE_LABELS: Record<QuestionType, string> = {
   amount_verify: '金额校验识别',
   payment_flow: '支付流水选择',

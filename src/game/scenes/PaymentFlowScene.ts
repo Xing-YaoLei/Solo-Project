@@ -2,7 +2,7 @@ import Phaser from 'phaser'
 import { PaymentFlowData, TrainingRecord, MistakeEntry, LEVEL_LABELS, TrainingMode } from '@/types'
 import { useGameStore } from '@/store/gameStore'
 import { GAME_WIDTH, GAME_HEIGHT } from '@/game/config'
-import { calculatePaymentCycleDays, formatTime } from '@/lib/gameUtils'
+import { calculatePaymentCycleDays, formatTime, getEffectiveTimeLimit, getModeWarningThreshold, getModeLabel } from '@/lib/gameUtils'
 
 const COLOR = {
   bg: 0x1b2a4a,
@@ -46,12 +46,12 @@ export class PaymentFlowScene extends Phaser.Scene {
     this.questionData = question.data as PaymentFlowData
     this.questionId = question.id
     this.questionReward = question.rewardScore
-    this.timeLimit = question.timeLimit ?? 90
+    this.trainingMode = store.config.trainingMode
+    this.timeLimit = getEffectiveTimeLimit(question.timeLimit ?? 90, this.trainingMode)
     this.timeLeft = this.timeLimit
     this.startTime = Date.now()
     this.selectedFlowIds = new Set()
     this.submitted = false
-    this.trainingMode = store.config.trainingMode
     this.elapsedTime = 0
 
     this.cameras.main.setBackgroundColor(COLOR.bg)
@@ -73,11 +73,12 @@ export class PaymentFlowScene extends Phaser.Scene {
       fontStyle: 'bold',
     })
 
-    const modeLabel = this.trainingMode === 'practice' ? '练习模式' : this.trainingMode === 'exam' ? '考试模式' : '限时模式'
+    const modeLabel = getModeLabel(this.trainingMode)
+    const modeColor = this.trainingMode === 'exam' ? '#EF4444' : '#10B981'
     this.add.text(40, 42, modeLabel, {
       fontSize: '12px',
       fontFamily: 'Arial',
-      color: '#10B981',
+      color: modeColor,
     })
 
     this.add.text(40, 58, `目标金额: ¥${this.questionData.targetAmount.toLocaleString()}`, {
@@ -276,7 +277,14 @@ export class PaymentFlowScene extends Phaser.Scene {
         } else {
           this.timeLeft--
           this.timerText.setText(`${Math.max(0, this.timeLeft)}s`)
-          if (this.timeLeft <= 10) this.timerText.setColor('#EF4444')
+          const warnThreshold = getModeWarningThreshold(this.trainingMode)
+          if (this.timeLeft <= warnThreshold) {
+            this.timerText.setColor('#EF4444')
+            if (this.trainingMode === 'exam') {
+              const flashOn = this.timeLeft % 2 === 0
+              this.timerText.setAlpha(flashOn ? 1 : 0.4)
+            }
+          }
           if (this.timeLeft <= 0) this.handleSubmit()
           else this.startTimer()
         }
