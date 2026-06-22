@@ -131,6 +131,7 @@ class ExceptionOrdersController < ApplicationController
         end
         format.turbo_stream do
           streams = [
+            turbo_stream.invoke("modal", "closeAll", selector: "[data-controller='modal']"),
             turbo_stream.replace("exception_status_card", partial: "exception_orders/status_card", locals: { exception_order: @exception_order.reload }),
             turbo_stream.replace("handler_info", partial: "exception_orders/handler_info", locals: { exception_order: @exception_order.reload }),
             turbo_stream.replace("transition_timeline", partial: "shared/transition_timeline",
@@ -170,6 +171,7 @@ class ExceptionOrdersController < ApplicationController
         format.html { redirect_to @exception_order, notice: "异常单已标记为已解决" }
         format.turbo_stream do
           streams = [
+            turbo_stream.invoke("modal", "closeAll", selector: "[data-controller='modal']"),
             turbo_stream.replace("exception_status_card", partial: "exception_orders/status_card", locals: { exception_order: @exception_order.reload }),
             turbo_stream.replace("conclusion_section", partial: "exception_orders/conclusion", locals: { exception_order: @exception_order.reload }),
             turbo_stream.replace("transition_timeline", partial: "shared/transition_timeline",
