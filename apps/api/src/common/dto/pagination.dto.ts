@@ -49,7 +49,7 @@ export class PaginationDto {
 }
 
 export interface PaginatedResult<T> {
-  data: T[];
+  items: T[];
   total: number;
   page: number;
   pageSize: number;
@@ -66,7 +66,7 @@ export function createPaginatedResult<T>(
 ): PaginatedResult<T> {
   const totalPages = Math.ceil(total / pageSize);
   return {
-    data,
+    items: data,
     total,
     page,
     pageSize,

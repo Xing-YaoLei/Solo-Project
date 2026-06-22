@@ -196,6 +196,7 @@ export class EvidencesController {
     targetType: 'Evidence',
     action: 'UPDATE' as any,
     description: '发起补附件请求',
+    beforeDataTargetIdField: 'evidenceId',
     getTargetId: (_ctx, result) => result?.evidenceId || '',
   })
   @ApiOperation({ summary: '发起补附件请求' })
@@ -213,6 +214,15 @@ export class EvidencesController {
     action: 'UPDATE' as any,
     description: '完成补附件',
     targetIdField: 'id',
+    beforeDataLookup: {
+      model: 'evidenceSupplement',
+      foreignKey: 'evidenceId',
+      idSource: 'params',
+      idField: 'id',
+    },
+    getTargetId: (_context: any, result: any) => {
+      return result?.evidenceId || '';
+    },
   })
   @HttpCode(HttpStatus.OK)
   @ApiOperation({ summary: '完成补附件' })

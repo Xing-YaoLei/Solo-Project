@@ -516,6 +516,8 @@ export interface PaginatedResult<T> {
   page: number;
   pageSize: number;
   totalPages: number;
+  hasNext: boolean;
+  hasPrev: boolean;
 }
 
 export interface KanbanColumn {

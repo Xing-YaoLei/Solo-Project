@@ -19,7 +19,14 @@ export interface OperationLogOptions {
   action: OperationAction;
   description?: string;
   targetIdField?: string;
-  getBeforeData?: (context: ExecutionContext) => Promise<any>;
+  beforeDataTargetIdField?: string;
+  beforeDataLookup?: {
+    model: string;
+    foreignKey: string;
+    idSource: 'params' | 'body' | 'query';
+    idField: string;
+  };
+  getBeforeData?: (context: ExecutionContext, prisma: any) => Promise<any>;
   getTargetId?: (context: ExecutionContext, result: any) => string;
 }
 
@@ -53,18 +60,47 @@ export class OperationLogInterceptor implements NestInterceptor {
     const beforeDataPromise = (async () => {
       try {
         if (options.getBeforeData) {
-          return await options.getBeforeData(context);
+          return await options.getBeforeData(context, this.prisma);
         }
-        if (
-          (options.action === OperationAction.UPDATE ||
-            options.action === OperationAction.DELETE) &&
-          options.targetIdField
-        ) {
-          const targetId =
-            request.params[options.targetIdField] ||
-            request.body[options.targetIdField] ||
-            request.query[options.targetIdField];
-          return await this.fetchBeforeData(options.targetType, targetId);
+
+        if (options.beforeDataLookup) {
+          const lookup = options.beforeDataLookup;
+          const sourceId =
+            lookup.idSource === 'params'
+              ? request.params[lookup.idField]
+              : lookup.idSource === 'body'
+                ? request.body[lookup.idField]
+                : request.query[lookup.idField];
+          if (sourceId && (this.prisma as any)[lookup.model]) {
+            const intermediate = await (this.prisma as any)[lookup.model].findUnique({
+              where: { id: sourceId },
+              select: { [lookup.foreignKey]: true },
+            });
+            if (intermediate && intermediate[lookup.foreignKey]) {
+              return await this.fetchBeforeData(options.targetType, intermediate[lookup.foreignKey]);
+            }
+          }
+          return null;
+        }
+
+        const shouldCaptureBefore =
+          options.action === OperationAction.UPDATE ||
+          options.action === OperationAction.DELETE ||
+          options.action === OperationAction.SUBMIT ||
+          options.action === OperationAction.REVIEW ||
+          options.action === OperationAction.APPROVE ||
+          options.action === OperationAction.REJECT ||
+          options.action === OperationAction.ASSIGN ||
+          options.action === OperationAction.ARCHIVE;
+        if (shouldCaptureBefore) {
+          const idField = options.beforeDataTargetIdField || options.targetIdField;
+          if (idField) {
+            const targetId =
+              request.params[idField] ||
+              request.body[idField] ||
+              request.query[idField];
+            return await this.fetchBeforeData(options.targetType, targetId);
+          }
         }
         return null;
       } catch (error) {
