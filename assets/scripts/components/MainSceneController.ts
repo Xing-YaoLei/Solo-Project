@@ -23,7 +23,7 @@ export class MainSceneController extends Component {
     resultPanel: Node | null = null;
 
     @property(Label)
-    loadingLabel: Node | null = null;
+    loadingLabel: Label | null = null;
 
     @property(Node)
     loadingPanel: Node | null = null;
@@ -38,10 +38,10 @@ export class MainSceneController extends Component {
     actionListContainer: Node | null = null;
 
     @property(Label)
-    stageInfoLabel: Node | null = null;
+    stageInfoLabel: Label | null = null;
 
     @property(Label)
-    playerInfoLabel: Node | null = null;
+    playerInfoLabel: Label | null = null;
 
     private _currentState: 'loading' | 'hall' | 'playing' = 'loading';
     private _caseItems: Node[] = [];
