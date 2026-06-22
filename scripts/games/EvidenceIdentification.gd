@@ -237,16 +237,3 @@ func _get_correct_answer() -> Array:
 			correct_ids.append(opt.get("id", ""))
 	correct_ids.sort()
 	return correct_ids
-
-func _show_result(result: Dictionary) -> void:
-	_advance_to_next_game_or_finish(result)
-
-func _advance_to_next_game_or_finish(result: Dictionary) -> void:
-	var queue = GameManager.current_level.get("_game_types_queue", [])
-	var idx = GameManager.current_level.get("_current_game_index", 0)
-	idx += 1
-	if idx < queue.size():
-		GameManager.current_level["_current_game_index"] = idx
-		GameManager.change_scene(queue[idx])
-	else:
-		GameManager.change_scene("result_review")

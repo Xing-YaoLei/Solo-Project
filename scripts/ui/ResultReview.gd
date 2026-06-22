@@ -3,7 +3,7 @@ extends "res://scripts/ui/BaseUI.gd"
 var tab_container: TabContainer
 
 func _ready() -> void:
-	_setup_background()
+	super._ready()
 	_build_ui()
 
 func _build_ui() -> void:

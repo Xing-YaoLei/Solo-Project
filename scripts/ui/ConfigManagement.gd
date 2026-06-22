@@ -8,7 +8,7 @@ var formal_mode_check: CheckBox
 var practice_mode_check: CheckBox
 
 func _ready() -> void:
-	_setup_background()
+	super._ready()
 	_build_ui()
 
 func _build_ui() -> void:

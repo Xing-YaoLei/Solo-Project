@@ -409,20 +409,7 @@ func _get_correct_answer() -> Dictionary:
 	if question.has("records"):
 		for rec in question.get("records", []):
 			correct[rec.get("id", "")] = rec.get("action_required", "")
-	elif question.has("scenarios"):
-		for sc in question.get("scenarios", []):
-			correct[sc.get("id", "")] = sc.get("sampling_method", "")
+		elif question.has("scenarios"):
+			for sc in question.get("scenarios", []):
+				correct[sc.get("id", "")] = sc.get("sampling_method", "")
 	return correct
-
-func _show_result(result: Dictionary) -> void:
-	_advance_to_next_game_or_finish(result)
-
-func _advance_to_next_game_or_finish(result: Dictionary) -> void:
-	var queue = GameManager.current_level.get("_game_types_queue", [])
-	var idx = GameManager.current_level.get("_current_game_index", 0)
-	idx += 1
-	if idx < queue.size():
-		GameManager.current_level["_current_game_index"] = idx
-		GameManager.change_scene(queue[idx])
-	else:
-		GameManager.change_scene("result_review")

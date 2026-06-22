@@ -11,17 +11,7 @@ var game_completed: bool = false
 var game_type: String = ""
 
 func _ready() -> void:
-	_setup_background()
-
-func _setup_background() -> void:
-	var bg = ColorRect.new()
-	bg.color = STYLE_DARK_BG
-	bg.anchor_right = 1.0
-	bg.anchor_bottom = 1.0
-	bg.mouse_filter = Control.MOUSE_FILTER_IGNORE
-	add_child(bg)
-	bg.position = Vector2.ZERO
-	bg.size = get_viewport_rect().size
+	super._ready()
 
 func initialize_game(game_type_param: String, level_data: Dictionary) -> void:
 	game_type = game_type_param
@@ -67,7 +57,7 @@ func _load_question(index: int) -> void:
 	var permission_check = PermissionManager.check_permission(current_question.get("required_permission", ""))
 	if not permission_check["granted"]:
 		show_permission_error(permission_check["reason"])
-	_max_score += current_question.get("score", 0)
+	max_score += current_question.get("score", 0)
 	_render_question(current_question)
 
 func _render_question(question: Dictionary) -> void:
@@ -132,7 +122,17 @@ func _finish_game() -> void:
 	_show_result(result)
 
 func _show_result(result: Dictionary) -> void:
-	pass
+	_advance_to_next_game_or_finish(result)
+
+func _advance_to_next_game_or_finish(_result: Dictionary) -> void:
+	var queue = GameManager.current_level.get("_game_types_queue", [])
+	var idx = GameManager.current_level.get("_current_game_index", 0)
+	idx += 1
+	if idx < queue.size():
+		GameManager.current_level["_current_game_index"] = idx
+		GameManager.change_scene(queue[idx])
+	else:
+		GameManager.change_scene("result_review")
 
 func go_back() -> void:
 	if GameManager.current_mode == "formal":

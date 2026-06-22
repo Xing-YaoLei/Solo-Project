@@ -11,6 +11,20 @@ const STYLE_DANGER = Color(0.9, 0.3, 0.3, 1)
 const STYLE_TEXT_PRIMARY = Color(0.95, 0.96, 0.98, 1)
 const STYLE_TEXT_SECONDARY = Color(0.65, 0.7, 0.78, 1)
 
+func _ready() -> void:
+	_setup_background()
+
+func _setup_background() -> void:
+	var bg = ColorRect.new()
+	bg.color = STYLE_DARK_BG
+	bg.anchor_right = 1.0
+	bg.anchor_bottom = 1.0
+	bg.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	bg.name = "_UIBackground"
+	add_child(bg)
+	bg.position = Vector2.ZERO
+	bg.size = get_viewport_rect().size
+
 func create_button(text: String, position: Vector2, size: Vector2 = Vector2(160, 44), color: Color = STYLE_ACCENT) -> Button:
 	var btn = Button.new()
 	btn.text = text

@@ -3,7 +3,7 @@ extends "res://scripts/ui/BaseUI.gd"
 var mode: String = "formal"
 
 func _ready() -> void:
-	_setup_background()
+	super._ready()
 	mode = GameManager.current_mode
 	_build_level_select()
 
