@@ -75,6 +75,13 @@ export class ContractAttachScene extends Phaser.Scene {
   private submitted = false
   private POOL_Y = 0
   private mergedAttachmentPool: AttachmentEntry[] = []
+  private attachmentPages: AttachmentEntry[][] = []
+  private currentPage = 0
+  private readonly MAX_PER_PAGE = 7
+  private pageNavLeft: Phaser.GameObjects.Text | null = null
+  private pageNavRight: Phaser.GameObjects.Text | null = null
+  private pageIndicator: Phaser.GameObjects.Text | null = null
+  private placedAttachmentIds: Set<string> = new Set()
 
   private attachmentCards: AttachmentCardData[] = []
   private dropZones: DropZoneData[] = []
@@ -104,16 +111,51 @@ export class ContractAttachScene extends Phaser.Scene {
     this.elapsedTime = 0
     this.POOL_Y = GAME_HEIGHT - 130
 
-    const qbAttachments = this.questionData.attachmentPool
-    const materialAttachments: AttachmentEntry[] = store.config.materials
+    const correctMapping = this.questionData.correctMapping
+    const correctAttachIds = new Set(Object.values(correctMapping))
+
+    const qbAttachments = [...this.questionData.attachmentPool]
+
+    const materialFromConfig: AttachmentEntry[] = store.config.materials
       .filter((m) => ['pdf', 'xlsx', 'xls', 'doc', 'docx', 'jpg', 'jpeg', 'png'].includes(m.type.toLowerCase()))
-      .filter((m) => !qbAttachments.some((a) => a.name === m.name))
       .map((m) => ({
         id: `mat_${m.id}`,
         name: m.name.replace(/\.[^.]+$/, ''),
         type: m.type.toLowerCase(),
       }))
-    this.mergedAttachmentPool = [...qbAttachments, ...materialAttachments]
+
+    const seenNames = new Set<string>()
+    const deduped: AttachmentEntry[] = []
+
+    for (const att of qbAttachments) {
+      const key = att.name.trim().toLowerCase()
+      if (!seenNames.has(key)) {
+        seenNames.add(key)
+        deduped.push(att)
+      }
+    }
+    for (const att of materialFromConfig) {
+      const key = att.name.trim().toLowerCase()
+      if (!seenNames.has(key)) {
+        seenNames.add(key)
+        deduped.push(att)
+      }
+    }
+
+    deduped.sort((a, b) => {
+      const aCorrect = correctAttachIds.has(a.id) ? 0 : 1
+      const bCorrect = correctAttachIds.has(b.id) ? 0 : 1
+      if (aCorrect !== bCorrect) return aCorrect - bCorrect
+      return a.name.localeCompare(b.name)
+    })
+
+    this.mergedAttachmentPool = deduped
+
+    this.attachmentPages = []
+    for (let i = 0; i < this.mergedAttachmentPool.length; i += this.MAX_PER_PAGE) {
+      this.attachmentPages.push(this.mergedAttachmentPool.slice(i, i + this.MAX_PER_PAGE))
+    }
+    this.currentPage = 0
 
     this.drawBackground()
     this.drawTitle()
@@ -305,19 +347,70 @@ export class ContractAttachScene extends Phaser.Scene {
     poolBg.fillStyle(0x0F1D36, 0.5)
     poolBg.fillRoundedRect(30, this.POOL_Y - 8, GAME_WIDTH - 60, ATTACH_CARD_H + 32, 10)
 
-    const attachments = [...this.mergedAttachmentPool]
-    this.shuffleArray(attachments)
+    this.pageIndicator = this.add.text(GAME_WIDTH / 2, this.POOL_Y + ATTACH_CARD_H + 28, '', {
+      fontSize: '12px',
+      fontFamily: 'Arial',
+      color: '#D4A843',
+    }).setOrigin(0.5)
 
-    const totalWidth = attachments.length * ATTACH_CARD_W + (attachments.length - 1) * ATTACH_CARD_GAP
-    const startX = (GAME_WIDTH - totalWidth) / 2 + ATTACH_CARD_W / 2
+    this.pageNavLeft = this.add.text(40, this.POOL_Y + ATTACH_CARD_H / 2 + 8, '◀', {
+      fontSize: '20px',
+      fontFamily: 'Arial',
+      color: '#94A3B8',
+    }).setOrigin(0.5).setInteractive({ useHandCursor: true })
+    this.pageNavLeft.on('pointerdown', () => this.gotoPage(this.currentPage - 1))
+    this.pageNavLeft.on('pointerover', () => this.pageNavLeft?.setColor('#D4A843'))
+    this.pageNavLeft.on('pointerout', () => this.pageNavLeft?.setColor('#94A3B8'))
 
-    attachments.forEach((att: AttachmentEntry, i: number) => {
-      const cx = startX + i * (ATTACH_CARD_W + ATTACH_CARD_GAP)
-      const cy = this.POOL_Y + ATTACH_CARD_H / 2 + 8
+    this.pageNavRight = this.add.text(GAME_WIDTH - 40, this.POOL_Y + ATTACH_CARD_H / 2 + 8, '▶', {
+      fontSize: '20px',
+      fontFamily: 'Arial',
+      color: '#94A3B8',
+    }).setOrigin(0.5).setInteractive({ useHandCursor: true })
+    this.pageNavRight.on('pointerdown', () => this.gotoPage(this.currentPage + 1))
+    this.pageNavRight.on('pointerover', () => this.pageNavRight?.setColor('#D4A843'))
+    this.pageNavRight.on('pointerout', () => this.pageNavRight?.setColor('#94A3B8'))
 
-      const container = this.createAttachmentCard(att, cx, cy)
+    this.renderCurrentPage()
+  }
 
-      const body = this.matter.add.rectangle(cx, cy, ATTACH_CARD_W, ATTACH_CARD_H, {
+  private clearAttachmentPool() {
+    for (const card of this.attachmentCards) {
+      if (card.placedClauseId) continue
+      try {
+        this.matter.world.remove(card.body as unknown as Matter.Body)
+      } catch (_e) { /* ignore */ }
+      card.container.destroy()
+    }
+    this.attachmentCards = this.attachmentCards.filter((c) => c.placedClauseId !== null)
+  }
+
+  private computeAttachmentPosition(indexInPage: number, totalInPage: number): { x: number; y: number } {
+    const cy = this.POOL_Y + ATTACH_CARD_H / 2 + 8
+    const usableWidth = GAME_WIDTH - 160
+    const totalWidth = totalInPage * ATTACH_CARD_W + (totalInPage - 1) * ATTACH_CARD_GAP
+    const startX = (GAME_WIDTH - Math.min(totalWidth, usableWidth)) / 2 + ATTACH_CARD_W / 2
+    const cx = startX + indexInPage * (ATTACH_CARD_W + ATTACH_CARD_GAP)
+    return { x: cx, y: cy }
+  }
+
+  private renderCurrentPage() {
+    this.clearAttachmentPool()
+
+    const allVisible = this.mergedAttachmentPool.filter((a) => !this.placedAttachmentIds.has(a.id))
+    const pages: AttachmentEntry[][] = []
+    for (let i = 0; i < allVisible.length; i += this.MAX_PER_PAGE) {
+      pages.push(allVisible.slice(i, i + this.MAX_PER_PAGE))
+    }
+
+    if (this.currentPage >= pages.length) this.currentPage = Math.max(0, pages.length - 1)
+    const page = pages[this.currentPage] ?? []
+
+    page.forEach((att, i) => {
+      const pos = this.computeAttachmentPosition(i, page.length)
+      const container = this.createAttachmentCard(att, pos.x, pos.y)
+
+      const body = this.matter.add.rectangle(pos.x, pos.y, ATTACH_CARD_W, ATTACH_CARD_H, {
         isStatic: true,
         friction: 0.9,
         restitution: 0.05,
@@ -328,13 +421,37 @@ export class ContractAttachScene extends Phaser.Scene {
         entry: att,
         container,
         body,
-        originalX: cx,
-        originalY: cy,
+        originalX: pos.x,
+        originalY: pos.y,
         placedClauseId: null,
       }
       this.attachmentCards.push(card)
       container.setData('cardData', card)
     })
+
+    if (this.pageIndicator) {
+      const totalPages = Math.max(1, pages.length)
+      const displayPage = this.currentPage + 1
+      this.pageIndicator.setText(
+        totalPages > 1
+          ? `第 ${displayPage} / ${totalPages} 页  ·  共 ${allVisible.length} 个附件`
+          : `共 ${allVisible.length} 个附件`,
+      )
+    }
+    if (this.pageNavLeft) {
+      this.pageNavLeft.setAlpha(pages.length > 1 && this.currentPage > 0 ? 1 : 0.2)
+    }
+    if (this.pageNavRight) {
+      this.pageNavRight.setAlpha(pages.length > 1 && this.currentPage < pages.length - 1 ? 1 : 0.2)
+    }
+  }
+
+  private gotoPage(target: number) {
+    const allVisible = this.mergedAttachmentPool.filter((a) => !this.placedAttachmentIds.has(a.id))
+    const totalPages = Math.max(1, Math.ceil(allVisible.length / this.MAX_PER_PAGE))
+    if (target < 0 || target >= totalPages) return
+    this.currentPage = target
+    this.renderCurrentPage()
   }
 
   private createAttachmentCard(
@@ -436,6 +553,7 @@ export class ContractAttachScene extends Phaser.Scene {
           if (card.placedClauseId) {
             this.clearDropZone(card.placedClauseId)
             card.placedClauseId = null
+            this.placedAttachmentIds.delete(card.entry.id)
           }
           break
         }
@@ -496,6 +614,10 @@ export class ContractAttachScene extends Phaser.Scene {
           y: card.container.y,
         })
       },
+      onComplete: () => {
+        this.placedAttachmentIds.add(card.entry.id)
+        this.renderCurrentPage()
+      },
     })
 
     card.placedClauseId = dz.clauseId
@@ -531,6 +653,9 @@ export class ContractAttachScene extends Phaser.Scene {
   }
 
   private returnCard(card: AttachmentCardData) {
+    const wasFromClause = this.placedAttachmentIds.has(card.entry.id)
+    this.placedAttachmentIds.delete(card.entry.id)
+
     this.tweens.add({
       targets: card.container,
       x: card.originalX,
@@ -542,6 +667,14 @@ export class ContractAttachScene extends Phaser.Scene {
           x: card.container.x,
           y: card.container.y,
         })
+      },
+      onComplete: () => {
+        if (wasFromClause) {
+          try { this.matter.world.remove(card.body as unknown as Matter.Body) } catch (_e) { /* ignore */ }
+          card.container.destroy()
+          this.attachmentCards = this.attachmentCards.filter((c) => c !== card)
+          this.renderCurrentPage()
+        }
       },
     })
     card.placedClauseId = null
