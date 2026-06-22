@@ -136,7 +136,8 @@ class AuditsController < ApplicationController
 
     respond_to do |format|
       if @evidence.save
-        detection = EvidenceMissingDetectionService.call(@audit, auto_create_exception: false)
+        detection_service = EvidenceMissingDetectionService.call(@audit, auto_create_exception: false)
+        @detection_result = detection_service.success? ? detection_service.result : nil
         @audit.reload
 
         format.html do
@@ -146,7 +147,7 @@ class AuditsController < ApplicationController
           render turbo_stream: [
             turbo_stream.replace("evidence_list", partial: "audits/evidence_list", locals: { audit: @audit, evidence_attachments: @audit.evidence_attachments.order(created_at: :desc) }),
             turbo_stream.replace("evidence_count", partial: "audits/evidence_count", locals: { audit: @audit }),
-            turbo_stream.replace("evidence_completeness", partial: "audits/evidence_completeness", locals: { audit: @audit, detection: detection }),
+            turbo_stream.replace("evidence_completeness", partial: "audits/evidence_completeness", locals: { audit: @audit, detection: @detection_result }),
             *render_turbo_flash(notice: "证据附件上传成功")
           ]
         end

@@ -1,3 +1,4 @@
+<div id="evidence_list">
 <% if evidence_attachments.any? %>
   <div class="grid grid-cols-1 md:grid-cols-2 gap-3">
     <% evidence_attachments.each do |evidence| %>
@@ -51,9 +52,10 @@
 <% else %>
   <div class="text-center py-12">
     <svg class="mx-auto h-12 w-12 text-slate-300" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-      <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M15.172 7l-6.586 6.586a2 2 0 102.828 2.828l6.414-6.586a4 4 0 00-5.656-5.656l-6.415 6.585a6 6 0 108.486 8.486L20.5 13"></path>
+      <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M15.172 7l-6.586 6.586a2 2 0 102.828 2.828l6.414-6.586a4 4 0 00-5.656-5.656l-6.415 6.585a6 4 0 108.486 8.486L20.5 13"></path>
     </svg>
     <h3 class="mt-2 text-sm font-medium text-slate-900">暂无证据附件</h3>
     <p class="mt-1 text-sm text-slate-500">点击右上角「上传证据」开始上传审计证据</p>
   </div>
 <% end %>
+</div>
