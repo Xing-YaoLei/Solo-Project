@@ -11,10 +11,11 @@ export enum QuoteStatus {
 }
 
 export enum PaymentStatus {
-  Unpaid = 'Unpaid',
-  PartialPaid = 'PartialPaid',
+  Pending = 'Pending',
+  Partial = 'Partial',
   Paid = 'Paid',
   Overdue = 'Overdue',
+  Cancelled = 'Cancelled',
 }
 
 export enum ReconciliationStatus {

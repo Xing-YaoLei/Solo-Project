@@ -13,7 +13,7 @@ using System.Reflection;
 [assembly: System.Reflection.AssemblyCompanyAttribute("LegalFeeScheduling.API")]
 [assembly: System.Reflection.AssemblyConfigurationAttribute("Debug")]
 [assembly: System.Reflection.AssemblyFileVersionAttribute("1.0.0.0")]
-[assembly: System.Reflection.AssemblyInformationalVersionAttribute("1.0.0+403339999f9abdb97041852c69b2d66ae0cec466")]
+[assembly: System.Reflection.AssemblyInformationalVersionAttribute("1.0.0+a6ce5009b66d80d0515a0d889d42cc6bfc3289ee")]
 [assembly: System.Reflection.AssemblyProductAttribute("LegalFeeScheduling.API")]
 [assembly: System.Reflection.AssemblyTitleAttribute("LegalFeeScheduling.API")]
 [assembly: System.Reflection.AssemblyVersionAttribute("1.0.0.0")]

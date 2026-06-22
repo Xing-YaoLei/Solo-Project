@@ -74,12 +74,11 @@ const actionConfig: Record<QuoteStatus, WorkflowAction[]> = {
       type: 'primary',
     },
     {
-      label: '处理异常',
+      label: '记录异常原因',
       action: 'handleException',
       icon: <WarningOutlined />,
       requireReason: true,
     },
-    { label: '完成处理', action: 'complete', icon: <FileDoneOutlined /> },
   ],
   [QuoteStatus.Completed]: [
     { label: '关闭归档', action: 'close', icon: <FolderOutlined />, type: 'primary' },

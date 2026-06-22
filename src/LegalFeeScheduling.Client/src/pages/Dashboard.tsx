@@ -32,17 +32,19 @@ const paymentMethodLabels: Record<PaymentMethod, string> = {
 }
 
 const paymentStatusLabels: Record<PaymentStatus, string> = {
-  [PaymentStatus.Unpaid]: '未支付',
-  [PaymentStatus.PartialPaid]: '部分支付',
-  [PaymentStatus.Paid]: '已支付',
+  [PaymentStatus.Pending]: '待付款',
+  [PaymentStatus.Partial]: '部分付款',
+  [PaymentStatus.Paid]: '已付清',
   [PaymentStatus.Overdue]: '逾期',
+  [PaymentStatus.Cancelled]: '已取消',
 }
 
 const paymentStatusColors: Record<PaymentStatus, string> = {
-  [PaymentStatus.Unpaid]: 'gold',
-  [PaymentStatus.PartialPaid]: 'blue',
+  [PaymentStatus.Pending]: 'gold',
+  [PaymentStatus.Partial]: 'blue',
   [PaymentStatus.Paid]: 'green',
   [PaymentStatus.Overdue]: 'red',
+  [PaymentStatus.Cancelled]: 'default',
 }
 
 const reconciliationStatusLabels: Record<ReconciliationStatus, string> = {
