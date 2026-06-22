@@ -241,7 +241,7 @@ func _build_questions_tab() -> VBoxContainer:
 	var mc = create_margin_container({"left": 8, "right": 8, "top": 8, "bottom": 8})
 	mc.add_child(vbox)
 
-	var header = create_label("题目与素材管理（证据分类、通报模板等）", Vector2.ZERO, 15, STYLE_TEXT_SECONDARY)
+	var header = create_label("题目与素材管理 - 可直接编辑后点击底部「保存所有配置」", Vector2.ZERO, 15, STYLE_TEXT_SECONDARY)
 	vbox.add_child(header)
 
 	var scroll = ScrollContainer.new()
@@ -259,58 +259,245 @@ func _build_questions_tab() -> VBoxContainer:
 	for ti in range(q_types.size()):
 		var sec_label = create_label("📌 %s - 共 %d 道题" % [q_type_names[ti], DataManager.get_questions_by_type(q_types[ti]).size()], Vector2.ZERO, 17, STYLE_ACCENT)
 		main_vbox.add_child(sec_label)
-		var questions = DataManager.get_questions_by_type(q_types[ti])
-		for q in questions:
-			var q_card = PanelContainer.new()
-			var qs = StyleBoxFlat.new()
-			qs.bg_color = Color(0.16, 0.2, 0.26, 1)
-			qs.corner_radius_top_left = 6
-			qs.corner_radius_top_right = 6
-			qs.corner_radius_bottom_left = 6
-			qs.corner_radius_bottom_right = 6
-			qs.content_margin_left = 12
-			qs.content_margin_right = 12
-			qs.content_margin_top = 8
-			qs.content_margin_bottom = 8
-			q_card.add_theme_stylebox_override("panel", qs)
-			q_card.size_flags_horizontal = Control.SIZE_EXPAND_FILL
-			var qvbox = VBoxContainer.new()
-			qvbox.add_theme_constant_override("separation", 3)
-			qvbox.size_flags_horizontal = Control.SIZE_EXPAND_FILL
-			q_card.add_child(qvbox)
-			var qtitle = create_label("✦ %s（分值：%d）" % [q.get("title", ""), q.get("score", 0)], Vector2.ZERO, 15, STYLE_TEXT_PRIMARY)
-			qvbox.add_child(qtitle)
-			var qdesc = create_label(q.get("description", ""), Vector2.ZERO, 13, STYLE_TEXT_SECONDARY)
-			qdesc.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
-			qvbox.add_child(qdesc)
-			var qid = create_label("ID: " + q.get("id", "") + " | 所需权限: " + q.get("required_permission", ""), Vector2.ZERO, 12, Color(0.45, 0.5, 0.58, 1))
-			qvbox.add_child(qid)
+		var q_type_key = q_types[ti]
+		var questions_ref = DataManager.questions[q_type_key]
+		for qi in range(questions_ref.size()):
+			var q_card = _build_editable_question_card(q_type_key, qi)
 			main_vbox.add_child(q_card)
 
 	var mat_sep = HSeparator.new()
 	mat_sep.modulate = Color(0.35, 0.4, 0.48, 1)
 	main_vbox.add_child(mat_sep)
 
+	var mat_title_hbox = HBoxContainer.new()
+	mat_title_hbox.add_theme_constant_override("separation", 12)
+	main_vbox.add_child(mat_title_hbox)
 	var mat_label = create_label("📂 证据分类素材库", Vector2.ZERO, 17, STYLE_ACCENT)
-	main_vbox.add_child(mat_label)
+	mat_title_hbox.add_child(mat_label)
+	var add_cat_btn = create_button("+ 新增分类", Vector2.ZERO, Vector2(120, 34), Color(0.25, 0.45, 0.3, 1))
+	add_cat_btn.add_theme_font_size_override("font_size", 13)
+	add_cat_btn.pressed.connect(func():
+		DataManager.materials["evidence_categories"].append({"id": "cat_" + str(randi()), "name": "新分类", "description": "请输入描述"})
+		show_notification("已新增，请填写后保存", "info", 1.5)
+		get_tree().reload_current_scene()
+	)
+	mat_title_hbox.add_child(add_cat_btn)
+
 	var evidence_cats = DataManager.materials.get("evidence_categories", [])
-	for cat in evidence_cats:
-		var cat_text = "• %s：%s" % [cat.get("name", ""), cat.get("description", "")]
-		var cat_lbl = create_label(cat_text, Vector2.ZERO, 14, STYLE_TEXT_PRIMARY)
-		main_vbox.add_child(cat_lbl)
+	for ci in range(evidence_cats.size()):
+		var cat_card = _build_editable_evidence_category_card(ci)
+		main_vbox.add_child(cat_card)
 
 	var tpl_sep = HSeparator.new()
 	tpl_sep.modulate = Color(0.35, 0.4, 0.48, 1)
 	main_vbox.add_child(tpl_sep)
+
+	var tpl_title_hbox = HBoxContainer.new()
+	tpl_title_hbox.add_theme_constant_override("separation", 12)
+	main_vbox.add_child(tpl_title_hbox)
 	var tpl_label = create_label("📋 通报模板素材库", Vector2.ZERO, 17, STYLE_ACCENT)
-	main_vbox.add_child(tpl_label)
+	tpl_title_hbox.add_child(tpl_label)
+	var add_tpl_btn = create_button("+ 新增模板", Vector2.ZERO, Vector2(120, 34), Color(0.25, 0.45, 0.3, 1))
+	add_tpl_btn.add_theme_font_size_override("font_size", 13)
+	add_tpl_btn.pressed.connect(func():
+		DataManager.materials["templates"].append({"id": "tpl_" + str(randi()), "name": "新模板", "description": "请输入适用场景说明"})
+		show_notification("已新增，请填写后保存", "info", 1.5)
+		get_tree().reload_current_scene()
+	)
+	tpl_title_hbox.add_child(add_tpl_btn)
+
 	var templates = DataManager.materials.get("templates", [])
-	for tpl in templates:
-		var tpl_text = "• %s：%s" % [tpl.get("name", ""), tpl.get("description", "")]
-		var tpl_lbl = create_label(tpl_text, Vector2.ZERO, 14, STYLE_TEXT_PRIMARY)
-		main_vbox.add_child(tpl_lbl)
+	for ti in range(templates.size()):
+		var tpl_card = _build_editable_template_card(ti)
+		main_vbox.add_child(tpl_card)
 
 	return mc
+
+func _build_editable_question_card(q_type_key: String, q_index: int) -> PanelContainer:
+	var q = DataManager.questions[q_type_key][q_index]
+	var card = PanelContainer.new()
+	var qs = StyleBoxFlat.new()
+	qs.bg_color = Color(0.16, 0.2, 0.26, 1)
+	qs.corner_radius_top_left = 6
+	qs.corner_radius_top_right = 6
+	qs.corner_radius_bottom_left = 6
+	qs.corner_radius_bottom_right = 6
+	qs.content_margin_left = 12
+	qs.content_margin_right = 12
+	qs.content_margin_top = 10
+	qs.content_margin_bottom = 10
+	card.add_theme_stylebox_override("panel", qs)
+	card.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+
+	var qvbox = VBoxContainer.new()
+	qvbox.add_theme_constant_override("separation", 6)
+	qvbox.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	card.add_child(qvbox)
+
+	var row0 = HBoxContainer.new()
+	row0.add_theme_constant_override("separation", 10)
+	qvbox.add_child(row0)
+	var id_lbl = create_label("ID: " + q.get("id", ""), Vector2.ZERO, 12, Color(0.45, 0.5, 0.58, 1))
+	row0.add_child(id_lbl)
+	var spacer0 = Control.new()
+	spacer0.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	row0.add_child(spacer0)
+	var perm_lbl = create_label("权限:", Vector2.ZERO, 13, STYLE_TEXT_SECONDARY)
+	row0.add_child(perm_lbl)
+	var perm_input = LineEdit.new()
+	perm_input.text = q.get("required_permission", "")
+	perm_input.custom_minimum_size = Vector2(150, 28)
+	perm_input.add_theme_font_size_override("font_size", 13)
+	perm_input.text_changed.connect(func(txt): DataManager.questions[q_type_key][q_index]["required_permission"] = txt)
+	row0.add_child(perm_input)
+	var score_lbl = create_label("分值:", Vector2.ZERO, 13, STYLE_TEXT_SECONDARY)
+	row0.add_child(score_lbl)
+	var score_spin = SpinBox.new()
+	score_spin.min_value = 5
+	score_spin.max_value = 100
+	score_spin.step = 5
+	score_spin.value = q.get("score", 25)
+	score_spin.custom_minimum_size = Vector2(80, 28)
+	score_spin.value_changed.connect(func(v): DataManager.questions[q_type_key][q_index]["score"] = int(v))
+	row0.add_child(score_spin)
+
+	var row1 = HBoxContainer.new()
+	row1.add_theme_constant_override("separation", 10)
+	qvbox.add_child(row1)
+	var title_lbl = create_label("标题:", Vector2.ZERO, 14, STYLE_TEXT_SECONDARY)
+	title_lbl.custom_minimum_size = Vector2(50, 0)
+	row1.add_child(title_lbl)
+	var title_input = LineEdit.new()
+	title_input.text = q.get("title", "")
+	title_input.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	title_input.text_changed.connect(func(txt): DataManager.questions[q_type_key][q_index]["title"] = txt)
+	row1.add_child(title_input)
+
+	var row2 = HBoxContainer.new()
+	row2.add_theme_constant_override("separation", 10)
+	qvbox.add_child(row2)
+	var desc_lbl = create_label("描述:", Vector2.ZERO, 14, STYLE_TEXT_SECONDARY)
+	desc_lbl.custom_minimum_size = Vector2(50, 0)
+	row2.add_child(desc_lbl)
+	var desc_input = LineEdit.new()
+	desc_input.text = q.get("description", "")
+	desc_input.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	desc_input.text_changed.connect(func(txt): DataManager.questions[q_type_key][q_index]["description"] = txt)
+	row2.add_child(desc_input)
+
+	var row3 = HBoxContainer.new()
+	row3.add_theme_constant_override("separation", 10)
+	qvbox.add_child(row3)
+	var hint_lbl = create_label("提示:", Vector2.ZERO, 14, STYLE_TEXT_SECONDARY)
+	hint_lbl.custom_minimum_size = Vector2(50, 0)
+	row3.add_child(hint_lbl)
+	var hint_input = LineEdit.new()
+	hint_input.text = q.get("hint", "")
+	hint_input.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	hint_input.text_changed.connect(func(txt): DataManager.questions[q_type_key][q_index]["hint"] = txt)
+	row3.add_child(hint_input)
+
+	return card
+
+func _build_editable_evidence_category_card(cat_index: int) -> PanelContainer:
+	var cat = DataManager.materials["evidence_categories"][cat_index]
+	var card = PanelContainer.new()
+	var cs = StyleBoxFlat.new()
+	cs.bg_color = Color(0.18, 0.24, 0.20, 1)
+	cs.corner_radius_top_left = 6
+	cs.corner_radius_top_right = 6
+	cs.corner_radius_bottom_left = 6
+	cs.corner_radius_bottom_right = 6
+	cs.content_margin_left = 12
+	cs.content_margin_right = 12
+	cs.content_margin_top = 8
+	cs.content_margin_bottom = 8
+	card.add_theme_stylebox_override("panel", cs)
+	card.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+
+	var hbox = HBoxContainer.new()
+	hbox.add_theme_constant_override("separation", 10)
+	card.add_child(hbox)
+
+	var id_lbl = create_label(cat.get("id", ""), Vector2.ZERO, 12, Color(0.45, 0.5, 0.58, 1))
+	id_lbl.custom_minimum_size = Vector2(70, 0)
+	id_lbl.vertical_alignment = VERTICAL_ALIGNMENT_CENTER
+	hbox.add_child(id_lbl)
+
+	var name_input = LineEdit.new()
+	name_input.text = cat.get("name", "")
+	name_input.custom_minimum_size = Vector2(150, 28)
+	name_input.add_theme_font_size_override("font_size", 13)
+	name_input.text_changed.connect(func(txt): DataManager.materials["evidence_categories"][cat_index]["name"] = txt)
+	hbox.add_child(name_input)
+
+	var desc_input = LineEdit.new()
+	desc_input.text = cat.get("description", "")
+	desc_input.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	desc_input.add_theme_font_size_override("font_size", 13)
+	desc_input.text_changed.connect(func(txt): DataManager.materials["evidence_categories"][cat_index]["description"] = txt)
+	hbox.add_child(desc_input)
+
+	var del_btn = create_button("删除", Vector2.ZERO, Vector2(60, 28), STYLE_DANGER)
+	del_btn.add_theme_font_size_override("font_size", 12)
+	del_btn.pressed.connect(func():
+		DataManager.materials["evidence_categories"].remove_at(cat_index)
+		show_notification("已删除分类，点击保存生效", "warning", 1.5)
+		get_tree().reload_current_scene()
+	)
+	hbox.add_child(del_btn)
+
+	return card
+
+func _build_editable_template_card(tpl_index: int) -> PanelContainer:
+	var tpl = DataManager.materials["templates"][tpl_index]
+	var card = PanelContainer.new()
+	var cs = StyleBoxFlat.new()
+	cs.bg_color = Color(0.18, 0.20, 0.28, 1)
+	cs.corner_radius_top_left = 6
+	cs.corner_radius_top_right = 6
+	cs.corner_radius_bottom_left = 6
+	cs.corner_radius_bottom_right = 6
+	cs.content_margin_left = 12
+	cs.content_margin_right = 12
+	cs.content_margin_top = 8
+	cs.content_margin_bottom = 8
+	card.add_theme_stylebox_override("panel", cs)
+	card.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+
+	var hbox = HBoxContainer.new()
+	hbox.add_theme_constant_override("separation", 10)
+	card.add_child(hbox)
+
+	var id_lbl = create_label(tpl.get("id", ""), Vector2.ZERO, 12, Color(0.45, 0.5, 0.58, 1))
+	id_lbl.custom_minimum_size = Vector2(70, 0)
+	id_lbl.vertical_alignment = VERTICAL_ALIGNMENT_CENTER
+	hbox.add_child(id_lbl)
+
+	var name_input = LineEdit.new()
+	name_input.text = tpl.get("name", "")
+	name_input.custom_minimum_size = Vector2(200, 28)
+	name_input.add_theme_font_size_override("font_size", 13)
+	name_input.text_changed.connect(func(txt): DataManager.materials["templates"][tpl_index]["name"] = txt)
+	hbox.add_child(name_input)
+
+	var desc_input = LineEdit.new()
+	desc_input.text = tpl.get("description", "")
+	desc_input.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	desc_input.add_theme_font_size_override("font_size", 13)
+	desc_input.text_changed.connect(func(txt): DataManager.materials["templates"][tpl_index]["description"] = txt)
+	hbox.add_child(desc_input)
+
+	var del_btn = create_button("删除", Vector2.ZERO, Vector2(60, 28), STYLE_DANGER)
+	del_btn.add_theme_font_size_override("font_size", 12)
+	del_btn.pressed.connect(func():
+		DataManager.materials["templates"].remove_at(tpl_index)
+		show_notification("已删除模板，点击保存生效", "warning", 1.5)
+		get_tree().reload_current_scene()
+	)
+	hbox.add_child(del_btn)
+
+	return card
 
 func _build_rewards_tab() -> VBoxContainer:
 	var vbox = VBoxContainer.new()
@@ -320,8 +507,28 @@ func _build_rewards_tab() -> VBoxContainer:
 	var mc = create_margin_container({"left": 8, "right": 8, "top": 8, "bottom": 8})
 	mc.add_child(vbox)
 
-	var header = create_label("徽章奖励设置", Vector2.ZERO, 15, STYLE_TEXT_SECONDARY)
-	vbox.add_child(header)
+	var header_hbox = HBoxContainer.new()
+	header_hbox.add_theme_constant_override("separation", 12)
+	vbox.add_child(header_hbox)
+	var header = create_label("徽章奖励设置 - 可直接编辑后保存", Vector2.ZERO, 15, STYLE_TEXT_SECONDARY)
+	header_hbox.add_child(header)
+	var spacer_h = Control.new()
+	spacer_h.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	header_hbox.add_child(spacer_h)
+	var add_reward_btn = create_button("+ 新增奖励", Vector2.ZERO, Vector2(140, 36), Color(0.25, 0.45, 0.3, 1))
+	add_reward_btn.add_theme_font_size_override("font_size", 13)
+	add_reward_btn.pressed.connect(func():
+		DataManager.rewards.append({
+			"id": "reward_" + str(randi()),
+			"icon": "🏅",
+			"name": "新奖励",
+			"description": "请输入奖励描述",
+			"condition": "请输入触发条件（例如 accuracy>=90）"
+		})
+		show_notification("已新增奖励，请填写后保存", "info", 1.5)
+		get_tree().reload_current_scene()
+	)
+	header_hbox.add_child(add_reward_btn)
 
 	var scroll = ScrollContainer.new()
 	scroll.size_flags_vertical = Control.SIZE_EXPAND_FILL
@@ -333,40 +540,120 @@ func _build_rewards_tab() -> VBoxContainer:
 	rewards_vbox.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 	scroll.add_child(rewards_vbox)
 
-	for reward in DataManager.rewards:
-		var card = PanelContainer.new()
-		var style = StyleBoxFlat.new()
-		style.bg_color = Color(0.18, 0.22, 0.28, 1)
-		style.corner_radius_top_left = 8
-		style.corner_radius_top_right = 8
-		style.corner_radius_bottom_left = 8
-		style.corner_radius_bottom_right = 8
-		style.content_margin_left = 16
-		style.content_margin_right = 16
-		style.content_margin_top = 12
-		style.content_margin_bottom = 12
-		card.add_theme_stylebox_override("panel", style)
-		card.size_flags_horizontal = Control.SIZE_EXPAND_FILL
-		var hbox = HBoxContainer.new()
-		hbox.add_theme_constant_override("separation", 16)
-		card.add_child(hbox)
-		var icon_lbl = create_label(reward.get("icon", "🎖"), Vector2.ZERO, 36, STYLE_WARNING)
-		icon_lbl.custom_minimum_size = Vector2(60, 0)
-		icon_lbl.vertical_alignment = VERTICAL_ALIGNMENT_CENTER
-		hbox.add_child(icon_lbl)
-		var vbox_info = VBoxContainer.new()
-		vbox_info.add_theme_constant_override("separation", 4)
-		vbox_info.size_flags_horizontal = Control.SIZE_EXPAND_FILL
-		hbox.add_child(vbox_info)
-		var rname = create_label(reward.get("name", ""), Vector2.ZERO, 17, STYLE_TEXT_PRIMARY)
-		vbox_info.add_child(rname)
-		var rdesc = create_label(reward.get("description", ""), Vector2.ZERO, 13, STYLE_TEXT_SECONDARY)
-		vbox_info.add_child(rdesc)
-		var rcond = create_label("触发条件: " + reward.get("condition", ""), Vector2.ZERO, 12, Color(0.45, 0.5, 0.58, 1))
-		vbox_info.add_child(rcond)
+	for ri in range(DataManager.rewards.size()):
+		var card = _build_editable_reward_card(ri)
 		rewards_vbox.add_child(card)
 
 	return mc
+
+func _build_editable_reward_card(reward_index: int) -> PanelContainer:
+	var reward = DataManager.rewards[reward_index]
+	var card = PanelContainer.new()
+	var style = StyleBoxFlat.new()
+	style.bg_color = Color(0.18, 0.22, 0.28, 1)
+	style.corner_radius_top_left = 8
+	style.corner_radius_top_right = 8
+	style.corner_radius_bottom_left = 8
+	style.corner_radius_bottom_right = 8
+	style.content_margin_left = 16
+	style.content_margin_right = 16
+	style.content_margin_top = 12
+	style.content_margin_bottom = 12
+	card.add_theme_stylebox_override("panel", style)
+	card.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+
+	var hbox = HBoxContainer.new()
+	hbox.add_theme_constant_override("separation", 14)
+	card.add_child(hbox)
+
+	var icon_vbox = VBoxContainer.new()
+	icon_vbox.add_theme_constant_override("separation", 6)
+	hbox.add_child(icon_vbox)
+	var icon_lbl = create_label(reward.get("icon", "🎖"), Vector2.ZERO, 36, STYLE_WARNING)
+	icon_lbl.custom_minimum_size = Vector2(60, 0)
+	icon_lbl.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+	icon_lbl.vertical_alignment = VERTICAL_ALIGNMENT_CENTER
+	icon_vbox.add_child(icon_lbl)
+	var icon_input = LineEdit.new()
+	icon_input.text = reward.get("icon", "🎖")
+	icon_input.custom_minimum_size = Vector2(60, 28)
+	icon_input.placeholder_text = "emoji"
+	icon_input.alignment = HORIZONTAL_ALIGNMENT_CENTER
+	icon_input.add_theme_font_size_override("font_size", 14)
+	icon_input.text_changed.connect(func(txt):
+		DataManager.rewards[reward_index]["icon"] = txt
+		if icon_lbl:
+			icon_lbl.text = txt
+	)
+	icon_vbox.add_child(icon_input)
+
+	var fields_vbox = VBoxContainer.new()
+	fields_vbox.add_theme_constant_override("separation", 8)
+	fields_vbox.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	hbox.add_child(fields_vbox)
+
+	var id_row = HBoxContainer.new()
+	id_row.add_theme_constant_override("separation", 8)
+	fields_vbox.add_child(id_row)
+	var id_lbl = create_label("ID: " + reward.get("id", ""), Vector2.ZERO, 12, Color(0.45, 0.5, 0.58, 1))
+	id_row.add_child(id_lbl)
+	var spacer_id = Control.new()
+	spacer_id.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	id_row.add_child(spacer_id)
+
+	var del_btn = create_button("删除奖励", Vector2.ZERO, Vector2(100, 30), STYLE_DANGER)
+	del_btn.add_theme_font_size_override("font_size", 12)
+	del_btn.pressed.connect(func():
+		DataManager.rewards.remove_at(reward_index)
+		show_notification("已删除奖励，点击保存生效", "warning", 1.5)
+		get_tree().reload_current_scene()
+	)
+	id_row.add_child(del_btn)
+
+	var name_row = HBoxContainer.new()
+	name_row.add_theme_constant_override("separation", 10)
+	fields_vbox.add_child(name_row)
+	var name_lbl = create_label("名称:", Vector2.ZERO, 14, STYLE_TEXT_SECONDARY)
+	name_lbl.custom_minimum_size = Vector2(60, 0)
+	name_lbl.vertical_alignment = VERTICAL_ALIGNMENT_CENTER
+	name_row.add_child(name_lbl)
+	var name_input = LineEdit.new()
+	name_input.text = reward.get("name", "")
+	name_input.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	name_input.add_theme_font_size_override("font_size", 15)
+	name_input.text_changed.connect(func(txt): DataManager.rewards[reward_index]["name"] = txt)
+	name_row.add_child(name_input)
+
+	var desc_row = HBoxContainer.new()
+	desc_row.add_theme_constant_override("separation", 10)
+	fields_vbox.add_child(desc_row)
+	var desc_lbl = create_label("描述:", Vector2.ZERO, 14, STYLE_TEXT_SECONDARY)
+	desc_lbl.custom_minimum_size = Vector2(60, 0)
+	desc_lbl.vertical_alignment = VERTICAL_ALIGNMENT_CENTER
+	desc_row.add_child(desc_lbl)
+	var desc_input = LineEdit.new()
+	desc_input.text = reward.get("description", "")
+	desc_input.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	desc_input.add_theme_font_size_override("font_size", 13)
+	desc_input.text_changed.connect(func(txt): DataManager.rewards[reward_index]["description"] = txt)
+	desc_row.add_child(desc_input)
+
+	var cond_row = HBoxContainer.new()
+	cond_row.add_theme_constant_override("separation", 10)
+	fields_vbox.add_child(cond_row)
+	var cond_lbl = create_label("条件:", Vector2.ZERO, 14, STYLE_TEXT_SECONDARY)
+	cond_lbl.custom_minimum_size = Vector2(60, 0)
+	cond_lbl.vertical_alignment = VERTICAL_ALIGNMENT_CENTER
+	cond_row.add_child(cond_lbl)
+	var cond_input = LineEdit.new()
+	cond_input.text = reward.get("condition", "")
+	cond_input.placeholder_text = "如: accuracy>=80, accuracy>=90 等"
+	cond_input.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	cond_input.add_theme_font_size_override("font_size", 13)
+	cond_input.text_changed.connect(func(txt): DataManager.rewards[reward_index]["condition"] = txt)
+	cond_row.add_child(cond_input)
+
+	return card
 
 func _build_availability_tab() -> VBoxContainer:
 	var vbox = VBoxContainer.new()

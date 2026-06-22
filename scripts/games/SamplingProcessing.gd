@@ -409,7 +409,7 @@ func _get_correct_answer() -> Dictionary:
 	if question.has("records"):
 		for rec in question.get("records", []):
 			correct[rec.get("id", "")] = rec.get("action_required", "")
-		elif question.has("scenarios"):
-			for sc in question.get("scenarios", []):
-				correct[sc.get("id", "")] = sc.get("sampling_method", "")
+	elif question.has("scenarios"):
+		for sc in question.get("scenarios", []):
+			correct[sc.get("id", "")] = sc.get("sampling_method", "")
 	return correct

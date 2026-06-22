@@ -115,10 +115,18 @@ func _finish_game() -> void:
 		return
 	game_completed = true
 	timer_active = false
-	var result = GameManager.finish_game()
+	var result: Dictionary = {}
 	result["game_type"] = game_type
 	result["display_score"] = score
 	result["display_max_score"] = max_score
+	var queue = GameManager.current_level.get("_game_types_queue", [])
+	var idx = GameManager.current_level.get("_current_game_index", 0)
+	var is_last_game = (idx + 1) >= queue.size()
+	if is_last_game:
+		result = GameManager.finish_game()
+		result["game_type"] = game_type
+		result["display_score"] = score
+		result["display_max_score"] = max_score
 	_show_result(result)
 
 func _show_result(result: Dictionary) -> void:
@@ -135,7 +143,7 @@ func _advance_to_next_game_or_finish(_result: Dictionary) -> void:
 		GameManager.change_scene("result_review")
 
 func go_back() -> void:
-	if GameManager.current_mode == "formal":
+	if GameManager.current_mode == "formal" and not game_completed:
 		GameManager.finish_game()
 	if game_type == "evidence_identification" or game_type == "template_selection" or game_type == "checklist_sorting" or game_type == "sampling_processing":
 		if GameManager.current_mode == "formal":
