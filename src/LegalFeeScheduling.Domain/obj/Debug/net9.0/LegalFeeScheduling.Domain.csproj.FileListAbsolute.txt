@@ -1,0 +1,12 @@
+/Users/yaoleyxing/Developer/solo-mange-pro/MP0447/src/LegalFeeScheduling.Domain/obj/Debug/net9.0/LegalFeeScheduling.Domain.GeneratedMSBuildEditorConfig.editorconfig
+/Users/yaoleyxing/Developer/solo-mange-pro/MP0447/src/LegalFeeScheduling.Domain/obj/Debug/net9.0/LegalFeeScheduling.Domain.AssemblyInfoInputs.cache
+/Users/yaoleyxing/Developer/solo-mange-pro/MP0447/src/LegalFeeScheduling.Domain/obj/Debug/net9.0/LegalFeeScheduling.Domain.AssemblyInfo.cs
+/Users/yaoleyxing/Developer/solo-mange-pro/MP0447/src/LegalFeeScheduling.Domain/obj/Debug/net9.0/LegalFeeScheduling.Domain.csproj.CoreCompileInputs.cache
+/Users/yaoleyxing/Developer/solo-mange-pro/MP0447/src/LegalFeeScheduling.Domain/obj/Debug/net9.0/LegalFeeScheduling.Domain.sourcelink.json
+/Users/yaoleyxing/Developer/solo-mange-pro/MP0447/src/LegalFeeScheduling.Domain/bin/Debug/net9.0/LegalFeeScheduling.Domain.deps.json
+/Users/yaoleyxing/Developer/solo-mange-pro/MP0447/src/LegalFeeScheduling.Domain/bin/Debug/net9.0/LegalFeeScheduling.Domain.dll
+/Users/yaoleyxing/Developer/solo-mange-pro/MP0447/src/LegalFeeScheduling.Domain/bin/Debug/net9.0/LegalFeeScheduling.Domain.pdb
+/Users/yaoleyxing/Developer/solo-mange-pro/MP0447/src/LegalFeeScheduling.Domain/obj/Debug/net9.0/LegalFeeScheduling.Domain.dll
+/Users/yaoleyxing/Developer/solo-mange-pro/MP0447/src/LegalFeeScheduling.Domain/obj/Debug/net9.0/refint/LegalFeeScheduling.Domain.dll
+/Users/yaoleyxing/Developer/solo-mange-pro/MP0447/src/LegalFeeScheduling.Domain/obj/Debug/net9.0/LegalFeeScheduling.Domain.pdb
+/Users/yaoleyxing/Developer/solo-mange-pro/MP0447/src/LegalFeeScheduling.Domain/obj/Debug/net9.0/ref/LegalFeeScheduling.Domain.dll

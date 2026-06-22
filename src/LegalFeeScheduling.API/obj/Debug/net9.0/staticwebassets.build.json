@@ -1,0 +1,12 @@
+{
+  "Version": 1,
+  "Hash": "vmhf4y12Pa7vz+x83VgP5MUx+jnLdgME9DGwEHKUe40=",
+  "Source": "LegalFeeScheduling.API",
+  "BasePath": "_content/LegalFeeScheduling.API",
+  "Mode": "Default",
+  "ManifestType": "Build",
+  "ReferencedProjectsConfiguration": [],
+  "DiscoveryPatterns": [],
+  "Assets": [],
+  "Endpoints": []
+}

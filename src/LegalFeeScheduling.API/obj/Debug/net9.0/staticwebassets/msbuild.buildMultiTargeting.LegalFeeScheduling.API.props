@@ -1,0 +1,3 @@
+﻿<Project>
+  <Import Project="../build/LegalFeeScheduling.API.props" />
+</Project>
