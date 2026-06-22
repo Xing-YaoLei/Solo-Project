@@ -1,0 +1,207 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+enum UserRole {
+  auditor
+  business_owner
+  compliance_officer
+  management
+}
+
+enum TicketStatus {
+  pending_remediation
+  in_remediation
+  pending_review
+  closed
+}
+
+enum ReviewOpinion {
+  approved
+  rejected
+  returned_for_modification
+}
+
+enum ClosureReason {
+  remediated
+  risk_accepted
+  no_longer_applicable
+}
+
+enum ImportType {
+  erp_export
+  permission_log
+}
+
+enum RemarkPriority {
+  high
+  medium
+  low
+}
+
+model User {
+  id         String   @id @default(uuid())
+  email      String   @unique
+  name       String
+  role       UserRole
+  department String?
+  createdAt  DateTime @default(now())
+
+  assignedTickets Ticket[]         @relation("TicketAssignee")
+  auditedTickets  Ticket[]         @relation("TicketAuditor")
+  importRecords   ImportRecord[]
+  remediationLogs RemediationLog[]
+  reviewRecords   ReviewRecord[]
+  shareLinks      ShareLink[]
+  auditLogs       AuditLog[]
+  completedTasks  RemarkTask[]     @relation("RemarkTaskCompletedBy")
+}
+
+model Ticket {
+  id            String          @id @default(uuid())
+  ticketNo      String          @unique
+  title         String
+  description   String?
+  status        TicketStatus    @default(pending_remediation)
+  department    String?
+  dueDate       DateTime?
+  closureReason ClosureReason?
+  firstResolution Boolean       @default(false)
+  createdAt     DateTime        @default(now())
+  updatedAt     DateTime        @default(now()) @updatedAt
+
+  assigneeId      String?
+  assignee        User?           @relation("TicketAssignee", fields: [assigneeId], references: [id])
+  auditorId       String?
+  auditor         User?           @relation("TicketAuditor", fields: [auditorId], references: [id])
+
+  remediationLogs RemediationLog[]
+  reviewRecords   ReviewRecord[]
+  emailMaterials  EmailMaterial[]
+  remarkTasks     RemarkTask[]
+  shareLinks      ShareLink[]
+
+  @@index([status])
+  @@index([department])
+  @@index([assigneeId])
+  @@index([auditorId])
+}
+
+model ImportRecord {
+  id          String     @id @default(uuid())
+  type        ImportType
+  fileName    String
+  fileUrl     String
+  totalRows   Int        @default(0)
+  successRows Int        @default(0)
+  errorRows   Int        @default(0)
+  createdAt   DateTime   @default(now())
+
+  operatorId String?
+  operator   User?      @relation(fields: [operatorId], references: [id])
+}
+
+model RemediationLog {
+  id          String   @id @default(uuid())
+  action      String
+  description String?
+  createdAt   DateTime @default(now())
+
+  ticketId   String
+  ticket     Ticket   @relation(fields: [ticketId], references: [id], onDelete: Cascade)
+
+  operatorId String?
+  operator   User?    @relation(fields: [operatorId], references: [id])
+}
+
+model ReviewRecord {
+  id        String         @id @default(uuid())
+  opinion   ReviewOpinion
+  comment   String?
+  createdAt DateTime       @default(now())
+
+  ticketId  String
+  ticket    Ticket         @relation(fields: [ticketId], references: [id], onDelete: Cascade)
+
+  reviewerId String
+  reviewer   User          @relation(fields: [reviewerId], references: [id])
+
+  remarkTasks RemarkTask[]
+
+  @@index([ticketId])
+}
+
+model EmailMaterial {
+  id             String   @id @default(uuid())
+  subject        String
+  sender         String
+  recipients     String
+  sentAt         DateTime
+  bodyPreview    String?
+  attachmentUrls String?
+  storagePath    String?
+  createdAt      DateTime @default(now())
+
+  ticketId  String
+  ticket    Ticket   @relation(fields: [ticketId], references: [id], onDelete: Cascade)
+
+  @@index([ticketId])
+}
+
+model RemarkTask {
+  id          String          @id @default(uuid())
+  description String
+  priority    RemarkPriority  @default(medium)
+  dueDate     DateTime?
+  completed   Boolean         @default(false)
+  completedAt DateTime?
+  createdAt   DateTime        @default(now())
+
+  ticketId String
+  ticket   Ticket           @relation(fields: [ticketId], references: [id], onDelete: Cascade)
+
+  reviewId String
+  review   ReviewRecord     @relation(fields: [reviewId], references: [id], onDelete: Cascade)
+
+  completedById String?
+  completedBy   User?       @relation("RemarkTaskCompletedBy", fields: [completedById], references: [id])
+
+  @@index([ticketId])
+  @@index([completed])
+}
+
+model ShareLink {
+  id           String   @id @default(uuid())
+  token        String   @unique
+  page         String
+  allowedRoles String
+  expiresAt    DateTime
+  createdAt    DateTime @default(now())
+
+  createdById String
+  createdBy   User      @relation(fields: [createdById], references: [id])
+
+  ticketId  String?
+  ticket    Ticket?   @relation(fields: [ticketId], references: [id])
+
+  @@index([token])
+}
+
+model AuditLog {
+  id        String   @id @default(uuid())
+  action    String
+  resource  String
+  details   Json?
+  createdAt DateTime @default(now())
+
+  userId String?
+  user   User?    @relation(fields: [userId], references: [id])
+
+  @@index([userId])
+  @@index([createdAt])
+}

@@ -1,0 +1,49 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+@layer base {
+  :root {
+    --navy-900: #1B2A4A;
+    --navy-800: #243556;
+    --navy-700: #2E4068;
+    --navy-600: #3A4F7A;
+    --navy-500: #4A6291;
+    --amber-600: #D97706;
+    --amber-500: #E5940A;
+    --amber-400: #F5AD2E;
+    --emerald-600: #059669;
+    --emerald-500: #10B981;
+    --rose-600: #E11D48;
+    --rose-500: #F43F5E;
+    --slate-500: #64748B;
+    --slate-400: #94A3B8;
+    --slate-300: #CBD5E1;
+    --slate-100: #F1F5F9;
+    --slate-50: #F8FAFC;
+  }
+}
+
+@layer components {
+  .font-mono {
+    font-family: 'DM Mono', monospace;
+  }
+}
+
+::-webkit-scrollbar {
+  width: 6px;
+  height: 6px;
+}
+
+::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+::-webkit-scrollbar-thumb {
+  background: #CBD5E1;
+  border-radius: 3px;
+}
+
+::-webkit-scrollbar-thumb:hover {
+  background: #94A3B8;
+}
