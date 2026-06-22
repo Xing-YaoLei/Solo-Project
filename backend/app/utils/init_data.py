@@ -2,7 +2,7 @@ from datetime import datetime, date, timedelta
 from sqlalchemy.orm import Session
 from app.models import (
     User, UserRole, Vendor, AuditChecklist, SamplingRecord,
-    RectificationPlan, ExceptionOrder, StatusChangeLog,
+    RectificationPlan, SupplierMaterial, ExceptionOrder, StatusChangeLog,
     SamplingStatus, EvidenceStatus, RiskLevel, RectificationStatus,
     ExceptionType, ExceptionStatus, MaterialStatus
 )
@@ -271,10 +271,68 @@ def init_test_data(db: Session):
         remark="已与测评机构沟通，正在处理中",
     )
     db.add_all([log1, log2, log3, log4, log5])
+    db.flush()
+
+    material1 = SupplierMaterial(
+        vendor_id=vendor1.id,
+        material_type="资质证书",
+        material_name="ISO 27001 信息安全管理体系认证证书",
+        upload_date=datetime.utcnow() - timedelta(days=10),
+        uploaded_by="admin",
+        file_path="/materials/huawei/iso27001_cert.pdf",
+        status=MaterialStatus.APPROVED,
+    )
+    material2 = SupplierMaterial(
+        vendor_id=vendor1.id,
+        material_type="资质证书",
+        material_name="ISO 9001 质量管理体系认证证书",
+        upload_date=datetime.utcnow() - timedelta(days=8),
+        uploaded_by="admin",
+        file_path="/materials/huawei/iso9001_cert.pdf",
+        status=MaterialStatus.APPROVED,
+    )
+    material3 = SupplierMaterial(
+        vendor_id=vendor2.id,
+        material_type="合规报告",
+        material_name="数据安全合规评估报告",
+        upload_date=datetime.utcnow() - timedelta(days=5),
+        uploaded_by="admin",
+        file_path="/materials/alibaba/data_security_report.pdf",
+        status=MaterialStatus.PENDING,
+    )
+    material4 = SupplierMaterial(
+        vendor_id=vendor2.id,
+        material_type="资质证书",
+        material_name="网络安全等级保护备案证明",
+        upload_date=datetime.utcnow() - timedelta(days=3),
+        uploaded_by="admin",
+        file_path="/materials/alibaba/等保备案证明.pdf",
+        status=MaterialStatus.PENDING,
+    )
+    material5 = SupplierMaterial(
+        vendor_id=vendor3.id,
+        material_type="资质证书",
+        material_name="ISO 27001 信息安全管理体系认证证书",
+        upload_date=datetime.utcnow() - timedelta(days=15),
+        uploaded_by="admin",
+        file_path="/materials/tencent/iso27001_cert.pdf",
+        status=MaterialStatus.REJECTED,
+    )
+    material6 = SupplierMaterial(
+        vendor_id=vendor3.id,
+        material_type="其他材料",
+        material_name="供应商安全管理制度",
+        upload_date=datetime.utcnow() - timedelta(days=1),
+        uploaded_by="admin",
+        file_path="/materials/tencent/security_policy.pdf",
+        status=MaterialStatus.PENDING,
+    )
+    db.add_all([material1, material2, material3, material4, material5, material6])
 
     db.commit()
     print("✅ 测试数据初始化完成")
     print(f"   - 供应商: 3 家")
+    print(f"   - 供应商材料: 6 份（含已审核、待审核、已拒绝）")
     print(f"   - 检查清单: 4 份")
     print(f"   - 抽样记录: 4 条（包含缺失证据触发自动异常单）")
     print(f"   - 整改计划: 4 条（各风险等级均有）")
