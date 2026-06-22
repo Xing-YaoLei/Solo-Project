@@ -14,6 +14,7 @@ export default function HUD() {
     conflictMessage,
     successMessage,
     checkConflicts,
+    submitLevel,
   } = useGameStore();
 
   if (currentScreen !== 'game') return null;
@@ -147,22 +148,7 @@ export default function HUD() {
         </button>
         <button 
           className="action-btn confirm" 
-          onClick={() => {
-            const store = useGameStore.getState();
-            const allAssigned = store.currentLevel?.cases.every(c => store.assignments[c.id]);
-            const currentConflicts = store.checkConflicts();
-            if (currentConflicts.length > 0) {
-              store.setState({ conflictMessage: '⚠️ 请先解决容量冲突再提交！' });
-              setTimeout(() => store.setState({ conflictMessage: null }), 2000);
-              return;
-            }
-            if (allAssigned) {
-              store.endLevel(true);
-            } else {
-              store.setState({ conflictMessage: `⚠️ 还有 ${totalCases - assignedCount} 个案件未排期！` });
-              setTimeout(() => store.setState({ conflictMessage: null }), 2000);
-            }
-          }}
+          onClick={submitLevel}
         >
           确认提交
         </button>

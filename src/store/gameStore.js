@@ -210,6 +210,36 @@ export const useGameStore = create((set, get) => ({
     return conflicts;
   },
 
+  submitLevel: () => {
+    const state = get();
+    const level = state.currentLevel;
+    if (!level) return false;
+
+    const conflicts = state.checkConflicts();
+    const assignedCount = Object.keys(state.assignments).length;
+    const totalCases = level.cases.length;
+
+    if (conflicts.length > 0) {
+      const conflictTimes = conflicts.map(c => `${c.slotTime}(${c.currentCount}/${c.maxCapacity})`).join('、');
+      set({
+        conflictMessage: `⚠️ 存在容量冲突：${conflictTimes}`,
+      });
+      setTimeout(() => set({ conflictMessage: null }), 2500);
+      return false;
+    }
+
+    if (assignedCount < totalCases) {
+      set({
+        conflictMessage: `⚠️ 还有 ${totalCases - assignedCount} 个案件未排期，请先完成所有排期！`,
+      });
+      setTimeout(() => set({ conflictMessage: null }), 2500);
+      return false;
+    }
+
+    state.endLevel(true);
+    return true;
+  },
+
   endLevel: (success) => {
     const state = get();
     const level = state.currentLevel;
