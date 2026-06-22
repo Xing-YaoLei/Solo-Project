@@ -27,6 +27,7 @@ export interface OperationLogOptions {
     idField: string;
   };
   getBeforeData?: (context: ExecutionContext, prisma: any) => Promise<any>;
+  getAfterData?: (result: any) => any;
   getTargetId?: (context: ExecutionContext, result: any) => string;
 }
 
@@ -114,7 +115,10 @@ export class OperationLogInterceptor implements NestInterceptor {
         return next.handle().pipe(
           tap(async (result) => {
             try {
-              const afterData = this.extractAfterData(result, options.action);
+              let afterData = this.extractAfterData(result, options.action);
+              if (options.getAfterData) {
+                afterData = options.getAfterData(result);
+              }
 
               let targetId: string;
               if (options.getTargetId) {

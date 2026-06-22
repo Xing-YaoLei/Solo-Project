@@ -361,6 +361,9 @@ export class EvidencesService {
         version: maxVersion + 1,
         isSupplement: uploadDto.isSupplement || false,
         uploadedById: userId,
+        supplementId: uploadDto.isSupplement
+          ? (uploadDto.supplementRequestId || supplementRequestId)
+          : undefined,
       },
       select: attachmentSelectFields,
     });
@@ -435,7 +438,7 @@ export class EvidencesService {
     }
 
     const result = await this.prisma.$transaction(async (tx) => {
-      const updated = await tx.evidenceSupplement.update({
+      await tx.evidenceSupplement.update({
         where: { id: supplementId },
         data: {
           isCompleted: true,
@@ -450,14 +453,23 @@ export class EvidencesService {
         },
       });
 
+      let updatedEvidence: any = supplement.evidence;
       if (remaining === 0) {
-        await tx.evidence.update({
+        updatedEvidence = await tx.evidence.update({
           where: { id: supplement.evidenceId },
           data: { status: EvidenceStatus.DRAFT },
+          select: evidenceSelectFields,
         });
       }
 
-      return updated;
+      return {
+        id: supplementId,
+        evidenceId: supplement.evidenceId,
+        isCompleted: true,
+        completedAt: new Date(),
+        updatedEvidence,
+        attachmentCount: supplement.supplementAttachments.length,
+      };
     });
 
     this.logger.log(`补附件请求完成: ${supplementId}`);

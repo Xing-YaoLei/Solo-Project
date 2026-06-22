@@ -41,6 +41,7 @@ export interface UploadAttachmentRequest {
   evidenceId: string;
   description?: string;
   isSupplement?: boolean;
+  supplementRequestId?: string;
 }
 
 export interface SupplementRequest {
@@ -96,6 +97,9 @@ export const evidencesApi = {
     }
     if (uploadData.isSupplement) {
       formData.append('isSupplement', String(uploadData.isSupplement));
+    }
+    if (uploadData.supplementRequestId) {
+      formData.append('supplementRequestId', uploadData.supplementRequestId);
     }
     const { data } = await apiClient.post('/evidences/upload', formData, {
       headers: { 'Content-Type': 'multipart/form-data' },

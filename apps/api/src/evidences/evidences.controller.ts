@@ -223,6 +223,9 @@ export class EvidencesController {
     getTargetId: (_context: any, result: any) => {
       return result?.evidenceId || '';
     },
+    getAfterData: (result: any) => {
+      return result?.updatedEvidence || null;
+    },
   })
   @HttpCode(HttpStatus.OK)
   @ApiOperation({ summary: '完成补附件' })

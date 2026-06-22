@@ -242,8 +242,16 @@ export default function EvidenceDetailPage() {
   });
 
   const uploadAttachmentMutation = useMutation({
-    mutationFn: ({ file, isSupplement }: { file: File; isSupplement?: boolean }) =>
-      evidencesApi.uploadAttachment(file, { evidenceId, isSupplement }),
+    mutationFn: ({ file, isSupplement }: { file: File; isSupplement?: boolean }) => {
+      const pendingSupplement = isSupplement
+        ? evidence?.supplementHistory?.find((s: any) => !s.isCompleted)
+        : undefined;
+      return evidencesApi.uploadAttachment(file, {
+        evidenceId,
+        isSupplement,
+        supplementRequestId: pendingSupplement?.id,
+      });
+    },
     onSuccess: () => {
       message.success('附件上传成功');
       invalidateEvidenceQueries();
