@@ -73,7 +73,7 @@ st.markdown("""
 
 
 @st.cache_data(ttl=3600, show_spinner="正在加载数据...")
-def load_data(version: int = 2026062204):
+def load_data(version: int = 2026062205):
     data = generate_all_data()
     for name, df in data.items():
         dw.register_polars(name, df)
@@ -1100,6 +1100,7 @@ elif page == "🔄 版本-转化复盘":
         )
 
     st.markdown('<div class="section-header">内容口径 × 版本分组（同一分析粒度）</div>', unsafe_allow_html=True)
+    st.caption("💡 各内容类型独立计算：转化率变化、目标差距改善均相对同内容口径的 V1 一次成型基线")
 
     content_vg = version_conversion.content_caliber_version_distribution()
     st.dataframe(
@@ -1117,10 +1118,16 @@ elif page == "🔄 版本-转化复盘":
             "avg_target_gap": st.column_config.NumberColumn("目标差距(%, 正值=超额)", format="%.2f"),
             "avg_target_achievement_pct": st.column_config.NumberColumn("目标完成度(%)", format="%.2f"),
             "achievement_ratio_pct": st.column_config.NumberColumn("达标率(%)", format="%.2f"),
+            "vs_v1_rate_diff": st.column_config.NumberColumn("相对V1转化率变化(%)", format="%.2f"),
+            "vs_v1_improvement_pct": st.column_config.NumberColumn("相对V1转化率提升(%)", format="%.2f"),
+            "vs_v1_target_gap_improvement": st.column_config.NumberColumn("相对V1目标差距改善(%)", format="%.2f"),
+            "avg_reject_times": st.column_config.NumberColumn("平均退回次数", format="%.2f"),
+            "avg_word_delta": st.column_config.Column("平均字数增减", width="small"),
         },
     )
 
     st.markdown('<div class="section-header">内容口径 × 审核质量矩阵（同一分析粒度）</div>', unsafe_allow_html=True)
+    st.caption("💡 各内容类型独立计算：相对基准差值基于同内容口径内的最低转化率/最大差距作基线")
 
     content_qm = version_conversion.content_caliber_quality_matrix()
     st.dataframe(
@@ -1138,6 +1145,10 @@ elif page == "🔄 版本-转化复盘":
             "avg_target_gap": st.column_config.NumberColumn("目标差距(%, 正值=超额)", format="%.2f"),
             "avg_target_achievement_pct": st.column_config.NumberColumn("目标完成度(%)", format="%.2f"),
             "achievement_ratio_pct": st.column_config.NumberColumn("达标率(%)", format="%.2f"),
+            "vs_baseline_rate_diff": st.column_config.NumberColumn("相对基线转化率差值(%)", format="%.2f"),
+            "vs_baseline_gap_diff": st.column_config.NumberColumn("相对基线目标差距改善(%)", format="%.2f"),
+            "vs_content_avg_rate_diff": st.column_config.NumberColumn("相对内容均值差值(%)", format="%.2f"),
+            "avg_reject_times": st.column_config.NumberColumn("平均退回次数", format="%.2f"),
         },
     )
 

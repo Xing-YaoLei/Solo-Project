@@ -693,13 +693,35 @@ class VersionConversionLinkage:
             pl.col("target_gap").mean().round(2).alias("avg_target_gap"),
             pl.col("target_achievement_pct").mean().round(2).alias("avg_target_achievement_pct"),
             (pl.col("target_status") == "达标").mean().round(4).alias("achievement_ratio"),
+            pl.col("reject_times").mean().round(2).alias("avg_reject_times"),
+            pl.col("total_word_delta").mean().round(0).alias("avg_word_delta"),
         ])
 
         distrib = distrib.with_columns(
             (pl.col("achievement_ratio") * 100).round(2).alias("achievement_ratio_pct")
         )
 
-        return distrib.sort(["content_category", "content_type", "version_group"])
+        v1_baselines = distrib.filter(
+            pl.col("version_group") == "V1 一次成型"
+        ).select([
+            "content_category", "content_type",
+            pl.col("avg_conversion_rate").alias("v1_base_rate"),
+            pl.col("avg_target_gap").alias("v1_base_target_gap"),
+        ])
+
+        distrib = distrib.join(
+            v1_baselines,
+            on=["content_category", "content_type"],
+            how="left",
+        )
+
+        distrib = distrib.with_columns([
+            (pl.col("avg_conversion_rate") - pl.col("v1_base_rate")).round(2).alias("vs_v1_rate_diff"),
+            ((pl.col("avg_conversion_rate") - pl.col("v1_base_rate")) / pl.col("v1_base_rate") * 100).round(2).alias("vs_v1_improvement_pct"),
+            (pl.col("avg_target_gap") - pl.col("v1_base_target_gap")).round(2).alias("vs_v1_target_gap_improvement"),
+        ])
+
+        return distrib.sort(["content_category", "content_type", "version_group"]).drop(["v1_base_rate", "v1_base_target_gap"])
 
     def content_caliber_quality_matrix(self) -> pl.DataFrame:
         data = self._enriched_data
@@ -712,10 +734,32 @@ class VersionConversionLinkage:
             pl.col("target_gap").mean().round(2).alias("avg_target_gap"),
             pl.col("target_achievement_pct").mean().round(2).alias("avg_target_achievement_pct"),
             (pl.col("target_status") == "达标").mean().round(4).alias("achievement_ratio"),
+            pl.col("reject_times").mean().round(2).alias("avg_reject_times"),
         ])
 
         matrix = matrix.with_columns(
             (pl.col("achievement_ratio") * 100).round(2).alias("achievement_ratio_pct")
         )
 
-        return matrix.sort(["content_category", "content_type", "avg_conversion_rate"], descending=[False, False, True])
+        content_baselines = matrix.group_by(["content_category", "content_type"]).agg([
+            pl.col("avg_conversion_rate").min().alias("content_min_rate"),
+            pl.col("avg_target_gap").min().alias("content_min_target_gap"),
+            pl.col("avg_conversion_rate").mean().round(2).alias("content_avg_rate"),
+        ])
+
+        matrix = matrix.join(
+            content_baselines,
+            on=["content_category", "content_type"],
+            how="left",
+        )
+
+        matrix = matrix.with_columns([
+            (pl.col("avg_conversion_rate") - pl.col("content_min_rate")).round(2).alias("vs_baseline_rate_diff"),
+            (pl.col("avg_target_gap") - pl.col("content_min_target_gap")).round(2).alias("vs_baseline_gap_diff"),
+            (pl.col("avg_conversion_rate") - pl.col("content_avg_rate")).round(2).alias("vs_content_avg_rate_diff"),
+        ])
+
+        return matrix.sort(
+            ["content_category", "content_type", "avg_conversion_rate"],
+            descending=[False, False, True]
+        ).drop(["content_min_rate", "content_min_target_gap", "content_avg_rate"])
