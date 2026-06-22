@@ -8,6 +8,7 @@ import pandas as pd
 from sqlalchemy.orm import Session
 
 from app.models import EmailMaterial, ImportBatch, BatchStatus
+from app.services.batch_service import create_batch, update_batch_progress, complete_batch
 
 
 KEYWORD_CATEGORIES = {
