@@ -1,0 +1,73 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+* {
+  margin: 0;
+  padding: 0;
+  box-sizing: border-box;
+}
+
+html, body, #root {
+  height: 100%;
+  width: 100%;
+}
+
+body {
+  font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+}
+
+.mobile-container {
+  max-width: 100%;
+  padding: 16px;
+}
+
+.desktop-container {
+  max-width: 1400px;
+  margin: 0 auto;
+  padding: 24px;
+}
+
+.page-header {
+  margin-bottom: 24px;
+}
+
+.status-tag {
+  display: inline-flex;
+  padding: 2px 8px;
+  border-radius: 4px;
+  font-size: 12px;
+}
+
+.timeline-item {
+  position: relative;
+  padding-left: 24px;
+  padding-bottom: 16px;
+}
+
+.timeline-item::before {
+  content: '';
+  position: absolute;
+  left: 8px;
+  top: 8px;
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  background: #1890ff;
+}
+
+.timeline-item::after {
+  content: '';
+  position: absolute;
+  left: 11px;
+  top: 16px;
+  width: 2px;
+  height: calc(100% - 8px);
+  background: #e8e8e8;
+}
+
+.timeline-item:last-child::after {
+  display: none;
+}
