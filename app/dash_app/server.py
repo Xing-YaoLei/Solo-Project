@@ -89,7 +89,7 @@ def login():
                 from datetime import datetime
                 user.last_login = datetime.utcnow()
                 db.commit()
-                return redirect(url_for("/"))
+                return redirect("/")
             error = "用户名或密码错误"
         finally:
             db.close()

@@ -7,10 +7,10 @@ from sqlalchemy.orm import Session
 
 from app.models import (
     EmailMaterial, PermissionLog, AuditWorkpaper,
-    SamplingRecord, ChecklistItem, User, RiskLevel, SamplingStatus
+    SamplingRecord, ChecklistItem, User, RiskLevel, SamplingStatus,
+    ImportBatch, BatchStatus
 )
 from app.services.batch_service import create_batch, update_batch_progress, complete_batch
-from app.models import BatchStatus
 
 
 def generate_sample_code() -> str:
@@ -204,6 +204,7 @@ def create_sampling_records(
 ) -> str:
     batch = create_batch(db, "sampling_merge", description, imported_by)
     batch_id = batch.id
+    total = len(merged_records)
     success = 0
     failed = 0
 
@@ -251,6 +252,10 @@ def create_sampling_records(
         db.rollback()
 
     update_batch_progress(db, batch_id, success=success, failed=failed)
+    batch_obj = db.query(ImportBatch).filter(ImportBatch.id == batch_id).first()
+    if batch_obj:
+        batch_obj.total_records = total
+        db.commit()
     status = BatchStatus.COMPLETED if failed == 0 else BatchStatus.FAILED
     complete_batch(db, batch_id, status=status)
     return batch.batch_number

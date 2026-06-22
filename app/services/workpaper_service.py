@@ -4,9 +4,8 @@ from typing import List, Dict, Any, Optional
 import pandas as pd
 from sqlalchemy.orm import Session
 
-from app.models import AuditWorkpaper
+from app.models import AuditWorkpaper, ImportBatch, BatchStatus
 from app.services.batch_service import create_batch, update_batch_progress, complete_batch
-from app.models import BatchStatus
 
 
 def parse_workpaper_dataframe(df: pd.DataFrame) -> List[Dict[str, Any]]:
@@ -46,6 +45,7 @@ def import_workpapers(
 ) -> str:
     batch = create_batch(db, "workpaper", description, imported_by)
     batch_id = batch.id
+    total = len(workpaper_records)
     success = 0
     failed = 0
 
@@ -78,6 +78,10 @@ def import_workpapers(
         db.rollback()
 
     update_batch_progress(db, batch_id, success=success, failed=failed)
+    batch_obj = db.query(ImportBatch).filter(ImportBatch.id == batch_id).first()
+    if batch_obj:
+        batch_obj.total_records = total
+        db.commit()
     status = BatchStatus.COMPLETED if failed == 0 else BatchStatus.FAILED
     complete_batch(db, batch_id, status=status)
     return batch.batch_number

@@ -43,9 +43,9 @@ def update_batch_progress(
     batch = db.query(ImportBatch).filter(ImportBatch.id == batch_id).first()
     if not batch:
         return
-    batch.success_records += success
-    batch.failed_records += failed
-    batch.total_records = batch.success_records + batch.failed_records
+    batch.success_records = success
+    batch.failed_records = failed
+    batch.total_records = success + failed
     if error_message:
         batch.error_message = error_message
     db.commit()

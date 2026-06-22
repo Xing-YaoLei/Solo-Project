@@ -4,9 +4,8 @@ from typing import List, Dict, Any, Optional
 import pandas as pd
 from sqlalchemy.orm import Session
 
-from app.models import PermissionLog
+from app.models import PermissionLog, ImportBatch, BatchStatus
 from app.services.batch_service import create_batch, update_batch_progress, complete_batch
-from app.models import BatchStatus
 
 
 ACTION_MAPPING = {
@@ -83,6 +82,7 @@ def import_permission_logs(
 ) -> str:
     batch = create_batch(db, "permission_log", description, imported_by)
     batch_id = batch.id
+    total = len(log_records)
     success = 0
     failed = 0
 
@@ -115,6 +115,10 @@ def import_permission_logs(
         db.rollback()
 
     update_batch_progress(db, batch_id, success=success, failed=failed)
+    batch_obj = db.query(ImportBatch).filter(ImportBatch.id == batch_id).first()
+    if batch_obj:
+        batch_obj.total_records = total
+        db.commit()
     status = BatchStatus.COMPLETED if failed == 0 else BatchStatus.FAILED
     complete_batch(db, batch_id, status=status)
     return batch.batch_number
