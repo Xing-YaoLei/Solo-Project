@@ -1,5 +1,5 @@
 import axios from 'axios';
-import type { User, Order, OrderListResponse, DispatchRule, FirstTimeResolutionStats, Token, ProcessRecord, ReviewSupplement, AffectedObject, OrderStatus } from '@/types';
+import type { User, Order, OrderListResponse, DispatchRule, FirstTimeResolutionStats, Token, ProcessRecord, ReviewSupplement, OrderStatus, AttachmentBase } from '@/types';
 
 const api = axios.create({
   baseURL: '/api',
@@ -57,7 +57,7 @@ export const orderAPI = {
 
   update: (id: number, data: any) => api.put<Order>(`/orders/${id}`, data),
 
-  process: (id: number, data: { action: string; new_status: OrderStatus; remark?: string }) =>
+  process: (id: number, data: { action: string; new_status: OrderStatus; remark?: string; attachments?: AttachmentBase[] }) =>
     api.post<Order>(`/orders/${id}/process`, data),
 
   reviewFailed: (id: number, data: {

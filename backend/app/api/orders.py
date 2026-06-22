@@ -93,6 +93,7 @@ def process_order(
         handler_id=current_user.id,
         action=process_in.action,
         remark=process_in.remark,
+        attachments=process_in.attachments,
     )
     if not order:
         raise HTTPException(status_code=404, detail="工单不存在")

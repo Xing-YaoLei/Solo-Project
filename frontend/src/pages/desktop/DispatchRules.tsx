@@ -16,7 +16,6 @@ import {
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { PlusOutlined, EditOutlined, DeleteOutlined } from '@ant-design/icons';
 import { dispatchRuleAPI, userAPI } from '@/services/api';
-import { useAuthStore } from '@/hooks/useStore';
 import dayjs from 'dayjs';
 
 export default function DesktopDispatchRules() {
@@ -24,7 +23,6 @@ export default function DesktopDispatchRules() {
   const [form] = Form.useForm();
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [editingRule, setEditingRule] = useState<any>(null);
-  const { user } = useAuthStore();
 
   const { data: rules, isLoading } = useQuery({
     queryKey: ['dispatchRules'],

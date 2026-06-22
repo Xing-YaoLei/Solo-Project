@@ -1,6 +1,6 @@
 import { useState } from 'react';
 import { useParams, useNavigate } from '@tanstack/react-router';
-import { useMutation, useQueryClient } from '@tanstack/react-query';
+import { useMutation, useQueryClient, useQuery } from '@tanstack/react-query';
 import {
   Button,
   TextArea,
@@ -9,25 +9,34 @@ import {
   Tag,
   Toast,
 } from 'antd-mobile';
-import { ArrowLeftOutline, CheckCircleOutline } from 'antd-mobile-icons';
+import type { ImageUploadItem } from 'antd-mobile';
+import {
+  LeftOutline,
+  CheckCircleOutline,
+} from 'antd-mobile-icons';
 import { orderAPI, uploadAPI } from '@/services/api';
 import { OrderStatus, OrderStatusText } from '@/types';
-import dayjs from 'dayjs';
+import type { AttachmentBase } from '@/types';
 
 export default function MobileProcess() {
-  const params = useParams({ from: '/m/process/$orderId' });
+  const params = useParams({ from: '/_protected/m/process/$orderId' });
   const navigate = useNavigate();
   const queryClient = useQueryClient();
   const [remark, setRemark] = useState('');
-  const [files, setFiles] = useState<any[]>([]);
-  const [orderDetail, setOrderDetail] = useState<any>(null);
+  const [files, setFiles] = useState<ImageUploadItem[]>([]);
 
-  useState(() => {
-    orderAPI.get(Number(params.orderId)).then((res) => setOrderDetail(res.data));
+  const { data: orderDetail } = useQuery({
+    queryKey: ['mobileOrder', params.orderId],
+    queryFn: () => orderAPI.get(Number(params.orderId)),
   });
 
   const processMutation = useMutation({
-    mutationFn: (data: any) => orderAPI.process(Number(params.orderId), data),
+    mutationFn: (data: {
+      action: string;
+      new_status: OrderStatus;
+      remark?: string;
+      attachments?: AttachmentBase[];
+    }) => orderAPI.process(Number(params.orderId), data),
     onSuccess: () => {
       Toast.show({ icon: 'success', content: '处理成功' });
       queryClient.invalidateQueries({ queryKey: ['mobileOrder', params.orderId] });
@@ -56,35 +65,38 @@ export default function MobileProcess() {
     }
   };
 
-  const handleUpload = async (file: any) => {
-    try {
-      const formData = new FormData();
-      formData.append('file', file.file);
-      const response = await uploadAPI.uploadFile(file.file);
-      return {
-        url: response.data.url,
-        name: file.file.name,
-      };
-    } catch (error) {
-      Toast.show({ icon: 'fail', content: '上传失败' });
-      return null;
-    }
+  const handleUpload = async (file: File): Promise<ImageUploadItem> => {
+    const formData = new FormData();
+    formData.append('file', file);
+    const response = await uploadAPI.uploadFile(file);
+    return {
+      url: response.data.url,
+      fileName: file.name,
+    } as ImageUploadItem;
   };
 
   const handleSubmit = async () => {
-    if (!orderDetail) return;
-    const next = getNextStatus(orderDetail.status);
+    if (!orderDetail?.data) return;
+    const next = getNextStatus(orderDetail.data.status);
     if (!next) return;
 
-    const uploadedFiles = files.filter((f) => f.url);
+    const attachments: AttachmentBase[] = files
+      .filter((f) => f.url)
+      .map((f) => ({
+        file_name: (f as any).fileName || 'upload',
+        file_path: f.url,
+        file_type: 'image',
+      }));
+
     processMutation.mutate({
       action: next.action,
       new_status: next.status,
       remark: remark || undefined,
+      attachments: attachments.length > 0 ? attachments : undefined,
     });
   };
 
-  const next = orderDetail ? getNextStatus(orderDetail.status) : null;
+  const next = orderDetail?.data ? getNextStatus(orderDetail.data.status) : null;
 
   return (
     <div className="min-h-screen bg-gray-50 pb-24">
@@ -96,28 +108,28 @@ export default function MobileProcess() {
             }
             className="text-gray-600"
           >
-            <ArrowLeftOutline fontSize={20} />
+            <LeftOutline fontSize={20} />
           </button>
           <h1 className="flex-1 font-medium">快速处理</h1>
         </div>
       </div>
 
       <div className="p-4 space-y-4">
-        {orderDetail && (
+        {orderDetail?.data && (
           <Card>
             <div className="flex items-start justify-between mb-2">
               <div>
-                <div className="text-xs text-gray-500">{orderDetail.order_no}</div>
-                <div className="font-medium text-gray-800">{orderDetail.title}</div>
+                <div className="text-xs text-gray-500">{orderDetail.data.order_no}</div>
+                <div className="font-medium text-gray-800">{orderDetail.data.title}</div>
               </div>
-              <Tag color={['default', 'blue', 'orange', 'red'][orderDetail.priority]}>
-                P{orderDetail.priority}
+              <Tag color={['default', 'blue', 'orange', 'red'][orderDetail.data.priority]}>
+                P{orderDetail.data.priority}
               </Tag>
             </div>
             {next && (
               <div className="mt-3 p-3 bg-blue-50 rounded-lg">
                 <div className="text-sm text-blue-600 font-medium">
-                  当前状态: {OrderStatusText[orderDetail.status]}
+                  当前状态: {OrderStatusText[orderDetail.data.status]}
                 </div>
                 <div className="text-sm text-blue-500 mt-1">
                   下一步操作: {next.action} → {OrderStatusText[next.status]}
@@ -131,7 +143,7 @@ export default function MobileProcess() {
           <TextArea
             placeholder="请输入处理说明（可选）"
             value={remark}
-            onChange={(e) => setRemark(e.target.value)}
+            onChange={(val) => setRemark(val)}
             rows={4}
             showCount
             maxLength={500}
@@ -145,7 +157,7 @@ export default function MobileProcess() {
             upload={handleUpload}
             maxCount={9}
             multiple
-            capture={['camera']}
+            capture="environment"
           />
           <div className="text-xs text-gray-400 mt-2">
             点击相机图标可直接拍照上传，支持多张图片
@@ -165,14 +177,15 @@ export default function MobileProcess() {
           </Button>
           <Button
             block
-            type="primary"
             color="primary"
             size="large"
             onClick={handleSubmit}
             loading={processMutation.isPending}
-            icon={<CheckCircleOutline />}
           >
-            {next?.action || '确认处理'}
+            <span className="flex items-center justify-center gap-2">
+              <CheckCircleOutline fontSize={16} />
+              {next?.action || '确认处理'}
+            </span>
           </Button>
         </div>
       </div>

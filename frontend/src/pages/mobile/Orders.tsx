@@ -1,15 +1,11 @@
 import { useState } from 'react';
 import {
-  List,
+  Card,
   Tag,
   Input,
-  Select,
-  Button,
   Empty,
   PullToRefresh,
-  Card,
   Badge,
-  WhiteSpace,
 } from 'antd-mobile';
 import { useQuery } from '@tanstack/react-query';
 import { useNavigate } from '@tanstack/react-router';
@@ -26,7 +22,7 @@ export default function MobileOrders() {
   const [keyword, setKeyword] = useState('');
 
   const { data: orders, isLoading, refetch } = useQuery({
-    queryKey: ['mobileOrders', status, keyword],
+    queryKey: ['mobileOrders', status, keyword, user?.id],
     queryFn: () =>
       orderAPI.list({
         status,
@@ -65,7 +61,7 @@ export default function MobileOrders() {
           <Input
             placeholder="搜索工单号或标题"
             value={keyword}
-            onChange={(e) => setKeyword(e.target.value)}
+            onChange={(val) => setKeyword(val)}
             className="pl-10"
           />
         </div>
@@ -97,7 +93,7 @@ export default function MobileOrders() {
               <Card
                 key={order.id}
                 onClick={() =>
-                  navigate({ to: '/m/orders/$orderId', params: { orderId: order.id } })
+                  navigate({ to: '/m/orders/$orderId', params: { orderId: String(order.id) } })
                 }
                 className="cursor-pointer hover:shadow-md transition-shadow"
               >

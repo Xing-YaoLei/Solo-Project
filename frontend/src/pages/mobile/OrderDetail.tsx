@@ -4,15 +4,13 @@ import {
   Card,
   Tag,
   Button,
-  Space,
   Image,
   List,
-  Avatar,
   Divider,
   Empty,
 } from 'antd-mobile';
 import {
-  ArrowLeftOutline,
+  LeftOutline,
   CameraOutline,
   UserOutline,
   ClockCircleOutline,
@@ -20,13 +18,11 @@ import {
 } from 'antd-mobile-icons';
 import { orderAPI } from '@/services/api';
 import { OrderStatus, OrderStatusText, OrderStatusColor } from '@/types';
-import { useAuthStore } from '@/hooks/useStore';
 import dayjs from 'dayjs';
 
 export default function MobileOrderDetail() {
-  const params = useParams({ from: '/m/orders/$orderId' });
+  const params = useParams({ from: '/_protected/m/orders/$orderId' });
   const navigate = useNavigate();
-  const { user } = useAuthStore();
 
   const { data: order, isLoading } = useQuery({
     queryKey: ['mobileOrder', params.orderId],
@@ -36,13 +32,13 @@ export default function MobileOrderDetail() {
   const getAvailableAction = (status: OrderStatus) => {
     switch (status) {
       case OrderStatus.ASSIGNED:
-        return { label: '开始处理', to: `/m/process/${params.orderId}`, status: OrderStatus.PROCESSING };
+        return { label: '开始处理', to: '/m/process/$orderId', status: OrderStatus.PROCESSING };
       case OrderStatus.PROCESSING:
-        return { label: '完成处理', to: `/m/process/${params.orderId}`, status: OrderStatus.COMPLETED };
+        return { label: '完成处理', to: '/m/process/$orderId', status: OrderStatus.COMPLETED };
       case OrderStatus.COMPLETED:
-        return { label: '提交复核', to: `/m/process/${params.orderId}`, status: OrderStatus.REVIEWING };
+        return { label: '提交复核', to: '/m/process/$orderId', status: OrderStatus.REVIEWING };
       case OrderStatus.REVIEW_FAILED:
-        return { label: '重新处理', to: `/m/process/${params.orderId}`, status: OrderStatus.PROCESSING };
+        return { label: '重新处理', to: '/m/process/$orderId', status: OrderStatus.PROCESSING };
       default:
         return null;
     }
@@ -59,7 +55,7 @@ export default function MobileOrderDetail() {
       <div className="sticky top-0 bg-white z-10 border-b">
         <div className="flex items-center px-4 py-3 gap-3">
           <button onClick={() => navigate({ to: '/m/orders' })} className="text-gray-600">
-            <ArrowLeftOutline fontSize={20} />
+            <LeftOutline fontSize={20} />
           </button>
           <h1 className="flex-1 font-medium">工单详情</h1>
           <Tag color={OrderStatusColor[orderData.status]} className="!m-0">
@@ -103,7 +99,7 @@ export default function MobileOrderDetail() {
             )}
             {orderData.audit_type && (
               <div className="text-gray-600">
-                审计类型: <Tag size="small">{orderData.audit_type}</Tag>
+                审计类型: <Tag className="!text-xs !m-0">{orderData.audit_type}</Tag>
               </div>
             )}
             {orderData.audit_item && (
@@ -134,7 +130,7 @@ export default function MobileOrderDetail() {
               <Divider className="my-3" />
               <div className="text-sm">
                 <div className="font-medium mb-2 text-gray-700">现场照片</div>
-                <Image src={orderData.site_photo_url} width="100%" />
+                <Image src={orderData.site_photo_url} />
               </div>
             </>
           )}
@@ -145,19 +141,17 @@ export default function MobileOrderDetail() {
             <List>
               {orderData.affected_objects.map((obj) => (
                 <List.Item key={obj.id}>
-                  <List.Item.Meta
-                    title={
-                      <div className="flex items-center gap-2">
-                        <Tag color="red" className="!text-xs !m-0">
-                          {obj.impact_level}
-                        </Tag>
-                        <span className="font-medium">
-                          {obj.object_type}: {obj.object_name}
-                        </span>
-                      </div>
-                    }
-                    description={obj.description || '-'}
-                  />
+                  <div>
+                    <div className="flex items-center gap-2 mb-1">
+                      <Tag color="red" className="!text-xs !m-0">
+                        {obj.impact_level}
+                      </Tag>
+                      <span className="font-medium">
+                        {obj.object_type}: {obj.object_name}
+                      </span>
+                    </div>
+                    <div className="text-xs text-gray-500">{obj.description || '-'}</div>
+                  </div>
                 </List.Item>
               ))}
             </List>
@@ -175,7 +169,9 @@ export default function MobileOrderDetail() {
                 .map((record) => (
                   <div key={record.id} className="timeline-item">
                     <div className="flex items-center gap-2 mb-1">
-                      <Avatar size={24} icon={<UserOutline />} />
+                      <div className="w-6 h-6 rounded-full bg-gray-200 flex items-center justify-center text-gray-500 text-xs">
+                        <UserOutline fontSize={14} />
+                      </div>
                       <span className="font-medium text-sm">{record.handler?.full_name}</span>
                       <Tag color={OrderStatusColor[record.new_status]} className="!text-xs !m-0">
                         {OrderStatusText[record.new_status]}
@@ -189,7 +185,7 @@ export default function MobileOrderDetail() {
                         {record.remark}
                       </div>
                     )}
-                    {record.attachments.length > 0 && (
+                    {record.attachments && record.attachments.length > 0 && (
                       <div className="flex flex-wrap gap-2">
                         {record.attachments.map((att) => (
                           <a
@@ -214,14 +210,16 @@ export default function MobileOrderDetail() {
         <div className="fixed bottom-0 left-0 right-0 bg-white border-t p-4">
           <Button
             block
-            type="primary"
+            color="primary"
             size="large"
             onClick={() =>
               navigate({ to: '/m/process/$orderId', params: { orderId: params.orderId } })
             }
-            icon={<CameraOutline />}
           >
-            {action.label}
+            <span className="flex items-center justify-center gap-2">
+              <CameraOutline fontSize={16} />
+              {action.label}
+            </span>
           </Button>
         </div>
       )}

@@ -4,7 +4,6 @@ import { useQuery } from '@tanstack/react-query';
 import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer, PieChart, Pie, Cell } from 'recharts';
 import { analyticsAPI } from '@/services/api';
 import { DownloadOutlined } from '@ant-design/icons';
-import dayjs from 'dayjs';
 import type { Dayjs } from 'dayjs';
 
 const { RangePicker } = DatePicker;
@@ -34,19 +33,6 @@ export default function DesktopAnalytics() {
     month: item.month,
     首次解决率: item.rate,
     总工单: item.total,
-  })) || [];
-
-  const auditorData = statsData?.by_auditor?.map((item) => ({
-    name: item.full_name,
-    首次解决率: item.rate,
-    value: item.total,
-  })) || [];
-
-  const departmentData = statsData?.by_department?.map((item) => ({
-    name: item.department,
-    首次解决率: item.rate,
-    总工单: item.total,
-    首次解决: item.first_time,
   })) || [];
 
   const pieData = [

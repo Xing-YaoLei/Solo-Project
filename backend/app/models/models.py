@@ -30,7 +30,7 @@ class User(Base):
     email = Column(String(100), unique=True, index=True)
     full_name = Column(String(100))
     hashed_password = Column(String(255))
-    role = Column(Enum(UserRole), default=UserRole.HANDLER)
+    role = Column(String(20), default=UserRole.HANDLER.value)
     is_active = Column(Boolean, default=True)
     phone = Column(String(20))
     department = Column(String(100))
@@ -40,7 +40,7 @@ class User(Base):
     assigned_orders = relationship("Order", foreign_keys="Order.assignee_id", back_populates="assignee")
     created_orders = relationship("Order", foreign_keys="Order.creator_id", back_populates="creator")
     process_records = relationship("ProcessRecord", back_populates="handler")
-    review_supplements = relationship("ReviewSupplement", back_populates="operator")
+    review_supplements = relationship("ReviewSupplement", foreign_keys="ReviewSupplement.operator_id", back_populates="operator")
 
 
 class DispatchRule(Base):
@@ -68,7 +68,7 @@ class Order(Base):
     order_no = Column(String(50), unique=True, index=True)
     title = Column(String(200))
     description = Column(Text)
-    status = Column(Enum(OrderStatus), default=OrderStatus.PENDING)
+    status = Column(String(20), default=OrderStatus.PENDING.value)
     priority = Column(Integer, default=1)
     audit_type = Column(String(50))
     audit_item = Column(String(100))
@@ -98,8 +98,8 @@ class ProcessRecord(Base):
     order_id = Column(Integer, ForeignKey("orders.id"))
     handler_id = Column(Integer, ForeignKey("users.id"))
     action = Column(String(50))
-    old_status = Column(Enum(OrderStatus))
-    new_status = Column(Enum(OrderStatus))
+    old_status = Column(String(20))
+    new_status = Column(String(20))
     remark = Column(Text)
     created_at = Column(DateTime(timezone=True), server_default=func.now())
 

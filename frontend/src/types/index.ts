@@ -61,13 +61,16 @@ export interface DispatchRule {
   updated_at?: string;
 }
 
-export interface Attachment {
-  id: number;
-  process_record_id: number;
+export interface AttachmentBase {
   file_name: string;
   file_path: string;
   file_type?: string;
   file_size?: number;
+}
+
+export interface Attachment extends AttachmentBase {
+  id: number;
+  process_record_id: number;
   uploaded_at: string;
 }
 

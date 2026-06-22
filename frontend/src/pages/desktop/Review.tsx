@@ -21,13 +21,11 @@ import { useNavigate } from '@tanstack/react-router';
 import { ExclamationCircleOutlined, EyeOutlined, UserOutlined } from '@ant-design/icons';
 import { orderAPI, userAPI } from '@/services/api';
 import { OrderStatus, OrderStatusText, OrderStatusColor } from '@/types';
-import { useAuthStore } from '@/hooks/useStore';
 import dayjs from 'dayjs';
 
 export default function DesktopReview() {
   const navigate = useNavigate();
   const queryClient = useQueryClient();
-  const { user } = useAuthStore();
   const [form] = Form.useForm();
   const [selectedOrder, setSelectedOrder] = useState<any>(null);
   const [isReviewModalOpen, setIsReviewModalOpen] = useState(false);

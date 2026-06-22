@@ -24,20 +24,18 @@ import { useParams, useNavigate } from '@tanstack/react-router';
 import {
   ArrowLeftOutlined,
   UploadOutlined,
-  CheckCircleOutlined,
-  ExclamationCircleOutlined,
   UserOutlined,
 } from '@ant-design/icons';
-import { orderAPI, uploadAPI, userAPI } from '@/services/api';
+import { orderAPI, userAPI } from '@/services/api';
 import { OrderStatus, OrderStatusText, OrderStatusColor, type ProcessRecord, type Order } from '@/types';
-import { useAuthStore } from '@/hooks/useStore';
+import type { AttachmentBase } from '@/types';
 import dayjs from 'dayjs';
+import type { UploadFile } from 'antd';
 
 export default function DesktopOrderDetail() {
-  const params = useParams({ from: '/orders/$orderId' });
+  const params = useParams({ from: '/_protected/orders/$orderId' });
   const navigate = useNavigate();
   const queryClient = useQueryClient();
-  const { user } = useAuthStore();
   const [form] = Form.useForm();
   const [isProcessModalOpen, setIsProcessModalOpen] = useState(false);
   const [isSupplementModalOpen, setIsSupplementModalOpen] = useState(false);
@@ -45,6 +43,7 @@ export default function DesktopOrderDetail() {
     action: string;
     new_status: OrderStatus;
   } | null>(null);
+  const [uploadedFiles, setUploadedFiles] = useState<UploadFile[]>([]);
 
   const { data: order, isLoading } = useQuery({
     queryKey: ['order', params.orderId],
@@ -80,9 +79,20 @@ export default function DesktopOrderDetail() {
 
   const handleProcess = (values: any) => {
     if (!selectedAction) return;
+
+    const attachments: AttachmentBase[] = uploadedFiles
+      .filter((f) => f.status === 'done' && f.response)
+      .map((f) => ({
+        file_name: f.response.filename || f.name,
+        file_path: f.response.url || f.response.filepath,
+        file_type: f.type,
+        file_size: f.size,
+      }));
+
     processMutation.mutate({
       ...selectedAction,
       remark: values.remark,
+      attachments: attachments.length > 0 ? attachments : undefined,
     });
   };
 
@@ -96,6 +106,7 @@ export default function DesktopOrderDetail() {
 
   const openProcessModal = (action: string, new_status: OrderStatus) => {
     setSelectedAction({ action, new_status });
+    setUploadedFiles([]);
     setIsProcessModalOpen(true);
   };
 
@@ -282,7 +293,7 @@ export default function DesktopOrderDetail() {
                         {record.handler?.full_name} · {dayjs(record.created_at).format('YYYY-MM-DD HH:mm')}
                       </div>
                       {record.remark && <p className="text-sm mb-2">{record.remark}</p>}
-                      {record.attachments.length > 0 && (
+                      {record.attachments && record.attachments.length > 0 && (
                         <div className="flex flex-wrap gap-2">
                           {record.attachments.map((att) => (
                             <a
@@ -320,6 +331,8 @@ export default function DesktopOrderDetail() {
               headers={{ Authorization: `Bearer ${localStorage.getItem('token')}` }}
               multiple
               listType="picture"
+              fileList={uploadedFiles}
+              onChange={({ fileList }) => setUploadedFiles(fileList)}
             >
               <Button icon={<UploadOutlined />}>选择文件</Button>
             </Upload>

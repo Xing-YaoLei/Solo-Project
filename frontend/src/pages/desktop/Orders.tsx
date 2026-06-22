@@ -108,7 +108,7 @@ export default function DesktopOrders() {
       key: 'order_no',
       width: 180,
       render: (text: string, record: Order) => (
-        <a onClick={() => navigate({ to: `/orders/$orderId`, params: { orderId: record.id } })}>
+        <a onClick={() => navigate({ to: '/orders/$orderId', params: { orderId: String(record.id) } })}>
           {text}
         </a>
       ),
@@ -185,7 +185,7 @@ export default function DesktopOrders() {
         <Button
           type="link"
           icon={<EyeOutlined />}
-          onClick={() => navigate({ to: `/orders/$orderId`, params: { orderId: record.id } })}
+          onClick={() => navigate({ to: '/orders/$orderId', params: { orderId: String(record.id) } })}
         >
           详情
         </Button>

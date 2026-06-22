@@ -1,9 +1,9 @@
-from sqlalchemy.orm import Session
+from sqlalchemy.orm import Session, selectinload
 from sqlalchemy import func, and_, or_
 from sqlalchemy.types import Integer
 from typing import Optional, List, Tuple
 from datetime import datetime, timedelta
-from ..models.models import Order, OrderStatus, ProcessRecord, User, DispatchRule, AffectedObject, ReviewSupplement
+from ..models.models import Order, OrderStatus, ProcessRecord, User, DispatchRule, AffectedObject, ReviewSupplement, Attachment
 from ..schemas import schemas
 from . import notification_service
 
@@ -59,7 +59,22 @@ def get_orders(
 
 
 def get_order(db: Session, order_id: int) -> Optional[Order]:
-    return db.query(Order).filter(Order.id == order_id).first()
+    return (
+        db.query(Order)
+        .options(
+            selectinload(Order.assignee),
+            selectinload(Order.creator),
+            selectinload(Order.dispatch_rule),
+            selectinload(Order.process_records).selectinload(ProcessRecord.handler),
+            selectinload(Order.process_records).selectinload(ProcessRecord.attachments),
+            selectinload(Order.affected_objects),
+            selectinload(Order.review_supplements).selectinload(ReviewSupplement.operator),
+            selectinload(Order.review_supplements).selectinload(ReviewSupplement.old_assignee),
+            selectinload(Order.review_supplements).selectinload(ReviewSupplement.new_assignee),
+        )
+        .filter(Order.id == order_id)
+        .first()
+    )
 
 
 def get_order_by_no(db: Session, order_no: str) -> Optional[Order]:
@@ -121,6 +136,7 @@ def update_order_status(
     handler_id: int,
     action: str,
     remark: Optional[str] = None,
+    attachments: Optional[List[schemas.AttachmentBase]] = None,
 ) -> Optional[Order]:
     order = get_order(db, order_id)
     if not order:
@@ -142,6 +158,18 @@ def update_order_status(
         remark=remark,
     )
     db.add(process_record)
+    db.flush()
+
+    if attachments:
+        for att in attachments:
+            attachment = Attachment(
+                process_record_id=process_record.id,
+                file_name=att.file_name,
+                file_path=att.file_path,
+                file_type=att.file_type,
+                file_size=att.file_size,
+            )
+            db.add(attachment)
 
     db.commit()
     db.refresh(order)
