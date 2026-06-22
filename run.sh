@@ -1,14 +1,21 @@
 #!/bin/bash
 cd "$(dirname "$0")"
 
-if [ ! -f "audit_compliance.db" ]; then
-    echo "Initializing database..."
-    python3 -c "
+echo "Checking database status..."
+python3 -c "
 import sys
 sys.path.insert(0, '.')
-from utils.init_data import initialize_all
-initialize_all()
+from app.database import ensure_database_ready, DB_TYPE
+
+print(f'Database type: {DB_TYPE}')
+if not ensure_database_ready():
+    print('❌ Database connection failed, please check if PostgreSQL service is running')
+    sys.exit(1)
+print('✅ Database ready')
 "
+
+if [ $? -ne 0 ]; then
+    exit 1
 fi
 
 echo "Starting Dash server on http://localhost:8050..."

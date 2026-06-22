@@ -211,10 +211,12 @@ def handle_upload(contents, filenames):
 
 
 if __name__ == '__main__':
-    from utils.init_data import initialize_all
-    import os
+    from app.database import ensure_database_ready
     
-    if not os.path.exists('audit_compliance.db'):
-        initialize_all()
+    print('正在检查数据库状态...')
+    if not ensure_database_ready():
+        print('❌ 数据库连接失败，请检查 PostgreSQL 服务是否启动')
+        exit(1)
+    print('✅ 数据库准备完成')
     
     app.run(debug=Config.DASH_DEBUG, host='0.0.0.0', port=8050)
