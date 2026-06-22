@@ -35,6 +35,7 @@ def get_sampling_coverage(
 
 @router.post("/sampling/sync")
 def sync_export_sampling(
+    request: Optional[Dict[str, Any]] = None,
     export_format: str = Query("excel", pattern="^(excel|csv)$"),
     checklist_id: Optional[int] = None,
     status: Optional[str] = None,
@@ -45,20 +46,45 @@ def sync_export_sampling(
     current_user: User = Depends(require_roles(UserRole.ADMIN, UserRole.AUDITOR, UserRole.MANAGER))
 ):
     filters = {}
-    if checklist_id:
-        filters["checklist_id"] = checklist_id
-    if status:
-        filters["status"] = status
-    if evidence_status:
-        filters["evidence_status"] = evidence_status
-    if start_date:
-        filters["start_date"] = start_date
-    if end_date:
-        filters["end_date"] = end_date
+    req_filters = request.get("filters") if request else None
+    if req_filters:
+        for k, v in req_filters.items():
+            if k in ["checklistId", "checklist_id"]:
+                filters["checklist_id"] = v
+            elif k in ["status"]:
+                filters["status"] = v
+            elif k in ["evidenceStatus", "evidence_status"]:
+                filters["evidence_status"] = v
+            elif k in ["startDate", "start_date"]:
+                filters["start_date"] = v
+            elif k in ["endDate", "end_date"]:
+                filters["end_date"] = v
+            elif k in ["riskLevel", "risk_level"]:
+                filters["risk_level"] = v
+            elif k in ["vendorId", "vendor_id"]:
+                filters["vendor_id"] = v
+            elif k in ["samplingId", "sampling_id"]:
+                filters["sampling_id"] = v
+            elif k in ["exceptionType", "exception_type"]:
+                filters["exception_type"] = v
+
+    if not filters:
+        if checklist_id:
+            filters["checklist_id"] = checklist_id
+        if status:
+            filters["status"] = status
+        if evidence_status:
+            filters["evidence_status"] = evidence_status
+        if start_date:
+            filters["start_date"] = start_date
+        if end_date:
+            filters["end_date"] = end_date
+
+    actual_format = (request.get("format") if request else None) or export_format
 
     filepath, filename = ExportService.export_sampling_records(
         db=db,
-        export_format=export_format,
+        export_format=actual_format,
         filters=filters if filters else None
     )
 
@@ -80,6 +106,7 @@ def sync_export_sampling(
 
 @router.post("/rectification/sync")
 def sync_export_rectification(
+    request: Optional[Dict[str, Any]] = None,
     export_format: str = Query("excel", pattern="^(excel|csv)$"),
     sampling_id: Optional[int] = None,
     risk_level: Optional[str] = None,
@@ -89,18 +116,37 @@ def sync_export_rectification(
     current_user: User = Depends(require_roles(UserRole.ADMIN, UserRole.AUDITOR, UserRole.MANAGER))
 ):
     filters = {}
-    if sampling_id:
-        filters["sampling_id"] = sampling_id
-    if risk_level:
-        filters["risk_level"] = risk_level
-    if status:
-        filters["status"] = status
-    if vendor_id:
-        filters["vendor_id"] = vendor_id
+    req_filters = request.get("filters") if request else None
+    if req_filters:
+        for k, v in req_filters.items():
+            if k in ["samplingId", "sampling_id"]:
+                filters["sampling_id"] = v
+            elif k in ["riskLevel", "risk_level"]:
+                filters["risk_level"] = v
+            elif k in ["status"]:
+                filters["status"] = v
+            elif k in ["vendorId", "vendor_id"]:
+                filters["vendor_id"] = v
+            elif k in ["startDate", "start_date"]:
+                filters["start_date"] = v
+            elif k in ["endDate", "end_date"]:
+                filters["end_date"] = v
+
+    if not filters:
+        if sampling_id:
+            filters["sampling_id"] = sampling_id
+        if risk_level:
+            filters["risk_level"] = risk_level
+        if status:
+            filters["status"] = status
+        if vendor_id:
+            filters["vendor_id"] = vendor_id
+
+    actual_format = (request.get("format") if request else None) or export_format
 
     filepath, filename = ExportService.export_rectification_plans(
         db=db,
-        export_format=export_format,
+        export_format=actual_format,
         filters=filters if filters else None
     )
 
@@ -122,6 +168,7 @@ def sync_export_rectification(
 
 @router.post("/exception/sync")
 def sync_export_exception(
+    request: Optional[Dict[str, Any]] = None,
     export_format: str = Query("excel", pattern="^(excel|csv)$"),
     sampling_id: Optional[int] = None,
     exception_type: Optional[str] = None,
@@ -130,16 +177,33 @@ def sync_export_exception(
     current_user: User = Depends(require_roles(UserRole.ADMIN, UserRole.AUDITOR, UserRole.MANAGER))
 ):
     filters = {}
-    if sampling_id:
-        filters["sampling_id"] = sampling_id
-    if exception_type:
-        filters["exception_type"] = exception_type
-    if status:
-        filters["status"] = status
+    req_filters = request.get("filters") if request else None
+    if req_filters:
+        for k, v in req_filters.items():
+            if k in ["samplingId", "sampling_id"]:
+                filters["sampling_id"] = v
+            elif k in ["exceptionType", "exception_type"]:
+                filters["exception_type"] = v
+            elif k in ["status"]:
+                filters["status"] = v
+            elif k in ["startDate", "start_date"]:
+                filters["start_date"] = v
+            elif k in ["endDate", "end_date"]:
+                filters["end_date"] = v
+
+    if not filters:
+        if sampling_id:
+            filters["sampling_id"] = sampling_id
+        if exception_type:
+            filters["exception_type"] = exception_type
+        if status:
+            filters["status"] = status
+
+    actual_format = (request.get("format") if request else None) or export_format
 
     filepath, filename = ExportService.export_exception_orders(
         db=db,
-        export_format=export_format,
+        export_format=actual_format,
         filters=filters if filters else None
     )
 

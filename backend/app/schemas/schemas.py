@@ -90,6 +90,11 @@ class VendorResponse(VendorBase):
     created_at: datetime
 
 
+class VendorListResponse(CamelCaseModel):
+    total: int
+    items: List[VendorResponse]
+
+
 class AuditChecklistBase(CamelCaseModel):
     title: str = Field(..., max_length=300)
     category: str = Field(..., max_length=100)

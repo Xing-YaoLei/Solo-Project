@@ -117,13 +117,18 @@ def update_rectification_plan(
     return plan
 
 
-@router.post("/{plan_id}/risk-level")
+@router.post("/{plan_id}/risk-level", response_model=RectificationPlanResponse)
 def update_risk_level(
     plan_id: int,
-    risk_level: RiskLevel,
+    request: dict,
     db: Session = Depends(get_db),
     current_user: User = Depends(require_roles(UserRole.ADMIN, UserRole.AUDITOR, UserRole.MANAGER))
 ):
+    risk_level = request.get("riskLevel") or request.get("risk_level")
+    if not risk_level:
+        raise HTTPException(status_code=400, detail="缺少 risk_level 参数")
+    if isinstance(risk_level, str):
+        risk_level = RiskLevel(risk_level)
     plan = db.query(RectificationPlan).filter(RectificationPlan.id == plan_id).first()
     if not plan:
         raise HTTPException(status_code=404, detail="整改计划不存在")

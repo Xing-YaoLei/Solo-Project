@@ -1,14 +1,13 @@
 import React from 'react'
 import { Spin } from 'antd'
 import {
+  Outlet,
   createRootRouteWithContext,
   createRoute,
   createRouter,
-  Outlet,
   Link,
   useRouter,
   useLocation,
-  Navigate,
 } from '@tanstack/react-router'
 import { Layout, Menu, Avatar, Dropdown, Badge, ConfigProvider } from 'antd'
 import {
@@ -59,7 +58,9 @@ const ProtectedRoute: React.FC<{ children: React.ReactNode }> = ({ children }) =
 
   if (!user) {
     const redirectPath = location.pathname + location.search
-    return <Navigate to="/login" search={{ redirect: redirectPath }} replace />
+    const loginUrl = `/login?redirect=${encodeURIComponent(redirectPath)}`
+    window.location.href = loginUrl
+    return null
   }
 
   return <>{children}</>

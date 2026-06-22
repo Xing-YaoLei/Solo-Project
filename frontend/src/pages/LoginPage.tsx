@@ -15,7 +15,16 @@ const LoginPage: React.FC = () => {
   const { login } = useAuth()
 
   const searchParams = new URLSearchParams(location.search || '')
-  const redirectTo = searchParams.get('redirect') || '/'
+  const rawRedirect = searchParams.get('redirect') || '/'
+  let redirectTo = '/'
+  try {
+    redirectTo = decodeURIComponent(rawRedirect)
+    if (!redirectTo.startsWith('/') || redirectTo.startsWith('/login')) {
+      redirectTo = '/'
+    }
+  } catch {
+    redirectTo = '/'
+  }
 
   const handleSubmit = async (values: LoginData) => {
     setLoading(true)

@@ -19,6 +19,7 @@ from app.schemas import (
     VendorCreate,
     VendorUpdate,
     VendorResponse,
+    VendorListResponse,
     SupplierMaterialResponse,
     SupplierMaterialListResponse,
     SupplierMaterialUpdate,
@@ -41,8 +42,10 @@ def create_vendor(
     return vendor
 
 
-@router.get("", response_model=list[VendorResponse])
+@router.get("", response_model=VendorListResponse)
 def list_vendors(
+    skip: int = Query(0, ge=0),
+    limit: int = Query(100, ge=1, le=500),
     keyword: Optional[str] = None,
     db: Session = Depends(get_db),
     current_user: User = Depends(get_current_user)
@@ -52,7 +55,9 @@ def list_vendors(
         query = query.filter(
             Vendor.name.contains(keyword) | Vendor.contact.contains(keyword) | Vendor.email.contains(keyword)
         )
-    return query.order_by(Vendor.created_at.desc()).all()
+    total = query.count()
+    items = query.order_by(Vendor.created_at.desc()).offset(skip).limit(limit).all()
+    return VendorListResponse(total=total, items=items)
 
 
 @router.get("/{vendor_id}", response_model=VendorResponse)
