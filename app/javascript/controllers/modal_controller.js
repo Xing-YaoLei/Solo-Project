@@ -7,6 +7,15 @@ export default class extends Controller {
     }
     document.addEventListener("keydown", this.escapeHandler)
 
+    this.submitEndHandler = (e) => {
+      const form = e.target
+      const modal = form.closest("[data-modal]")
+      if (modal && e.detail.success) {
+        this.hideModal(modal)
+      }
+    }
+    document.addEventListener("turbo:submit-end", this.submitEndHandler)
+
     this.element.querySelectorAll("[data-modal-backdrop]").forEach((el) => {
       el.addEventListener("click", (e) => {
         if (e.target === el) {
@@ -26,6 +35,7 @@ export default class extends Controller {
 
   disconnect() {
     document.removeEventListener("keydown", this.escapeHandler)
+    document.removeEventListener("turbo:submit-end", this.submitEndHandler)
   }
 
   openBy(event) {
