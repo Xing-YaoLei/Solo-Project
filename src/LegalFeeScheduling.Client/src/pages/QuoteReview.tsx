@@ -5,7 +5,7 @@ import QuoteList from '../components/quotes/QuoteList'
 import QuoteDetailTabs from '../components/quotes/QuoteDetailTabs'
 import { quoteApi } from '../api/quotes'
 import { useQuoteStore } from '../store/useQuoteStore'
-import { Quote, QuoteStatus, QuoteListFilter } from '../types'
+import { Quote, QuoteStatus, QuoteFilter } from '../types'
 
 interface TabData {
   status: QuoteStatus
@@ -13,7 +13,7 @@ interface TabData {
   list: Quote[]
   loading: boolean
   pagination: { current: number; pageSize: number; total: number }
-  filter: QuoteListFilter
+  filter: QuoteFilter
 }
 
 function QuoteReview() {
@@ -32,7 +32,7 @@ function QuoteReview() {
       pagination: { current: 1, pageSize: 10, total: 0 },
       filter: {
         status: QuoteStatus.PendingReview,
-        pageIndex: 1,
+        page: 1,
         pageSize: 10,
       },
     },
@@ -44,7 +44,7 @@ function QuoteReview() {
       pagination: { current: 1, pageSize: 10, total: 0 },
       filter: {
         status: QuoteStatus.NeedMoreInfo,
-        pageIndex: 1,
+        page: 1,
         pageSize: 10,
       },
     },
@@ -56,7 +56,7 @@ function QuoteReview() {
       pagination: { current: 1, pageSize: 10, total: 0 },
       filter: {
         status: QuoteStatus.Escalated,
-        pageIndex: 1,
+        page: 1,
         pageSize: 10,
       },
     },
@@ -69,7 +69,7 @@ function QuoteReview() {
       [status]: { ...prev[status], loading: true },
     }))
     try {
-      const result = await quoteApi.getList(tabData.filter)
+      const result = await quoteApi.getQuotes(tabData.filter)
       setTabsData((prev) => ({
         ...prev,
         [status]: {
@@ -77,7 +77,7 @@ function QuoteReview() {
           list: result.items,
           loading: false,
           pagination: {
-            current: result.pageIndex,
+            current: result.page,
             pageSize: result.pageSize,
             total: result.totalCount,
           },
@@ -98,7 +98,7 @@ function QuoteReview() {
 
   const handleSelectQuote = async (quote: Quote) => {
     try {
-      const detail = await quoteApi.getById(quote.id)
+      const detail = await quoteApi.getQuote(quote.id)
       setSelectedQuote(detail)
       setDrawerOpen(true)
     } catch {
@@ -106,12 +106,12 @@ function QuoteReview() {
     }
   }
 
-  const handleFilterChange = (status: QuoteStatus, newFilter: QuoteListFilter) => {
+  const handleFilterChange = (status: QuoteStatus, newFilter: QuoteFilter) => {
     setTabsData((prev) => ({
       ...prev,
       [status]: {
         ...prev[status],
-        filter: { ...newFilter, status, pageIndex: 1 },
+        filter: { ...newFilter, status, page: 1 },
       },
     }))
   }
@@ -125,7 +125,7 @@ function QuoteReview() {
       ...prev,
       [status]: {
         ...prev[status],
-        filter: { ...prev[status].filter, pageIndex: page, pageSize },
+        filter: { ...prev[status].filter, page, pageSize },
       },
     }))
   }

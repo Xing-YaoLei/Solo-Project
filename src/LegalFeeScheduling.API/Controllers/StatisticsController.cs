@@ -1,7 +1,11 @@
+using LegalFeeScheduling.Domain.DTOs;
 using LegalFeeScheduling.Domain.Entities;
 using LegalFeeScheduling.Domain.Enums;
+using LegalFeeScheduling.Infrastructure.Data;
 using LegalFeeScheduling.Infrastructure.Repositories;
+using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Mvc;
+using Microsoft.EntityFrameworkCore;
 
 namespace LegalFeeScheduling.API.Controllers;
 
@@ -14,25 +18,82 @@ public class StatisticsController : ControllerBase
     private readonly IPaymentRepository _paymentRepository;
     private readonly IReconciliationRepository _reconciliationRepository;
     private readonly IRepository<StatusHistory> _statusHistoryRepository;
+    private readonly IRepository<AmountCheckResult> _amountCheckRepository;
+    private readonly AppDbContext _context;
 
     public StatisticsController(
         IQuoteRepository quoteRepository,
         IPaymentRepository paymentRepository,
         IReconciliationRepository reconciliationRepository,
-        IRepository<StatusHistory> statusHistoryRepository)
+        IRepository<StatusHistory> statusHistoryRepository,
+        IRepository<AmountCheckResult> amountCheckRepository,
+        AppDbContext context)
     {
         _quoteRepository = quoteRepository;
         _paymentRepository = paymentRepository;
         _reconciliationRepository = reconciliationRepository;
         _statusHistoryRepository = statusHistoryRepository;
+        _amountCheckRepository = amountCheckRepository;
+        _context = context;
+    }
+
+    [HttpGet("dashboard")]
+    [ProducesResponseType(StatusCodes.Status200OK)]
+    public async Task<ActionResult<DashboardSummaryDto>> GetDashboard()
+    {
+        var allQuotes = (await _quoteRepository.GetAllAsync()).ToList();
+        var allPayments = (await _paymentRepository.GetAllAsync()).ToList();
+        var allReconciliations = (await _reconciliationRepository.GetAllAsync()).ToList();
+
+        var today = DateTime.UtcNow.Date;
+        var monthStart = new DateTime(today.Year, today.Month, 1);
+
+        var pendingCount = allQuotes.Count(q =>
+            q.Status == QuoteStatus.PendingReview ||
+            q.Status == QuoteStatus.NeedMoreInfo ||
+            q.Status == QuoteStatus.Escalated ||
+            q.Status == QuoteStatus.Processing);
+
+        var exceptionCount = allQuotes.Count(q => q.Status == QuoteStatus.AmountException);
+
+        var monthlyCollectedAmount = allPayments
+            .Where(p => p.PaymentDate >= monthStart)
+            .Sum(p => p.Amount);
+
+        var reconciliationDifferenceCount = allReconciliations
+            .Count(r => r.Status == ReconciliationStatus.Mismatched);
+
+        var totalQuoteCount = allQuotes.Count;
+
+        var completedQuoteCount = allQuotes.Count(q =>
+            q.Status == QuoteStatus.Completed ||
+            q.Status == QuoteStatus.Closed);
+
+        var totalAmount = allQuotes.Sum(q => q.Amount);
+
+        var overdueCount = allPayments.Count(p => p.Status == PaymentStatus.Overdue);
+
+        var result = new DashboardSummaryDto
+        {
+            PendingCount = pendingCount,
+            ExceptionCount = exceptionCount,
+            MonthlyCollectedAmount = monthlyCollectedAmount,
+            ReconciliationDifferenceCount = reconciliationDifferenceCount,
+            TotalQuoteCount = totalQuoteCount,
+            CompletedQuoteCount = completedQuoteCount,
+            TotalAmount = totalAmount,
+            OverdueCount = overdueCount
+        };
+
+        return Ok(result);
     }
 
     [HttpGet("summary")]
     [ProducesResponseType(StatusCodes.Status200OK)]
-    public async Task<ActionResult<object>> GetSummary([FromQuery] string? period = "monthly")
+    public async Task<ActionResult<PeriodSummaryDto>> GetSummary([FromQuery] string? period = "monthly")
     {
-        var allQuotes = await _quoteRepository.GetAllAsync();
-        var allPayments = await _paymentRepository.GetAllAsync();
+        var allQuotes = (await _quoteRepository.GetAllAsync()).ToList();
+        var allPayments = (await _paymentRepository.GetAllAsync()).ToList();
 
         DateTime startDate;
         var now = DateTime.UtcNow;
@@ -55,22 +116,23 @@ public class StatisticsController : ControllerBase
         var quotesInPeriod = allQuotes.Where(q => q.CreatedAt >= startDate).ToList();
         var paymentsInPeriod = allPayments.Where(p => p.PaymentDate >= startDate).ToList();
 
-        var result = new
+        var result = new PeriodSummaryDto
         {
-            period,
-            startDate,
-            endDate = now,
-            totalQuotes = quotesInPeriod.Count,
-            totalAmount = quotesInPeriod.Sum(q => q.Amount),
-            totalPaid = paymentsInPeriod.Sum(p => p.Amount),
-            averageQuoteAmount = quotesInPeriod.Any() ? quotesInPeriod.Average(q => q.Amount) : 0,
-            quoteStatusBreakdown = quotesInPeriod
+            Period = period ?? "monthly",
+            StartDate = startDate,
+            EndDate = now,
+            TotalQuotes = quotesInPeriod.Count,
+            TotalAmount = quotesInPeriod.Sum(q => q.Amount),
+            TotalPaid = paymentsInPeriod.Sum(p => p.Amount),
+            CompletedCount = quotesInPeriod.Count(q => q.Status == QuoteStatus.Completed || q.Status == QuoteStatus.Closed),
+            ExceptionCount = quotesInPeriod.Count(q => q.Status == QuoteStatus.AmountException),
+            StatusBreakdown = quotesInPeriod
                 .GroupBy(q => q.Status)
-                .Select(g => new
+                .Select(g => new StatusBreakdownItem
                 {
-                    status = g.Key.ToString(),
-                    count = g.Count(),
-                    amount = g.Sum(q => q.Amount)
+                    Status = g.Key,
+                    Count = g.Count(),
+                    Amount = g.Sum(q => q.Amount)
                 })
                 .ToList()
         };
@@ -80,19 +142,25 @@ public class StatisticsController : ControllerBase
 
     [HttpGet("by-channel")]
     [ProducesResponseType(StatusCodes.Status200OK)]
-    public async Task<ActionResult<object>> GetByChannel()
+    public async Task<ActionResult<IEnumerable<ChannelStatisticsDto>>> GetByChannel()
     {
         var quotes = (await _quoteRepository.GetUnclosedQuotesWithPaymentsAsync()).ToList();
 
         var result = quotes
             .GroupBy(q => q.Channel)
-            .Select(g => new
+            .Select(g =>
             {
-                channel = g.Key.ToString(),
-                quoteCount = g.Count(),
-                totalAmount = g.Sum(q => q.Amount),
-                averageAmount = g.Any() ? g.Average(q => q.Amount) : 0,
-                paidAmount = g.Sum(q => q.Payments.Sum(p => p.Amount))
+                var totalAmount = g.Sum(q => q.Amount);
+                var paidAmount = g.Sum(q => q.Payments.Sum(p => p.Amount));
+                return new ChannelStatisticsDto
+                {
+                    Channel = g.Key,
+                    QuoteCount = g.Count(),
+                    TotalAmount = totalAmount,
+                    PaidAmount = paidAmount,
+                    OutstandingAmount = totalAmount - paidAmount,
+                    CollectionRate = totalAmount > 0 ? Math.Round(paidAmount / totalAmount * 100, 2) : 0
+                };
             })
             .ToList();
 
@@ -101,7 +169,7 @@ public class StatisticsController : ControllerBase
 
     [HttpGet("by-owner")]
     [ProducesResponseType(StatusCodes.Status200OK)]
-    public async Task<ActionResult<object>> GetByOwner()
+    public async Task<ActionResult<IEnumerable<OwnerStatisticsDto>>> GetByOwner()
     {
         var quotes = (await _quoteRepository.GetUnclosedQuotesWithPaymentsAsync()).ToList();
 
@@ -112,16 +180,18 @@ public class StatisticsController : ControllerBase
             {
                 var totalAmount = g.Sum(q => q.Amount);
                 var paidAmount = g.Sum(q => q.Payments.Sum(p => p.Amount));
-                return new
+                var overdueCount = g.Sum(q => q.Payments.Count(p => p.Status == PaymentStatus.Overdue));
+                return new OwnerStatisticsDto
                 {
-                    owner = g.Key,
-                    quoteCount = g.Count(),
-                    totalAmount,
-                    paidAmount,
-                    outstandingAmount = totalAmount - paidAmount
+                    Owner = g.Key,
+                    QuoteCount = g.Count(),
+                    TotalAmount = totalAmount,
+                    PaidAmount = paidAmount,
+                    OutstandingAmount = totalAmount - paidAmount,
+                    OverdueCount = overdueCount
                 };
             })
-            .OrderByDescending(x => x.totalAmount)
+            .OrderByDescending(x => x.TotalAmount)
             .ToList();
 
         return Ok(result);
@@ -129,37 +199,38 @@ public class StatisticsController : ControllerBase
 
     [HttpGet("status-changes")]
     [ProducesResponseType(StatusCodes.Status200OK)]
-    public async Task<ActionResult<object>> GetStatusChanges([FromQuery] int? days = 30)
+    public async Task<ActionResult<StatusChangeSummaryDto>> GetStatusChanges([FromQuery] int? days = 30)
     {
-        var sinceDate = DateTime.UtcNow.AddDays(-(days ?? 30));
-        var histories = await _statusHistoryRepository.GetAllAsync();
+        var periodDays = days ?? 30;
+        var sinceDate = DateTime.UtcNow.AddDays(-periodDays);
+        var histories = (await _statusHistoryRepository.GetAllAsync()).ToList();
 
         var recentChanges = histories
             .Where(h => h.ChangedAt >= sinceDate)
             .ToList();
 
-        var result = new
+        var result = new StatusChangeSummaryDto
         {
-            periodDays = days ?? 30,
-            totalChanges = recentChanges.Count,
-            byTransition = recentChanges
+            PeriodDays = periodDays,
+            TotalChanges = recentChanges.Count,
+            Transitions = recentChanges
                 .GroupBy(h => new { h.FromStatus, h.ToStatus })
-                .Select(g => new
+                .Select(g => new StatusTransitionItem
                 {
-                    fromStatus = g.Key.FromStatus.ToString(),
-                    toStatus = g.Key.ToStatus.ToString(),
-                    count = g.Count()
+                    FromStatus = g.Key.FromStatus,
+                    ToStatus = g.Key.ToStatus,
+                    Count = g.Count()
                 })
-                .OrderByDescending(x => x.count)
+                .OrderByDescending(x => x.Count)
                 .ToList(),
-            byDate = recentChanges
+            ByDate = recentChanges
                 .GroupBy(h => h.ChangedAt.Date)
-                .Select(g => new
+                .Select(g => new StatusChangeByDateItem
                 {
-                    date = g.Key,
-                    count = g.Count()
+                    Date = g.Key,
+                    Count = g.Count()
                 })
-                .OrderBy(x => x.date)
+                .OrderBy(x => x.Date)
                 .ToList()
         };
 
@@ -168,10 +239,10 @@ public class StatisticsController : ControllerBase
 
     [HttpGet("payment-collection")]
     [ProducesResponseType(StatusCodes.Status200OK)]
-    public async Task<ActionResult<object>> GetPaymentCollection()
+    public async Task<ActionResult<PaymentCollectionDto>> GetPaymentCollection()
     {
         var quotes = (await _quoteRepository.GetAllAsync()).ToList();
-        var payments = await _paymentRepository.GetAllAsync();
+        var payments = (await _paymentRepository.GetAllAsync()).ToList();
 
         var paymentData = quotes
             .Where(q => q.ExpectedPaymentDate.HasValue)
@@ -182,130 +253,49 @@ public class StatisticsController : ControllerBase
                 var lastPayment = quotePayments.LastOrDefault();
                 var totalPaid = quotePayments.Sum(p => p.Amount);
 
-                return new
+                return new PaymentCollectionItemDto
                 {
-                    quoteId = q.Id,
-                    quoteNo = q.QuoteNo,
-                    expectedDate = q.ExpectedPaymentDate,
-                    firstPaymentDate = firstPayment?.PaymentDate,
-                    lastPaymentDate = lastPayment?.PaymentDate,
-                    totalAmount = q.Amount,
-                    paidAmount = totalPaid,
-                    outstandingAmount = q.Amount - totalPaid,
-                    collectionDays = firstPayment != null && q.ExpectedPaymentDate.HasValue
+                    QuoteId = q.Id,
+                    QuoteNo = q.QuoteNo,
+                    ExpectedDate = q.ExpectedPaymentDate,
+                    FirstPaymentDate = firstPayment?.PaymentDate,
+                    LastPaymentDate = lastPayment?.PaymentDate,
+                    TotalAmount = q.Amount,
+                    PaidAmount = totalPaid,
+                    OutstandingAmount = q.Amount - totalPaid,
+                    CollectionDays = firstPayment != null && q.ExpectedPaymentDate.HasValue
                         ? (int?)(firstPayment.PaymentDate - q.ExpectedPaymentDate.Value).TotalDays
                         : null,
-                    fullyPaid = totalPaid >= q.Amount - 0.01m
+                    FullyPaid = totalPaid >= q.Amount - 0.01m
                 };
             })
             .ToList();
 
-        var completedPayments = paymentData.Where(p => p.fullyPaid && p.collectionDays.HasValue).ToList();
+        var completedPayments = paymentData.Where(p => p.FullyPaid && p.CollectionDays.HasValue).ToList();
 
-        var result = new
+        var result = new PaymentCollectionDto
         {
-            totalQuotes = paymentData.Count,
-            fullyPaidCount = paymentData.Count(p => p.fullyPaid),
-            partiallyPaidCount = paymentData.Count(p => !p.fullyPaid && p.paidAmount > 0),
-            notPaidCount = paymentData.Count(p => p.paidAmount == 0),
-            averageCollectionDays = completedPayments.Any() ? completedPayments.Average(p => p.collectionDays!.Value) : 0,
-            details = paymentData
+            TotalQuotes = paymentData.Count,
+            FullyPaidCount = paymentData.Count(p => p.FullyPaid),
+            PartiallyPaidCount = paymentData.Count(p => !p.FullyPaid && p.PaidAmount > 0),
+            NotPaidCount = paymentData.Count(p => p.PaidAmount == 0),
+            AverageCollectionDays = completedPayments.Any() ? completedPayments.Average(p => p.CollectionDays!.Value) : 0,
+            Details = paymentData
         };
 
         return Ok(result);
     }
 
-    [HttpGet("dashboard")]
+    [HttpGet("unbalanced-quotes")]
     [ProducesResponseType(StatusCodes.Status200OK)]
-    public async Task<ActionResult<object>> GetDashboard()
+    public async Task<ActionResult<IEnumerable<AmountCheckResult>>> GetUnbalancedQuotes()
     {
-        var allQuotes = (await _quoteRepository.GetAllAsync()).ToList();
-        var allPayments = await _paymentRepository.GetAllAsync();
-        var allReconciliations = await _reconciliationRepository.GetAllAsync();
+        var unbalancedResults = await _context.AmountCheckResults
+            .Where(acr => !acr.IsMatch)
+            .OrderByDescending(acr => acr.CheckedAt)
+            .Take(100)
+            .ToListAsync();
 
-        var today = DateTime.UtcNow.Date;
-        var monthStart = new DateTime(today.Year, today.Month, 1);
-        var lastMonthStart = monthStart.AddMonths(-1);
-
-        var thisMonthQuotes = allQuotes.Where(q => q.CreatedAt >= monthStart).ToList();
-        var lastMonthQuotes = allQuotes.Where(q => q.CreatedAt >= lastMonthStart && q.CreatedAt < monthStart).ToList();
-
-        var pendingReviewCount = allQuotes.Count(q => q.Status == QuoteStatus.PendingReview);
-        var needMoreInfoCount = allQuotes.Count(q => q.Status == QuoteStatus.NeedMoreInfo);
-        var processingCount = allQuotes.Count(q => q.Status == QuoteStatus.Processing);
-        var amountExceptionCount = allQuotes.Count(q => q.Status == QuoteStatus.AmountException);
-
-        var pendingReconciliation = allReconciliations.Count(r =>
-            r.Status == ReconciliationStatus.Pending ||
-            r.Status == ReconciliationStatus.InProgress ||
-            r.Status == ReconciliationStatus.Mismatched);
-
-        var totalAmount = allQuotes.Sum(q => q.Amount);
-        var totalPaid = allPayments.Sum(p => p.Amount);
-        var totalOutstanding = totalAmount - totalPaid;
-
-        var result = new
-        {
-            overview = new
-            {
-                totalQuotes = allQuotes.Count(),
-                thisMonthNewQuotes = thisMonthQuotes.Count,
-                lastMonthNewQuotes = lastMonthQuotes.Count,
-                totalAmount,
-                totalPaid,
-                totalOutstanding,
-                collectionRate = totalAmount > 0 ? Math.Round(totalPaid / totalAmount * 100, 2) : 0
-            },
-            actionableItems = new
-            {
-                pendingReview = pendingReviewCount,
-                needMoreInfo = needMoreInfoCount,
-                processing = processingCount,
-                amountException = amountExceptionCount,
-                pendingReconciliation
-            },
-            recentActivity = new
-            {
-                recentQuotes = allQuotes
-                    .OrderByDescending(q => q.CreatedAt)
-                    .Take(10)
-                    .Select(q => new
-                    {
-                        q.Id,
-                        q.QuoteNo,
-                        q.CaseName,
-                        q.ClientName,
-                        q.Status,
-                        q.Amount,
-                        q.CreatedAt
-                    })
-                    .ToList(),
-                recentPayments = allPayments
-                    .OrderByDescending(p => p.CreatedAt)
-                    .Take(10)
-                    .Select(p => new
-                    {
-                        p.Id,
-                        p.PaymentNo,
-                        p.QuoteId,
-                        p.Amount,
-                        p.PaymentDate,
-                        p.Status,
-                        p.CreatedAt
-                    })
-                    .ToList()
-            },
-            statusDistribution = allQuotes
-                .GroupBy(q => q.Status)
-                .Select(g => new
-                {
-                    status = g.Key.ToString(),
-                    count = g.Count(),
-                    amount = g.Sum(q => q.Amount)
-                })
-                .ToList()
-        };
-
-        return Ok(result);
+        return Ok(unbalancedResults);
     }
 }

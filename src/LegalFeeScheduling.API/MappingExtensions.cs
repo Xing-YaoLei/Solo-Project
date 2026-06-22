@@ -89,7 +89,7 @@ public static class MappingExtensions
             QuoteId = history.QuoteId,
             FromStatus = history.FromStatus,
             ToStatus = history.ToStatus,
-            ChangedBy = history.ChangedBy,
+            ChangedBy = history.ChangedBy ?? string.Empty,
             ChangedAt = history.ChangedAt,
             Remarks = history.Remarks
         };
@@ -193,12 +193,14 @@ public static class MappingExtensions
         entity.Remarks = dto.Remarks;
     }
 
-    public static PagedResultDto<T> ToPagedResult<T>(this IEnumerable<T> items, int totalCount, int pageSize)
+    public static PagedResultDto<T> ToPagedResult<T>(this IEnumerable<T> items, int totalCount, int page, int pageSize)
     {
         return new PagedResultDto<T>
         {
             TotalCount = totalCount,
             TotalPages = (int)Math.Ceiling((double)totalCount / pageSize),
+            Page = page,
+            PageSize = pageSize,
             Items = items.ToList()
         };
     }

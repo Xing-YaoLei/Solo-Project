@@ -1,5 +1,8 @@
+using LegalFeeScheduling.Domain.DTOs;
 using LegalFeeScheduling.Domain.Entities;
+using LegalFeeScheduling.Domain.Enums;
 using LegalFeeScheduling.Infrastructure.Repositories;
+using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Mvc;
 
 namespace LegalFeeScheduling.API.Controllers;
@@ -22,7 +25,7 @@ public class PaymentsController : ControllerBase
 
     [HttpGet]
     [ProducesResponseType(StatusCodes.Status200OK)]
-    public async Task<ActionResult<IEnumerable<PaymentRecord>>> GetByQuoteId([FromQuery] Guid? quoteId = null)
+    public async Task<ActionResult<IEnumerable<PaymentRecord>>> Get([FromQuery] Guid? quoteId)
     {
         IEnumerable<PaymentRecord> payments;
         if (quoteId.HasValue)
@@ -53,20 +56,20 @@ public class PaymentsController : ControllerBase
     [ProducesResponseType(StatusCodes.Status201Created)]
     [ProducesResponseType(StatusCodes.Status400BadRequest)]
     [ProducesResponseType(StatusCodes.Status404NotFound)]
-    public async Task<ActionResult<PaymentRecord>> Create([FromBody] PaymentRecord payment)
+    public async Task<ActionResult<PaymentRecord>> Create([FromBody] PaymentCreateDto dto)
     {
-        var quote = await _quoteRepository.GetByIdAsync(payment.QuoteId);
+        var quote = await _quoteRepository.GetByIdAsync(dto.QuoteId);
         if (quote is null)
         {
             return NotFound(new { message = "报价单不存在" });
         }
 
-        payment.Id = Guid.NewGuid();
-        payment.CreatedAt = DateTime.UtcNow;
-        payment.UpdatedAt = DateTime.UtcNow;
-        payment.PaymentNo = $"PAY-{DateTime.UtcNow:yyyyMMddHHmmss}-{Guid.NewGuid().ToString("N")[..6].ToUpper()}";
+        var payment = dto.ToEntity();
+        payment.PaymentNo = GeneratePaymentNo();
+        payment.CreatedBy = "current";
+        payment.Status = PaymentStatus.Paid;
 
-        var created = await _paymentRepository.AddAsync(payment);
+        var created = await _paymentRepository.CreatePaymentAsync(payment);
 
         return CreatedAtAction(nameof(GetById), new { id = created.Id }, created);
     }
@@ -74,7 +77,7 @@ public class PaymentsController : ControllerBase
     [HttpPut("{id:guid}")]
     [ProducesResponseType(StatusCodes.Status200OK)]
     [ProducesResponseType(StatusCodes.Status404NotFound)]
-    public async Task<ActionResult<PaymentRecord>> Update(Guid id, [FromBody] PaymentRecord payment)
+    public async Task<ActionResult<PaymentRecord>> Update(Guid id, [FromBody] PaymentUpdateDto dto)
     {
         var existing = await _paymentRepository.GetByIdAsync(id);
         if (existing is null)
@@ -82,13 +85,8 @@ public class PaymentsController : ControllerBase
             return NotFound();
         }
 
-        existing.Amount = payment.Amount;
-        existing.PaymentDate = payment.PaymentDate;
-        existing.PaymentMethod = payment.PaymentMethod;
-        existing.Status = payment.Status;
-        existing.BankTransactionNo = payment.BankTransactionNo;
-        existing.Payer = payment.Payer;
-        existing.Remarks = payment.Remarks;
+        dto.UpdateEntity(existing);
+        existing.UpdatedAt = DateTime.UtcNow;
 
         await _paymentRepository.UpdateAsync(existing);
 
@@ -108,5 +106,12 @@ public class PaymentsController : ControllerBase
 
         await _paymentRepository.DeleteAsync(id);
         return NoContent();
+    }
+
+    private string GeneratePaymentNo()
+    {
+        var datePart = DateTime.UtcNow.ToString("yyyyMMddHHmmss");
+        var randomPart = Guid.NewGuid().ToString("N").Substring(0, 6).ToUpper();
+        return $"PAY{datePart}{randomPart}";
     }
 }

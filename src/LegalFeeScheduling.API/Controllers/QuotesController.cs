@@ -1,7 +1,9 @@
+using LegalFeeScheduling.Domain.DTOs;
 using LegalFeeScheduling.Domain.Entities;
 using LegalFeeScheduling.Domain.Enums;
 using LegalFeeScheduling.Infrastructure.Repositories;
 using LegalFeeScheduling.Infrastructure.Services;
+using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Mvc;
 
 namespace LegalFeeScheduling.API.Controllers;
@@ -27,26 +29,20 @@ public class QuotesController : ControllerBase
 
     [HttpGet]
     [ProducesResponseType(StatusCodes.Status200OK)]
-    public async Task<ActionResult<object>> GetList(
-        [FromQuery] QuoteStatus? status = null,
-        [FromQuery] Channel? channel = null,
-        [FromQuery] string? owner = null,
-        [FromQuery] DateTime? startDate = null,
-        [FromQuery] DateTime? endDate = null,
-        [FromQuery] string? keyword = null,
-        [FromQuery] int page = 1,
-        [FromQuery] int pageSize = 20)
+    public async Task<ActionResult<PagedResultDto<Quote>>> GetList(
+        [FromQuery] QuoteListFilterDto filter)
     {
         var (items, totalCount) = await _quoteRepository.GetListAsync(
-            status, channel, owner, startDate, endDate, keyword, page, pageSize);
+            filter.Status,
+            filter.Channel,
+            filter.Owner,
+            filter.StartDate,
+            filter.EndDate,
+            filter.Keyword,
+            filter.Page,
+            filter.PageSize);
 
-        return Ok(new
-        {
-            items,
-            totalCount,
-            page,
-            pageSize
-        });
+        return Ok(items.ToPagedResult(totalCount, filter.Page, filter.PageSize));
     }
 
     [HttpGet("{id:guid}")]
@@ -78,23 +74,23 @@ public class QuotesController : ControllerBase
     [HttpPost]
     [ProducesResponseType(StatusCodes.Status201Created)]
     [ProducesResponseType(StatusCodes.Status400BadRequest)]
-    public async Task<ActionResult<Quote>> Create([FromBody] Quote quote)
+    public async Task<ActionResult<Quote>> Create([FromBody] QuoteCreateDto dto)
     {
-        quote.Id = Guid.NewGuid();
+        var quote = dto.ToEntity();
+        quote.QuoteNo = GenerateQuoteNo();
         quote.Status = QuoteStatus.Draft;
-        quote.CreatedAt = DateTime.UtcNow;
-        quote.UpdatedAt = DateTime.UtcNow;
+        quote.CreatedBy = "current";
 
-        if (quote.Items != null)
+        if (dto.Items != null && dto.Items.Any())
         {
-            foreach (var item in quote.Items)
+            foreach (var itemDto in dto.Items)
             {
-                item.Id = Guid.NewGuid();
+                var item = itemDto.ToEntity();
                 item.QuoteId = quote.Id;
-                item.CreatedAt = DateTime.UtcNow;
-                item.UpdatedAt = DateTime.UtcNow;
-                item.Subtotal = item.UnitPrice * item.Quantity;
+                item.Subtotal = itemDto.UnitPrice * itemDto.Quantity;
+                quote.Items.Add(item);
             }
+            quote.FinalAmount = dto.Amount - dto.DiscountAmount;
         }
 
         var created = await _quoteRepository.AddAsync(quote);
@@ -104,23 +100,16 @@ public class QuotesController : ControllerBase
     [HttpPut("{id:guid}")]
     [ProducesResponseType(StatusCodes.Status200OK)]
     [ProducesResponseType(StatusCodes.Status404NotFound)]
-    public async Task<ActionResult<Quote>> Update(Guid id, [FromBody] Quote quote)
+    public async Task<ActionResult<Quote>> Update(Guid id, [FromBody] QuoteUpdateDto dto)
     {
-        var existing = await _quoteRepository.GetByIdAsync(id);
+        var existing = await _quoteRepository.GetByIdWithDetailsAsync(id);
         if (existing is null)
         {
             return NotFound();
         }
 
-        existing.CaseName = quote.CaseName;
-        existing.ClientName = quote.ClientName;
-        existing.Channel = quote.Channel;
-        existing.Amount = quote.Amount;
-        existing.DiscountAmount = quote.DiscountAmount;
-        existing.FinalAmount = quote.FinalAmount;
-        existing.Remarks = quote.Remarks;
-        existing.ExpectedPaymentDate = quote.ExpectedPaymentDate;
-        existing.Owner = quote.Owner;
+        dto.UpdateEntity(existing);
+        existing.UpdatedAt = DateTime.UtcNow;
 
         await _quoteRepository.UpdateAsync(existing);
         return Ok(existing);
@@ -150,7 +139,7 @@ public class QuotesController : ControllerBase
     [HttpPost("{id:guid}/items")]
     [ProducesResponseType(StatusCodes.Status201Created)]
     [ProducesResponseType(StatusCodes.Status404NotFound)]
-    public async Task<ActionResult<QuoteItem>> AddItem(Guid id, [FromBody] QuoteItem item)
+    public async Task<ActionResult<QuoteItem>> AddItem(Guid id, [FromBody] QuoteItemCreateDto dto)
     {
         var quote = await _quoteRepository.GetByIdAsync(id);
         if (quote is null)
@@ -158,21 +147,18 @@ public class QuotesController : ControllerBase
             return NotFound();
         }
 
-        item.Id = Guid.NewGuid();
+        var item = dto.ToEntity();
         item.QuoteId = id;
-        item.CreatedAt = DateTime.UtcNow;
-        item.UpdatedAt = DateTime.UtcNow;
-        item.Subtotal = item.UnitPrice * item.Quantity;
+        item.Subtotal = dto.UnitPrice * dto.Quantity;
 
         var created = await _quoteItemRepository.AddAsync(item);
-
         return CreatedAtAction(nameof(GetById), new { id }, created);
     }
 
     [HttpPut("{id:guid}/items/{itemId:guid}")]
     [ProducesResponseType(StatusCodes.Status200OK)]
     [ProducesResponseType(StatusCodes.Status404NotFound)]
-    public async Task<ActionResult<QuoteItem>> UpdateItem(Guid id, Guid itemId, [FromBody] QuoteItem item)
+    public async Task<ActionResult<QuoteItem>> UpdateItem(Guid id, Guid itemId, [FromBody] QuoteItemUpdateDto dto)
     {
         var quote = await _quoteRepository.GetByIdWithDetailsAsync(id);
         if (quote is null)
@@ -186,14 +172,14 @@ public class QuotesController : ControllerBase
             return NotFound();
         }
 
-        existing.ItemName = item.ItemName;
-        existing.Description = item.Description;
-        existing.UnitPrice = item.UnitPrice;
-        existing.Quantity = item.Quantity;
-        existing.Subtotal = item.UnitPrice * item.Quantity;
+        existing.ItemName = dto.ItemName;
+        existing.Description = dto.Description;
+        existing.UnitPrice = dto.UnitPrice;
+        existing.Quantity = dto.Quantity;
+        existing.Subtotal = dto.UnitPrice * dto.Quantity;
+        existing.UpdatedAt = DateTime.UtcNow;
 
         await _quoteItemRepository.UpdateAsync(existing);
-
         return Ok(existing);
     }
 
@@ -221,7 +207,7 @@ public class QuotesController : ControllerBase
     [HttpGet("{id:guid}/validate-amounts")]
     [ProducesResponseType(StatusCodes.Status200OK)]
     [ProducesResponseType(StatusCodes.Status404NotFound)]
-    public async Task<ActionResult<AmountCheckResult>> ValidateAmounts(Guid id)
+    public async Task<ActionResult<IEnumerable<AmountCheckResult>>> ValidateAmounts(Guid id)
     {
         var quote = await _quoteRepository.GetByIdAsync(id);
         if (quote is null)
@@ -229,7 +215,16 @@ public class QuotesController : ControllerBase
             return NotFound();
         }
 
-        var result = await _amountValidationService.ValidateQuoteAmountsAsync(id);
-        return Ok(result);
+        var quoteCheck = await _amountValidationService.ValidateQuoteAmountsAsync(id, "current");
+        var paymentCheck = await _amountValidationService.ValidatePaymentsVsReconciliationAsync(id, "current");
+
+        return Ok(new[] { quoteCheck, paymentCheck });
+    }
+
+    private string GenerateQuoteNo()
+    {
+        var datePart = DateTime.UtcNow.ToString("yyyyMMdd");
+        var randomPart = Guid.NewGuid().ToString("N").Substring(0, 8).ToUpper();
+        return $"LF{datePart}{randomPart}";
     }
 }

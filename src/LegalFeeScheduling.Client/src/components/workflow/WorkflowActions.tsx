@@ -2,14 +2,11 @@ import { useState } from 'react'
 import { Button, Space, Modal, Input, message, Popconfirm, Card } from 'antd'
 import {
   CheckOutlined,
-  CloseOutlined,
   PlayCircleOutlined,
   FileDoneOutlined,
   AuditOutlined,
-  StopOutlined,
   InfoCircleOutlined,
   ArrowUpOutlined,
-  CheckCircleOutlined,
   FolderOutlined,
   WarningOutlined,
 } from '@ant-design/icons'
@@ -29,13 +26,12 @@ interface WorkflowAction {
 const actionConfig: Record<QuoteStatus, WorkflowAction[]> = {
   [QuoteStatus.Draft]: [
     { label: '提交审核', action: 'submit', icon: <AuditOutlined />, type: 'primary' },
-    { label: '取消', action: 'cancel', icon: <StopOutlined />, danger: true },
   ],
   [QuoteStatus.PendingReview]: [
     { label: '审核通过', action: 'approve', icon: <CheckOutlined />, type: 'primary' },
     {
       label: '要求补资料',
-      action: 'requestMoreInfo',
+      action: 'needMoreInfo',
       icon: <InfoCircleOutlined />,
       requireReason: true,
     },
@@ -45,59 +41,44 @@ const actionConfig: Record<QuoteStatus, WorkflowAction[]> = {
       icon: <ArrowUpOutlined />,
       requireReason: true,
     },
-    { label: '驳回', action: 'reject', icon: <CloseOutlined />, danger: true, requireReason: true },
   ],
   [QuoteStatus.NeedMoreInfo]: [
     { label: '重新提交审核', action: 'submit', icon: <AuditOutlined />, type: 'primary' },
-    { label: '取消', action: 'cancel', icon: <StopOutlined />, danger: true },
   ],
   [QuoteStatus.Escalated]: [
     { label: '审核通过', action: 'approve', icon: <CheckOutlined />, type: 'primary' },
     {
       label: '要求补资料',
-      action: 'requestMoreInfo',
+      action: 'needMoreInfo',
       icon: <InfoCircleOutlined />,
       requireReason: true,
     },
-    { label: '驳回', action: 'reject', icon: <CloseOutlined />, danger: true, requireReason: true },
   ],
   [QuoteStatus.Approved]: [
     { label: '开始处理', action: 'startProcessing', icon: <PlayCircleOutlined />, type: 'primary' },
-    { label: '取消', action: 'cancel', icon: <StopOutlined />, danger: true },
   ],
   [QuoteStatus.Processing]: [
-    { label: '标记对账完成', action: 'markReconciled', icon: <FileDoneOutlined />, type: 'primary' },
+    { label: '完成处理', action: 'complete', icon: <FileDoneOutlined />, type: 'primary' },
     {
-      label: '解决异常',
-      action: 'resolveException',
+      label: '处理异常',
+      action: 'handleException',
       icon: <WarningOutlined />,
       requireReason: true,
     },
   ],
   [QuoteStatus.AmountException]: [
     {
-      label: '解决异常',
-      action: 'resolveException',
+      label: '处理异常',
+      action: 'handleException',
       icon: <WarningOutlined />,
       type: 'primary',
       requireReason: true,
     },
-    { label: '标记对账完成', action: 'markReconciled', icon: <FileDoneOutlined /> },
-  ],
-  [QuoteStatus.Reconciled]: [
-    { label: '标记复盘完成', action: 'markReviewed', icon: <AuditOutlined />, type: 'primary' },
-  ],
-  [QuoteStatus.Reviewed]: [
-    { label: '标记完成', action: 'markCompleted', icon: <CheckCircleOutlined />, type: 'primary' },
+    { label: '完成处理', action: 'complete', icon: <FileDoneOutlined /> },
   ],
   [QuoteStatus.Completed]: [
-    { label: '关闭归档', action: 'closeArchive', icon: <FolderOutlined />, type: 'primary' },
+    { label: '关闭归档', action: 'close', icon: <FolderOutlined />, type: 'primary' },
   ],
-  [QuoteStatus.Rejected]: [
-    { label: '重新提交', action: 'submit', icon: <AuditOutlined />, type: 'primary' },
-    { label: '取消', action: 'cancel', icon: <StopOutlined />, danger: true },
-  ],
-  [QuoteStatus.Cancelled]: [],
   [QuoteStatus.Closed]: [],
 }
 
@@ -145,44 +126,32 @@ function WorkflowActions({ onSuccess }: WorkflowActionsProps) {
     setExecuting(true)
     try {
       let result
-      const request = { quoteId: currentQuote.id, remark: actionRemark }
+      const quoteId = currentQuote.id
 
       switch (action.action) {
         case 'submit':
-          result = await workflowApi.submitForReview(request)
+          result = await workflowApi.submitForReview(quoteId)
           break
         case 'approve':
-          result = await workflowApi.approve(request)
+          result = await workflowApi.approve(quoteId)
           break
-        case 'reject':
-          result = await workflowApi.reject(request)
-          break
-        case 'requestMoreInfo':
-          result = await workflowApi.requestMoreInfo(request)
+        case 'needMoreInfo':
+          result = await workflowApi.needMoreInfo(quoteId, actionRemark)
           break
         case 'escalate':
-          result = await workflowApi.escalate(request)
+          result = await workflowApi.escalate(quoteId, actionRemark)
           break
         case 'startProcessing':
-          result = await workflowApi.startProcessing(request)
+          result = await workflowApi.startProcessing(quoteId)
           break
-        case 'markReconciled':
-          result = await workflowApi.markReconciled(request)
+        case 'complete':
+          result = await workflowApi.complete(quoteId)
           break
-        case 'markReviewed':
-          result = await workflowApi.markReviewed(request)
+        case 'close':
+          result = await workflowApi.close(quoteId)
           break
-        case 'markCompleted':
-          result = await workflowApi.markCompleted(request)
-          break
-        case 'closeArchive':
-          result = await workflowApi.closeArchive(request)
-          break
-        case 'resolveException':
-          result = await workflowApi.resolveException(request)
-          break
-        case 'cancel':
-          result = await workflowApi.cancel(request)
+        case 'handleException':
+          result = await workflowApi.handleException(quoteId, actionRemark)
           break
         default:
           return

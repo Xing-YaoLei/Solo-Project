@@ -1,7 +1,7 @@
 import apiClient from './client'
-import {
+import type {
   PaymentRecord,
-  CreatePaymentRequest,
+  CreatePaymentDto,
 } from '../types'
 
 export const paymentApi = {
@@ -13,11 +13,11 @@ export const paymentApi = {
     return apiClient.get(`/payments/${id}`)
   },
 
-  create: (data: CreatePaymentRequest): Promise<PaymentRecord> => {
+  create: (data: CreatePaymentDto): Promise<PaymentRecord> => {
     return apiClient.post('/payments', data)
   },
 
-  update: (id: string, data: CreatePaymentRequest): Promise<PaymentRecord> => {
+  update: (id: string, data: CreatePaymentDto): Promise<PaymentRecord> => {
     return apiClient.put(`/payments/${id}`, data)
   },
 

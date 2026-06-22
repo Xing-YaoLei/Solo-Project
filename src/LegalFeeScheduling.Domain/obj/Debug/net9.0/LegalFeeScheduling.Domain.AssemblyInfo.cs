@@ -13,7 +13,7 @@ using System.Reflection;
 [assembly: System.Reflection.AssemblyCompanyAttribute("LegalFeeScheduling.Domain")]
 [assembly: System.Reflection.AssemblyConfigurationAttribute("Debug")]
 [assembly: System.Reflection.AssemblyFileVersionAttribute("1.0.0.0")]
-[assembly: System.Reflection.AssemblyInformationalVersionAttribute("1.0.0+da0c2261061a9c37359ee2704038d20f64ebc84a")]
+[assembly: System.Reflection.AssemblyInformationalVersionAttribute("1.0.0+f79cdb7334d572646b8c75948d9fed79ea49e0f8")]
 [assembly: System.Reflection.AssemblyProductAttribute("LegalFeeScheduling.Domain")]
 [assembly: System.Reflection.AssemblyTitleAttribute("LegalFeeScheduling.Domain")]
 [assembly: System.Reflection.AssemblyVersionAttribute("1.0.0.0")]

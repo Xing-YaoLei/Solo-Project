@@ -16,12 +16,11 @@ import {
   CheckCircleOutlined,
   ExclamationCircleOutlined,
 } from '@ant-design/icons'
-import { statisticsApi } from '../../api/statistics'
+import { quoteApi } from '../../api/quotes'
 import { useQuoteStore } from '../../store/useQuoteStore'
 import {
-  AmountCheckRecord,
+  AmountCheckResult,
   AmountCheckType,
-  AmountCheckStatus,
 } from '../../types'
 import dayjs from 'dayjs'
 
@@ -31,19 +30,9 @@ interface AmountCheckPanelProps {
 }
 
 const checkTypeLabels: Record<AmountCheckType, string> = {
-  [AmountCheckType.QuoteItemsVsTotal]: '报价明细 vs 报价单金额',
+  [AmountCheckType.QuoteItemsVsQuoteAmount]: '报价明细 vs 报价单金额',
   [AmountCheckType.PaymentsVsReconciliation]: '支付合计 vs 对账金额',
-  [AmountCheckType.Custom]: '自定义校验',
-}
-
-const statusLabels: Record<AmountCheckStatus, string> = {
-  [AmountCheckStatus.Matched]: '匹配',
-  [AmountCheckStatus.Mismatched]: '不匹配',
-}
-
-const statusColors: Record<AmountCheckStatus, string> = {
-  [AmountCheckStatus.Matched]: 'green',
-  [AmountCheckStatus.Mismatched]: 'red',
+  [AmountCheckType.Other]: '其他校验',
 }
 
 function AmountCheckPanel({ quoteId, readOnly = false }: AmountCheckPanelProps) {
@@ -58,7 +47,7 @@ function AmountCheckPanel({ quoteId, readOnly = false }: AmountCheckPanelProps) 
     if (!effectiveQuoteId) return
     setLoading(true)
     try {
-      const results = await statisticsApi.runAmountChecks(effectiveQuoteId)
+      const results = await quoteApi.validateAmounts(effectiveQuoteId)
       setAmountChecks(results)
     } catch {
       message.error('加载金额校验结果失败')
@@ -75,13 +64,11 @@ function AmountCheckPanel({ quoteId, readOnly = false }: AmountCheckPanelProps) 
 
   const data = storeAmountChecks
 
-  const matchedCount = data.filter((c) => c.status === AmountCheckStatus.Matched).length
-  const mismatchedCount = data.filter(
-    (c) => c.status === AmountCheckStatus.Mismatched
-  ).length
+  const matchedCount = data.filter((c) => c.isMatch).length
+  const mismatchedCount = data.filter((c) => !c.isMatch).length
   const allMatched = data.length > 0 && mismatchedCount === 0
 
-  const columns: ColumnsType<AmountCheckRecord> = [
+  const columns: ColumnsType<AmountCheckResult> = [
     {
       title: '校验类型',
       dataIndex: 'checkType',
@@ -116,17 +103,22 @@ function AmountCheckPanel({ quoteId, readOnly = false }: AmountCheckPanelProps) 
     },
     {
       title: '是否匹配',
-      dataIndex: 'status',
-      key: 'status',
+      dataIndex: 'isMatch',
+      key: 'isMatch',
       width: 100,
-      render: (v: AmountCheckStatus) => (
-        <Tag color={statusColors[v]}>
-          {v === AmountCheckStatus.Matched ? (
-            <CheckCircleOutlined style={{ marginRight: 4 }} />
+      render: (v: boolean) => (
+        <Tag color={v ? 'green' : 'red'}>
+          {v ? (
+            <>
+              <CheckCircleOutlined style={{ marginRight: 4 }} />
+              匹配
+            </>
           ) : (
-            <ExclamationCircleOutlined style={{ marginRight: 4 }} />
+            <>
+              <ExclamationCircleOutlined style={{ marginRight: 4 }} />
+              不匹配
+            </>
           )}
-          {statusLabels[v]}
         </Tag>
       ),
     },
@@ -136,6 +128,19 @@ function AmountCheckPanel({ quoteId, readOnly = false }: AmountCheckPanelProps) 
       key: 'checkedAt',
       width: 160,
       render: (v: string) => dayjs(v).format('YYYY-MM-DD HH:mm:ss'),
+    },
+    {
+      title: '校验人',
+      dataIndex: 'checkedBy',
+      key: 'checkedBy',
+      width: 100,
+      render: (v?: string) => v || '-',
+    },
+    {
+      title: '备注',
+      dataIndex: 'remarks',
+      key: 'remarks',
+      render: (v?: string) => v || '-',
     },
   ]
 
@@ -220,7 +225,7 @@ function AmountCheckPanel({ quoteId, readOnly = false }: AmountCheckPanelProps) 
         dataSource={data}
         loading={loading}
         pagination={false}
-        scroll={{ x: 900 }}
+        scroll={{ x: 1100 }}
       />
     </Card>
   )

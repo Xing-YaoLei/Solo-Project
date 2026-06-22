@@ -10,6 +10,7 @@ import {
   message,
   Empty,
   Card,
+  InputNumber,
 } from 'antd'
 import { PlusOutlined } from '@ant-design/icons'
 import QuoteList from '../components/quotes/QuoteList'
@@ -21,9 +22,9 @@ import { useQuoteStore } from '../store/useQuoteStore'
 import {
   Quote,
   QuoteStatus,
-  QuoteListFilter,
+  QuoteFilter,
   Channel,
-  CreateQuoteRequest,
+  CreateQuoteDto,
 } from '../types'
 import { channelLabels } from '../components/quotes/QuoteList'
 
@@ -36,9 +37,9 @@ function QuoteEntry() {
     pageSize: 10,
     total: 0,
   })
-  const [filter, setFilter] = useState<QuoteListFilter>({
-    statuses: [QuoteStatus.Draft, QuoteStatus.PendingReview],
-    pageIndex: 1,
+  const [filter, setFilter] = useState<QuoteFilter>({
+    status: QuoteStatus.Draft,
+    page: 1,
     pageSize: 10,
   })
   const currentQuote = useQuoteStore((s) => s.currentQuote)
@@ -48,10 +49,10 @@ function QuoteEntry() {
   const loadData = async () => {
     setLoading(true)
     try {
-      const result = await quoteApi.getList(filter)
+      const result = await quoteApi.getQuotes(filter)
       setList(result.items)
       setPagination({
-        current: result.pageIndex,
+        current: result.page,
         pageSize: result.pageSize,
         total: result.totalCount,
       })
@@ -68,7 +69,7 @@ function QuoteEntry() {
 
   const handleSelectQuote = async (quote: Quote) => {
     try {
-      const detail = await quoteApi.getById(quote.id)
+      const detail = await quoteApi.getQuote(quote.id)
       setCurrentQuote(detail)
     } catch {
       message.error('加载报价单详情失败')
@@ -78,15 +79,19 @@ function QuoteEntry() {
   const handleCreate = async () => {
     try {
       const values = await form.validateFields()
-      const request: CreateQuoteRequest = {
+      const request: CreateQuoteDto = {
         clientName: values.clientName,
         caseName: values.caseName,
         channel: values.channel,
+        amount: values.amount || 0,
+        discountAmount: values.discountAmount,
+        finalAmount: values.finalAmount || values.amount || 0,
         owner: values.owner,
-        remark: values.remark,
+        remarks: values.remarks,
+        expectedPaymentDate: values.expectedPaymentDate,
         items: [],
       }
-      const newQuote = await quoteApi.create(request)
+      const newQuote = await quoteApi.createQuote(request)
       message.success('创建成功')
       setCreateModalOpen(false)
       form.resetFields()
@@ -97,16 +102,16 @@ function QuoteEntry() {
     }
   }
 
-  const handleFilterChange = (newFilter: QuoteListFilter) => {
+  const handleFilterChange = (newFilter: QuoteFilter) => {
     setFilter({
       ...newFilter,
-      statuses: [QuoteStatus.Draft, QuoteStatus.PendingReview],
-      pageIndex: 1,
+      status: QuoteStatus.Draft,
+      page: 1,
     })
   }
 
   const handlePaginationChange = (page: number, pageSize: number) => {
-    setFilter((prev) => ({ ...prev, pageIndex: page, pageSize }))
+    setFilter((prev) => ({ ...prev, page, pageSize }))
   }
 
   const handleWorkflowSuccess = () => {
@@ -220,7 +225,53 @@ function QuoteEntry() {
               </Form.Item>
             </Col>
           </Row>
-          <Form.Item name="remark" label="备注">
+          <Row gutter={16}>
+            <Col span={8}>
+              <Form.Item
+                name="amount"
+                label="报价金额"
+                rules={[{ required: true, message: '请输入报价金额' }]}
+              >
+                <InputNumber<number>
+                  min={0}
+                  style={{ width: '100%' }}
+                  placeholder="请输入报价金额"
+                  formatter={(value) => `¥ ${value}`.replace(/\B(?=(\d{3})+(?!\d))/g, ',')}
+                  parser={(value) => Number(value?.replace(/[^\d.]/g, '')) || 0}
+                />
+              </Form.Item>
+            </Col>
+            <Col span={8}>
+              <Form.Item name="discountAmount" label="优惠金额">
+                <InputNumber<number>
+                  min={0}
+                  style={{ width: '100%' }}
+                  placeholder="请输入优惠金额"
+                  formatter={(value) => `¥ ${value}`.replace(/\B(?=(\d{3})+(?!\d))/g, ',')}
+                  parser={(value) => Number(value?.replace(/[^\d.]/g, '')) || 0}
+                />
+              </Form.Item>
+            </Col>
+            <Col span={8}>
+              <Form.Item
+                name="finalAmount"
+                label="最终金额"
+                rules={[{ required: true, message: '请输入最终金额' }]}
+              >
+                <InputNumber<number>
+                  min={0}
+                  style={{ width: '100%' }}
+                  placeholder="请输入最终金额"
+                  formatter={(value) => `¥ ${value}`.replace(/\B(?=(\d{3})+(?!\d))/g, ',')}
+                  parser={(value) => Number(value?.replace(/[^\d.]/g, '')) || 0}
+                />
+              </Form.Item>
+            </Col>
+          </Row>
+          <Form.Item name="expectedPaymentDate" label="预计付款日期">
+            <Input placeholder="YYYY-MM-DD" />
+          </Form.Item>
+          <Form.Item name="remarks" label="备注">
             <Input.TextArea rows={3} placeholder="请输入备注" />
           </Form.Item>
         </Form>

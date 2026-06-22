@@ -16,7 +16,12 @@ import { SyncOutlined, CheckOutlined, WarningOutlined } from '@ant-design/icons'
 import dayjs from 'dayjs'
 import { reconciliationApi } from '../../api/reconciliation'
 import { useQuoteStore } from '../../store/useQuoteStore'
-import { ReconciliationRecord, ReconciliationStatus } from '../../types'
+import {
+  ReconciliationRecord,
+  ReconciliationStatus,
+  CreateReconciliationDto,
+  ResolveReconciliationDto,
+} from '../../types'
 
 interface ReconciliationPanelProps {
   quoteId?: string
@@ -72,9 +77,16 @@ function ReconciliationPanel({ quoteId, readOnly = false }: ReconciliationPanelP
   }, [effectiveQuoteId])
 
   const handleCreate = async () => {
-    if (!effectiveQuoteId) return
+    if (!effectiveQuoteId || !currentQuote) return
     try {
-      const result = await reconciliationApi.create(effectiveQuoteId)
+      const totalPaid = currentQuote.payments.reduce((sum, p) => sum + (p.amount || 0), 0)
+      const request: CreateReconciliationDto = {
+        quoteId: effectiveQuoteId,
+        reconcileDate: dayjs().format('YYYY-MM-DD'),
+        expectedAmount: currentQuote.finalAmount || currentQuote.amount,
+        actualAmount: totalPaid,
+      }
+      const result = await reconciliationApi.create(request)
       message.success('对账完成')
       addReconciliation(result)
     } catch {
@@ -85,7 +97,10 @@ function ReconciliationPanel({ quoteId, readOnly = false }: ReconciliationPanelP
   const handleResolve = async () => {
     if (!resolveRecord) return
     try {
-      const result = await reconciliationApi.resolve(resolveRecord.id, resolveRemark)
+      const request: ResolveReconciliationDto = {
+        remarks: resolveRemark,
+      }
+      const result = await reconciliationApi.resolve(resolveRecord.id, request)
       message.success('处理成功')
       updateReconciliation(result)
       setResolveModalOpen(false)
@@ -103,10 +118,10 @@ function ReconciliationPanel({ quoteId, readOnly = false }: ReconciliationPanelP
   const columns: ColumnsType<ReconciliationRecord> = [
     {
       title: '对账日期',
-      dataIndex: 'reconciledAt',
-      key: 'reconciledAt',
+      dataIndex: 'reconcileDate',
+      key: 'reconcileDate',
       width: 160,
-      render: (v: string) => dayjs(v).format('YYYY-MM-DD HH:mm'),
+      render: (v: string) => dayjs(v).format('YYYY-MM-DD'),
     },
     {
       title: '应收金额',
@@ -143,15 +158,16 @@ function ReconciliationPanel({ quoteId, readOnly = false }: ReconciliationPanelP
       ),
     },
     {
-      title: '操作人',
-      dataIndex: 'reconciledBy',
-      key: 'reconciledBy',
+      title: '处理人',
+      dataIndex: 'resolvedBy',
+      key: 'resolvedBy',
       width: 100,
+      render: (v?: string) => v || '-',
     },
     {
       title: '备注',
-      dataIndex: 'remark',
-      key: 'remark',
+      dataIndex: 'remarks',
+      key: 'remarks',
       render: (v?: string) => v || '-',
     },
     ...(!readOnly

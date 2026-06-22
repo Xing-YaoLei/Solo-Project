@@ -1,13 +1,21 @@
+using System.Text.Json;
+using System.Text.Json.Serialization;
 using Hangfire;
 using LegalFeeScheduling.Infrastructure.Data;
 using LegalFeeScheduling.Infrastructure.Hangfire.RecurringJobs;
 using LegalFeeScheduling.Infrastructure.Repositories;
 using LegalFeeScheduling.Infrastructure.Services;
+using Microsoft.AspNetCore.Http;
 using Microsoft.EntityFrameworkCore;
 
 var builder = WebApplication.CreateBuilder(args);
 
-builder.Services.AddControllers();
+builder.Services.AddControllers()
+    .AddJsonOptions(options =>
+    {
+        options.JsonSerializerOptions.Converters.Add(new JsonStringEnumConverter(JsonNamingPolicy.CamelCase));
+        options.JsonSerializerOptions.PropertyNamingPolicy = JsonNamingPolicy.CamelCase;
+    });
 builder.Services.AddEndpointsApiExplorer();
 builder.Services.AddSwaggerGen(c =>
 {

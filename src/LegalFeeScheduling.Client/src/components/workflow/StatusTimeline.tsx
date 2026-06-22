@@ -18,7 +18,7 @@ function StatusTimeline({ quoteId }: StatusTimelineProps) {
       if (!quoteId) return
       setLoading(true)
       try {
-        const result = await workflowApi.getHistory(quoteId)
+        const result = await workflowApi.getStatusHistory(quoteId)
         setData(result)
       } catch {
         message.error('加载状态历史失败')
@@ -59,11 +59,11 @@ function StatusTimeline({ quoteId }: StatusTimelineProps) {
                 <span style={{ color: '#ccc' }}>→</span>
               </div>
               <div style={{ color: '#666', fontSize: 13, marginTop: 4 }}>
-                <span>操作人：{item.operator}</span>
+                <span>操作人：{item.changedBy || '-'}</span>
                 <span style={{ margin: '0 8px', color: '#ddd' }}>|</span>
-                <span>{dayjs(item.operatedAt).format('YYYY-MM-DD HH:mm')}</span>
+                <span>{dayjs(item.changedAt).format('YYYY-MM-DD HH:mm')}</span>
               </div>
-              {item.remark && (
+              {item.remarks && (
                 <div
                   style={{
                     marginTop: 8,
@@ -75,7 +75,7 @@ function StatusTimeline({ quoteId }: StatusTimelineProps) {
                   }}
                 >
                   <span style={{ color: '#999' }}>备注：</span>
-                  {item.remark}
+                  {item.remarks}
                 </div>
               )}
             </div>

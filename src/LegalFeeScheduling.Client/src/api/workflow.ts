@@ -1,56 +1,43 @@
 import apiClient from './client'
-import { StatusHistory, Quote, WorkflowActionRequest } from '../types'
+import type { Quote, StatusHistory, WorkflowReasonDto } from '../types'
 
 export const workflowApi = {
-  getHistory: (quoteId: string): Promise<StatusHistory[]> => {
-    return apiClient.get(`/quotes/${quoteId}/history`)
+  submitForReview: (quoteId: string): Promise<Quote> => {
+    return apiClient.post(`/workflow/${quoteId}/submit`)
   },
 
-  submitForReview: (data: WorkflowActionRequest): Promise<Quote> => {
-    return apiClient.post('/workflow/submit', data)
+  approve: (quoteId: string): Promise<Quote> => {
+    return apiClient.post(`/workflow/${quoteId}/approve`)
   },
 
-  approve: (data: WorkflowActionRequest): Promise<Quote> => {
-    return apiClient.post('/workflow/approve', data)
+  needMoreInfo: (quoteId: string, reason?: string): Promise<Quote> => {
+    const body: WorkflowReasonDto = { reason }
+    return apiClient.post(`/workflow/${quoteId}/need-more-info`, body)
   },
 
-  reject: (data: WorkflowActionRequest): Promise<Quote> => {
-    return apiClient.post('/workflow/reject', data)
+  escalate: (quoteId: string, reason?: string): Promise<Quote> => {
+    const body: WorkflowReasonDto = { reason }
+    return apiClient.post(`/workflow/${quoteId}/escalate`, body)
   },
 
-  requestMoreInfo: (data: WorkflowActionRequest): Promise<Quote> => {
-    return apiClient.post('/workflow/request-more-info', data)
+  startProcessing: (quoteId: string): Promise<Quote> => {
+    return apiClient.post(`/workflow/${quoteId}/start-processing`)
   },
 
-  escalate: (data: WorkflowActionRequest): Promise<Quote> => {
-    return apiClient.post('/workflow/escalate', data)
+  complete: (quoteId: string): Promise<Quote> => {
+    return apiClient.post(`/workflow/${quoteId}/complete`)
   },
 
-  startProcessing: (data: WorkflowActionRequest): Promise<Quote> => {
-    return apiClient.post('/workflow/start-processing', data)
+  close: (quoteId: string): Promise<Quote> => {
+    return apiClient.post(`/workflow/${quoteId}/close`)
   },
 
-  markReconciled: (data: WorkflowActionRequest): Promise<Quote> => {
-    return apiClient.post('/workflow/mark-reconciled', data)
+  handleException: (quoteId: string, reason?: string): Promise<Quote> => {
+    const body: WorkflowReasonDto = { reason }
+    return apiClient.post(`/workflow/${quoteId}/handle-exception`, body)
   },
 
-  markReviewed: (data: WorkflowActionRequest): Promise<Quote> => {
-    return apiClient.post('/workflow/mark-reviewed', data)
-  },
-
-  markCompleted: (data: WorkflowActionRequest): Promise<Quote> => {
-    return apiClient.post('/workflow/mark-completed', data)
-  },
-
-  closeArchive: (data: WorkflowActionRequest): Promise<Quote> => {
-    return apiClient.post('/workflow/close-archive', data)
-  },
-
-  resolveException: (data: WorkflowActionRequest): Promise<Quote> => {
-    return apiClient.post('/workflow/resolve-exception', data)
-  },
-
-  cancel: (data: WorkflowActionRequest): Promise<Quote> => {
-    return apiClient.post('/workflow/cancel', data)
+  getStatusHistory: (quoteId: string): Promise<StatusHistory[]> => {
+    return apiClient.get(`/workflow/${quoteId}/history`)
   },
 }

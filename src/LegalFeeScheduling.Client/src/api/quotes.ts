@@ -1,52 +1,53 @@
 import apiClient from './client'
-import {
+import type {
   Quote,
   QuoteItem,
-  QuoteListFilter,
+  QuoteFilter,
   PagedResult,
-  CreateQuoteRequest,
-  UpdateQuoteRequest,
+  CreateQuoteDto,
+  UpdateQuoteDto,
+  CreateQuoteItemDto,
   AmountCheckResult,
 } from '../types'
 
 export const quoteApi = {
-  getList: (filter: QuoteListFilter): Promise<PagedResult<Quote>> => {
+  getQuotes: (filter: QuoteFilter): Promise<PagedResult<Quote>> => {
     return apiClient.get('/quotes', { params: filter })
   },
 
-  getById: (id: string): Promise<Quote> => {
+  getQuote: (id: string): Promise<Quote> => {
     return apiClient.get(`/quotes/${id}`)
   },
 
-  getByNo: (quoteNo: string): Promise<Quote> => {
+  getQuoteByNo: (quoteNo: string): Promise<Quote> => {
     return apiClient.get(`/quotes/no/${quoteNo}`)
   },
 
-  create: (data: CreateQuoteRequest): Promise<Quote> => {
+  createQuote: (data: CreateQuoteDto): Promise<Quote> => {
     return apiClient.post('/quotes', data)
   },
 
-  update: (id: string, data: UpdateQuoteRequest): Promise<Quote> => {
+  updateQuote: (id: string, data: UpdateQuoteDto): Promise<Quote> => {
     return apiClient.put(`/quotes/${id}`, data)
   },
 
-  delete: (id: string): Promise<void> => {
+  deleteQuote: (id: string): Promise<void> => {
     return apiClient.delete(`/quotes/${id}`)
   },
 
-  addItem: (quoteId: string, data: QuoteItem): Promise<QuoteItem> => {
+  addQuoteItem: (quoteId: string, data: CreateQuoteItemDto): Promise<QuoteItem> => {
     return apiClient.post(`/quotes/${quoteId}/items`, data)
   },
 
-  updateItem: (
+  updateQuoteItem: (
     quoteId: string,
     itemId: string,
-    data: QuoteItem
+    data: CreateQuoteItemDto
   ): Promise<QuoteItem> => {
     return apiClient.put(`/quotes/${quoteId}/items/${itemId}`, data)
   },
 
-  deleteItem: (quoteId: string, itemId: string): Promise<void> => {
+  deleteQuoteItem: (quoteId: string, itemId: string): Promise<void> => {
     return apiClient.delete(`/quotes/${quoteId}/items/${itemId}`)
   },
 

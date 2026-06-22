@@ -1,6 +1,8 @@
+using LegalFeeScheduling.Domain.DTOs;
 using LegalFeeScheduling.Domain.Entities;
 using LegalFeeScheduling.Domain.Enums;
 using LegalFeeScheduling.Infrastructure.Repositories;
+using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Mvc;
 
 namespace LegalFeeScheduling.API.Controllers;
@@ -26,7 +28,7 @@ public class ReconciliationController : ControllerBase
 
     [HttpGet]
     [ProducesResponseType(StatusCodes.Status200OK)]
-    public async Task<ActionResult<IEnumerable<ReconciliationRecord>>> GetByQuoteId([FromQuery] Guid? quoteId = null)
+    public async Task<ActionResult<IEnumerable<ReconciliationRecord>>> Get([FromQuery] Guid? quoteId)
     {
         IEnumerable<ReconciliationRecord> records;
         if (quoteId.HasValue)
@@ -56,31 +58,28 @@ public class ReconciliationController : ControllerBase
     [HttpPost]
     [ProducesResponseType(StatusCodes.Status201Created)]
     [ProducesResponseType(StatusCodes.Status404NotFound)]
-    public async Task<ActionResult<ReconciliationRecord>> Create([FromBody] ReconciliationRecord record)
+    public async Task<ActionResult<ReconciliationRecord>> Create([FromBody] ReconciliationCreateDto dto)
     {
-        var quote = await _quoteRepository.GetByIdAsync(record.QuoteId);
+        var quote = await _quoteRepository.GetByIdAsync(dto.QuoteId);
         if (quote is null)
         {
             return NotFound(new { message = "报价单不存在" });
         }
 
-        record.Id = Guid.NewGuid();
-        record.CreatedAt = DateTime.UtcNow;
-        record.UpdatedAt = DateTime.UtcNow;
-        record.ReconcileDate = DateTime.UtcNow;
-        record.Difference = record.ExpectedAmount - record.ActualAmount;
+        var record = dto.ToEntity();
+        record.Difference = dto.ExpectedAmount - dto.ActualAmount;
         record.Status = Math.Abs(record.Difference) < 0.01m
             ? ReconciliationStatus.Matched
             : ReconciliationStatus.Mismatched;
 
-        var created = await _reconciliationRepository.AddAsync(record);
+        var created = await _reconciliationRepository.CreateReconciliationAsync(record);
         return CreatedAtAction(nameof(GetById), new { id = created.Id }, created);
     }
 
     [HttpPut("{id:guid}")]
     [ProducesResponseType(StatusCodes.Status200OK)]
     [ProducesResponseType(StatusCodes.Status404NotFound)]
-    public async Task<ActionResult<ReconciliationRecord>> Update(Guid id, [FromBody] ReconciliationRecord record)
+    public async Task<ActionResult<ReconciliationRecord>> Update(Guid id, [FromBody] ReconciliationUpdateDto dto)
     {
         var existing = await _reconciliationRepository.GetByIdAsync(id);
         if (existing is null)
@@ -88,19 +87,8 @@ public class ReconciliationController : ControllerBase
             return NotFound();
         }
 
-        existing.ExpectedAmount = record.ExpectedAmount;
-        existing.ActualAmount = record.ActualAmount;
-        existing.Difference = record.ExpectedAmount - record.ActualAmount;
-        existing.Status = Math.Abs(existing.Difference) < 0.01m
-            ? ReconciliationStatus.Matched
-            : ReconciliationStatus.Mismatched;
-        existing.Remarks = record.Remarks;
-
-        if (existing.Status == ReconciliationStatus.Matched)
-        {
-            existing.Status = ReconciliationStatus.Resolved;
-            existing.ResolvedAt = DateTime.UtcNow;
-        }
+        dto.UpdateEntity(existing);
+        existing.UpdatedAt = DateTime.UtcNow;
 
         await _reconciliationRepository.UpdateAsync(existing);
         return Ok(existing);
@@ -109,7 +97,7 @@ public class ReconciliationController : ControllerBase
     [HttpPost("{id:guid}/resolve")]
     [ProducesResponseType(StatusCodes.Status200OK)]
     [ProducesResponseType(StatusCodes.Status404NotFound)]
-    public async Task<ActionResult<ReconciliationRecord>> Resolve(Guid id, [FromBody] object? body)
+    public async Task<ActionResult<ReconciliationRecord>> Resolve(Guid id, [FromBody] ReconciliationResolveDto dto)
     {
         var existing = await _reconciliationRepository.GetByIdAsync(id);
         if (existing is null)
@@ -119,6 +107,9 @@ public class ReconciliationController : ControllerBase
 
         existing.Status = ReconciliationStatus.Resolved;
         existing.ResolvedAt = DateTime.UtcNow;
+        existing.ResolvedBy = "current";
+        existing.Remarks = dto.Remarks;
+        existing.UpdatedAt = DateTime.UtcNow;
 
         await _reconciliationRepository.UpdateAsync(existing);
         return Ok(existing);

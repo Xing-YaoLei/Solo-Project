@@ -3,7 +3,9 @@ import { Table, Button, InputNumber, Input, Popconfirm, Card, Alert } from 'antd
 import type { ColumnsType } from 'antd/es/table'
 import { PlusOutlined, DeleteOutlined, WarningOutlined } from '@ant-design/icons'
 import { useQuoteStore } from '../../store/useQuoteStore'
-import { QuoteItem } from '../../types'
+import { QuoteItem, CreateQuoteItemDto } from '../../types'
+import { quoteApi } from '../../api/quotes'
+import { message } from 'antd'
 
 interface QuoteItemsPanelProps {
   mode?: 'edit' | 'view'
@@ -26,55 +28,77 @@ function QuoteItemsPanel({ mode = 'edit' }: QuoteItemsPanelProps) {
   }
 
   const itemsTotal = currentQuote.items.reduce(
-    (sum, item) => sum + (item.amount || 0),
+    (sum, item) => sum + (item.subtotal || 0),
     0
   )
-  const amountMismatch = Math.abs(itemsTotal - (currentQuote.totalAmount || 0)) > 0.01
+  const amountMismatch = Math.abs(itemsTotal - (currentQuote.amount || 0)) > 0.01
 
-  const handleAdd = () => {
+  const handleAdd = async () => {
     if (!isEditable) return
-    const newItem: QuoteItem = {
-      id: `temp-${Date.now()}`,
-      description: '',
-      quantity: 1,
+    const newItemDto: CreateQuoteItemDto = {
+      itemName: '',
       unitPrice: 0,
-      amount: 0,
+      quantity: 1,
     }
-    const newItems = [...currentQuote.items, newItem]
-    updateQuoteItems(newItems)
-    setEditingId(newItem.id)
+    try {
+      const newItem = await quoteApi.addQuoteItem(currentQuote.id, newItemDto)
+      const newItems = [...currentQuote.items, newItem]
+      updateQuoteItems(newItems)
+      setEditingId(newItem.id)
+    } catch {
+      message.error('添加项目失败')
+    }
   }
 
-  const handleDelete = (id: string) => {
+  const handleDelete = async (id: string) => {
     if (!isEditable) return
-    const newItems = currentQuote.items.filter((item) => item.id !== id)
-    updateQuoteItems(newItems)
+    try {
+      await quoteApi.deleteQuoteItem(currentQuote.id, id)
+      const newItems = currentQuote.items.filter((item) => item.id !== id)
+      updateQuoteItems(newItems)
+    } catch {
+      message.error('删除项目失败')
+    }
   }
 
-  const handleUpdate = (id: string, field: keyof QuoteItem, value: any) => {
+  const handleUpdate = async (id: string, field: keyof QuoteItem, value: any) => {
     if (!isEditable) return
-    const newItems = currentQuote.items.map((item) => {
-      if (item.id !== id) return item
-      const updated = { ...item, [field]: value }
-      if (field === 'quantity' || field === 'unitPrice') {
-        updated.amount =
-          (Number(updated.quantity) || 0) * (Number(updated.unitPrice) || 0)
+    const item = currentQuote.items.find((i) => i.id === id)
+    if (!item) return
+
+    const updatedItem = { ...item, [field]: value }
+    if (field === 'quantity' || field === 'unitPrice') {
+      updatedItem.subtotal =
+        (Number(updatedItem.quantity) || 0) * (Number(updatedItem.unitPrice) || 0)
+    }
+
+    try {
+      const updateDto: CreateQuoteItemDto = {
+        itemName: updatedItem.itemName,
+        description: updatedItem.description,
+        unitPrice: updatedItem.unitPrice,
+        quantity: updatedItem.quantity,
       }
-      return updated
-    })
-    updateQuoteItems(newItems)
+      await quoteApi.updateQuoteItem(currentQuote.id, id, updateDto)
+      const newItems = currentQuote.items.map((i) =>
+        i.id === id ? updatedItem : i
+      )
+      updateQuoteItems(newItems)
+    } catch {
+      message.error('更新项目失败')
+    }
   }
 
   const columns: ColumnsType<QuoteItem> = [
     {
       title: '项目名称',
-      dataIndex: 'description',
-      key: 'description',
+      dataIndex: 'itemName',
+      key: 'itemName',
       render: (value, record) =>
         isEditable && editingId === record.id ? (
           <Input
             value={value}
-            onChange={(e) => handleUpdate(record.id, 'description', e.target.value)}
+            onChange={(e) => handleUpdate(record.id, 'itemName', e.target.value)}
             onBlur={() => setEditingId(null)}
             autoFocus
             placeholder="请输入项目名称"
@@ -90,13 +114,13 @@ function QuoteItemsPanel({ mode = 'edit' }: QuoteItemsPanelProps) {
     },
     {
       title: '描述',
-      dataIndex: 'remark',
-      key: 'remark',
+      dataIndex: 'description',
+      key: 'description',
       render: (value, record) =>
         isEditable ? (
           <Input
             value={value}
-            onChange={(e) => handleUpdate(record.id, 'remark', e.target.value)}
+            onChange={(e) => handleUpdate(record.id, 'description', e.target.value)}
             placeholder="描述"
           />
         ) : (
@@ -141,8 +165,8 @@ function QuoteItemsPanel({ mode = 'edit' }: QuoteItemsPanelProps) {
     },
     {
       title: '小计',
-      dataIndex: 'amount',
-      key: 'amount',
+      dataIndex: 'subtotal',
+      key: 'subtotal',
       width: 150,
       render: (value: number) => `¥${(value || 0).toLocaleString()}`,
     },
@@ -170,7 +194,7 @@ function QuoteItemsPanel({ mode = 'edit' }: QuoteItemsPanelProps) {
       {amountMismatch && isEditable && (
         <Alert
           message="金额校验提示"
-          description={`明细合计 ¥${itemsTotal.toLocaleString()} 与报价单金额 ¥${currentQuote.totalAmount.toLocaleString()} 不一致，请检查`}
+          description={`明细合计 ¥${itemsTotal.toLocaleString()} 与报价单金额 ¥${currentQuote.amount.toLocaleString()} 不一致，请检查`}
           type="warning"
           showIcon
           icon={<WarningOutlined />}

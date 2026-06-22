@@ -4,7 +4,7 @@ import {
   QuoteItem,
   PaymentRecord,
   ReconciliationRecord,
-  AmountCheckRecord,
+  AmountCheckResult,
 } from '../types'
 
 interface QuoteStore {
@@ -24,9 +24,9 @@ interface QuoteStore {
   addReconciliation: (reconciliation: ReconciliationRecord) => void
   updateReconciliation: (reconciliation: ReconciliationRecord) => void
 
-  amountChecks: AmountCheckRecord[]
-  setAmountChecks: (checks: AmountCheckRecord[]) => void
-  addAmountCheck: (check: AmountCheckRecord) => void
+  amountChecks: AmountCheckResult[]
+  setAmountChecks: (checks: AmountCheckResult[]) => void
+  addAmountCheck: (check: AmountCheckResult) => void
 }
 
 export const useQuoteStore = create<QuoteStore>((set) => ({
@@ -47,12 +47,12 @@ export const useQuoteStore = create<QuoteStore>((set) => ({
   updateQuoteItems: (items) =>
     set((state) => {
       if (!state.currentQuote) return state
-      const totalAmount = items.reduce((sum, item) => sum + (item.amount || 0), 0)
+      const subtotal = items.reduce((sum, item) => sum + (item.subtotal || 0), 0)
       return {
         currentQuote: {
           ...state.currentQuote,
           items,
-          totalAmount,
+          amount: subtotal,
         },
       }
     }),

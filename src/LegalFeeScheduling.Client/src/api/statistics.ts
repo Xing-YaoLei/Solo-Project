@@ -1,56 +1,37 @@
 import apiClient from './client'
-import {
-  StatisticsSummary,
-  ChannelStatistics,
-  AmountCheckResult,
-  OwnerStatistics,
+import type {
+  DashboardSummaryDto,
   PeriodSummaryDto,
+  ChannelStatisticsDto,
+  OwnerStatisticsDto,
   StatusChangeSummaryDto,
   PaymentCollectionDto,
-  AmountCheckRecord,
+  AmountCheckResult,
 } from '../types'
 
 export const statisticsApi = {
-  getSummary: (): Promise<StatisticsSummary> => {
-    return apiClient.get('/statistics/summary')
+  getDashboard: (): Promise<DashboardSummaryDto> => {
+    return apiClient.get('/statistics/dashboard')
   },
 
-  getByChannel: (): Promise<ChannelStatistics[]> => {
+  getPeriodSummary: (period: 'monthly' | 'quarterly' | 'yearly' = 'monthly'): Promise<PeriodSummaryDto> => {
+    return apiClient.get('/statistics/summary', { params: { period } })
+  },
+
+  getByChannel: (): Promise<ChannelStatisticsDto[]> => {
     return apiClient.get('/statistics/by-channel')
   },
 
-  getByOwner: (): Promise<OwnerStatistics[]> => {
+  getByOwner: (): Promise<OwnerStatisticsDto[]> => {
     return apiClient.get('/statistics/by-owner')
   },
 
-  getPeriodSummary: (params?: {
-    startDate?: string
-    endDate?: string
-    period?: 'day' | 'week' | 'month' | 'quarter' | 'year'
-  }): Promise<PeriodSummaryDto[]> => {
-    return apiClient.get('/statistics/period-summary', { params })
+  getStatusChanges: (days?: number): Promise<StatusChangeSummaryDto> => {
+    return apiClient.get('/statistics/status-changes', { params: { days } })
   },
 
-  getStatusChangeSummary: (params?: {
-    startDate?: string
-    endDate?: string
-  }): Promise<StatusChangeSummaryDto[]> => {
-    return apiClient.get('/statistics/status-change', { params })
-  },
-
-  getPaymentCollectionAnalysis: (params?: {
-    startDate?: string
-    endDate?: string
-  }): Promise<PaymentCollectionDto> => {
-    return apiClient.get('/statistics/payment-collection', { params })
-  },
-
-  checkQuoteAmount: (quoteId: string): Promise<AmountCheckResult> => {
-    return apiClient.get(`/statistics/amount-check/${quoteId}`)
-  },
-
-  runAmountChecks: (quoteId: string): Promise<AmountCheckRecord[]> => {
-    return apiClient.post(`/statistics/run-checks/${quoteId}`)
+  getPaymentCollection: (): Promise<PaymentCollectionDto> => {
+    return apiClient.get('/statistics/payment-collection')
   },
 
   getUnbalancedQuotes: (): Promise<AmountCheckResult[]> => {

@@ -6,18 +6,14 @@ export enum QuoteStatus {
   Approved = 'Approved',
   Processing = 'Processing',
   AmountException = 'AmountException',
-  Reconciled = 'Reconciled',
-  Reviewed = 'Reviewed',
   Completed = 'Completed',
-  Rejected = 'Rejected',
-  Cancelled = 'Cancelled',
   Closed = 'Closed',
 }
 
 export enum PaymentStatus {
-  Pending = 'Pending',
+  Unpaid = 'Unpaid',
+  PartialPaid = 'PartialPaid',
   Paid = 'Paid',
-  Partial = 'Partial',
   Overdue = 'Overdue',
 }
 
@@ -29,10 +25,10 @@ export enum ReconciliationStatus {
 }
 
 export enum Channel {
-  Direct = 'Direct',
-  Referral = 'Referral',
   Online = 'Online',
-  Corporate = 'Corporate',
+  Offline = 'Offline',
+  Partner = 'Partner',
+  Referral = 'Referral',
 }
 
 export enum PaymentMethod {
@@ -41,74 +37,79 @@ export enum PaymentMethod {
   WeChatPay = 'WeChatPay',
   Cash = 'Cash',
   Check = 'Check',
+  Other = 'Other',
 }
 
 export enum AmountCheckType {
-  QuoteItemsVsTotal = 'QuoteItemsVsTotal',
+  QuoteItemsVsQuoteAmount = 'QuoteItemsVsQuoteAmount',
   PaymentsVsReconciliation = 'PaymentsVsReconciliation',
-  Custom = 'Custom',
-}
-
-export enum AmountCheckStatus {
-  Matched = 'Matched',
-  Mismatched = 'Mismatched',
+  Other = 'Other',
 }
 
 export interface QuoteItem {
   id: string
-  description: string
-  quantity: number
+  quoteId: string
+  itemName: string
+  description?: string
   unitPrice: number
-  amount: number
-  remark?: string
+  quantity: number
+  subtotal: number
+  createdAt: string
 }
 
 export interface Quote {
   id: string
   quoteNo: string
-  clientName: string
   caseName: string
+  clientName: string
   channel: Channel
-  totalAmount: number
-  discountAmount?: number
-  finalAmount?: number
+  amount: number
+  discountAmount: number
+  finalAmount: number
+  status: QuoteStatus
+  createdAt: string
+  createdBy: string
+  approvedAt?: string
+  approvedBy?: string
+  completedAt?: string
+  closedAt?: string
+  remarks?: string
   expectedPaymentDate?: string
   owner?: string
-  status: QuoteStatus
-  createdBy: string
-  createdAt: string
-  updatedAt: string
   items: QuoteItem[]
-  remark?: string
+  payments: PaymentRecord[]
+  reconciliations: ReconciliationRecord[]
+  statusHistories: StatusHistory[]
+  amountChecks: AmountCheckResult[]
 }
 
 export interface PaymentRecord {
   id: string
   quoteId: string
-  quoteNo: string
-  paymentNo?: string
+  paymentNo: string
   amount: number
   paymentDate: string
   paymentMethod: PaymentMethod
   status: PaymentStatus
-  payer: string
-  referenceNo?: string
-  bankReferenceNo?: string
-  remark?: string
+  bankTransactionNo?: string
+  payer?: string
+  remarks?: string
   createdAt: string
+  createdBy: string
 }
 
 export interface ReconciliationRecord {
   id: string
   quoteId: string
-  quoteNo: string
+  reconcileDate: string
   expectedAmount: number
   actualAmount: number
   difference: number
   status: ReconciliationStatus
-  reconciledBy: string
-  reconciledAt: string
-  remark?: string
+  resolvedBy?: string
+  resolvedAt?: string
+  remarks?: string
+  createdAt: string
 }
 
 export interface StatusHistory {
@@ -116,142 +117,167 @@ export interface StatusHistory {
   quoteId: string
   fromStatus: QuoteStatus
   toStatus: QuoteStatus
-  operator: string
-  operatedAt: string
-  remark?: string
+  changedBy?: string
+  changedAt: string
+  remarks?: string
 }
 
 export interface AmountCheckResult {
-  quoteId: string
-  quoteNo: string
-  expectedAmount: number
-  totalPaid: number
-  difference: number
-  isBalanced: boolean
-  paymentRecords: PaymentRecord[]
-}
-
-export interface AmountCheckRecord {
   id: string
   quoteId: string
   checkType: AmountCheckType
   expectedAmount: number
   actualAmount: number
   difference: number
-  status: AmountCheckStatus
+  isMatch: boolean
   checkedAt: string
-  remark?: string
-}
-
-export interface QuoteListFilter {
-  status?: QuoteStatus
-  statuses?: QuoteStatus[]
-  channel?: Channel
-  owner?: string
-  keyword?: string
-  startDate?: string
-  endDate?: string
-  pageIndex: number
-  pageSize: number
+  checkedBy?: string
+  remarks?: string
 }
 
 export interface PagedResult<T> {
   items: T[]
   totalCount: number
-  pageIndex: number
+  page: number
   pageSize: number
+  totalPages: number
 }
 
-export interface CreateQuoteRequest {
-  clientName: string
-  caseName: string
-  channel: Channel
-  discountAmount?: number
-  finalAmount?: number
-  expectedPaymentDate?: string
-  owner?: string
-  items: QuoteItem[]
-  remark?: string
-}
-
-export interface UpdateQuoteRequest {
-  clientName?: string
-  caseName?: string
+export interface QuoteFilter {
+  status?: QuoteStatus
   channel?: Channel
-  discountAmount?: number
-  finalAmount?: number
-  expectedPaymentDate?: string
   owner?: string
-  items?: QuoteItem[]
-  remark?: string
+  startDate?: string
+  endDate?: string
+  keyword?: string
+  page?: number
+  pageSize?: number
 }
 
-export interface CreatePaymentRequest {
+export interface CreateQuoteDto {
+  caseName: string
+  clientName: string
+  channel: Channel
+  amount: number
+  discountAmount?: number
+  finalAmount: number
+  remarks?: string
+  expectedPaymentDate?: string
+  owner?: string
+  items?: CreateQuoteItemDto[]
+}
+
+export interface CreateQuoteItemDto {
+  itemName: string
+  description?: string
+  unitPrice: number
+  quantity: number
+}
+
+export interface UpdateQuoteDto {
+  caseName?: string
+  clientName?: string
+  channel?: Channel
+  amount?: number
+  discountAmount?: number
+  finalAmount?: number
+  remarks?: string
+  expectedPaymentDate?: string
+  owner?: string
+}
+
+export interface CreatePaymentDto {
   quoteId: string
   amount: number
   paymentDate: string
   paymentMethod: PaymentMethod
-  payer: string
-  referenceNo?: string
-  bankReferenceNo?: string
-  remark?: string
+  bankTransactionNo?: string
+  payer?: string
+  remarks?: string
 }
 
-export interface WorkflowActionRequest {
+export interface CreateReconciliationDto {
   quoteId: string
-  remark?: string
+  reconcileDate: string
+  expectedAmount: number
+  actualAmount: number
+  remarks?: string
 }
 
-export interface StatisticsSummary {
-  totalQuotes: number
-  totalAmount: number
-  totalPaid: number
-  pendingAmount: number
-  reconciledCount: number
-  unreconciledCount: number
+export interface ResolveReconciliationDto {
+  remarks: string
 }
 
-export interface ChannelStatistics {
-  channel: Channel
-  quoteCount: number
-  totalAmount: number
+export interface WorkflowReasonDto {
+  reason?: string
 }
 
-export interface OwnerStatistics {
-  owner: string
-  quoteCount: number
+export interface DashboardSummaryDto {
+  pendingCount: number
+  exceptionCount: number
+  monthlyCollectedAmount: number
+  reconciliationDifferenceCount: number
+  totalQuoteCount: number
+  completedQuoteCount: number
   totalAmount: number
-  totalPaid: number
+  overdueCount: number
 }
 
 export interface PeriodSummaryDto {
   period: string
-  quoteCount: number
+  startDate: string
+  endDate: string
+  totalQuotes: number
   totalAmount: number
   totalPaid: number
-  pendingAmount: number
+  completedCount: number
+  exceptionCount: number
+  statusBreakdown: { status: QuoteStatus; count: number; amount: number }[]
+}
+
+export interface ChannelStatisticsDto {
+  channel: Channel
+  quoteCount: number
+  totalAmount: number
+  paidAmount: number
+  outstandingAmount: number
+  collectionRate: number
+}
+
+export interface OwnerStatisticsDto {
+  owner: string
+  quoteCount: number
+  totalAmount: number
+  paidAmount: number
+  outstandingAmount: number
+  overdueCount: number
 }
 
 export interface StatusChangeSummaryDto {
-  status: QuoteStatus
-  count: number
+  periodDays: number
+  totalChanges: number
+  transitions: { fromStatus: QuoteStatus; toStatus: QuoteStatus; count: number }[]
+  byDate: { date: string; count: number }[]
+}
+
+export interface PaymentCollectionItemDto {
+  quoteId: string
+  quoteNo: string
+  expectedDate?: string
+  firstPaymentDate?: string
+  lastPaymentDate?: string
   totalAmount: number
+  paidAmount: number
+  outstandingAmount: number
+  collectionDays?: number
+  fullyPaid: boolean
 }
 
 export interface PaymentCollectionDto {
+  totalQuotes: number
+  fullyPaidCount: number
+  partiallyPaidCount: number
+  notPaidCount: number
   averageCollectionDays: number
-  overdueCount: number
-  overdueRate: number
-  onTimeCount: number
-  onTimeRate: number
-}
-
-export interface CreateReconciliationRequest {
-  expectedAmount?: number
-  actualAmount?: number
-  remark?: string
-}
-
-export interface ResolveReconciliationRequest {
-  remark: string
+  details: PaymentCollectionItemDto[]
 }

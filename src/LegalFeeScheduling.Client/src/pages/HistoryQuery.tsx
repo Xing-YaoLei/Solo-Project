@@ -5,15 +5,7 @@ import QuoteList from '../components/quotes/QuoteList'
 import QuoteDetailTabs from '../components/quotes/QuoteDetailTabs'
 import { quoteApi } from '../api/quotes'
 import { useQuoteStore } from '../store/useQuoteStore'
-import { Quote, QuoteStatus, QuoteListFilter } from '../types'
-
-const closedStatuses = [
-  QuoteStatus.Completed,
-  QuoteStatus.Closed,
-  QuoteStatus.Cancelled,
-  QuoteStatus.Rejected,
-  QuoteStatus.Reviewed,
-]
+import { Quote, QuoteStatus, QuoteFilter } from '../types'
 
 function HistoryQuery() {
   const navigate = useNavigate()
@@ -26,8 +18,8 @@ function HistoryQuery() {
     pageSize: 10,
     total: 0,
   })
-  const [filter, setFilter] = useState<QuoteListFilter>({
-    pageIndex: 1,
+  const [filter, setFilter] = useState<QuoteFilter>({
+    page: 1,
     pageSize: 10,
   })
   const currentQuote = useQuoteStore((s) => s.currentQuote)
@@ -39,12 +31,12 @@ function HistoryQuery() {
     try {
       const appliedFilter = { ...filter }
       if (onlyClosed) {
-        appliedFilter.statuses = closedStatuses
+        appliedFilter.status = QuoteStatus.Closed
       }
-      const result = await quoteApi.getList(appliedFilter)
+      const result = await quoteApi.getQuotes(appliedFilter)
       setList(result.items)
       setPagination({
-        current: result.pageIndex,
+        current: result.page,
         pageSize: result.pageSize,
         total: result.totalCount,
       })
@@ -61,7 +53,7 @@ function HistoryQuery() {
 
   const handleView = async (quote: Quote) => {
     try {
-      const detail = await quoteApi.getById(quote.id)
+      const detail = await quoteApi.getQuote(quote.id)
       setCurrentQuote(detail)
       setDrawerOpen(true)
     } catch {
@@ -69,12 +61,12 @@ function HistoryQuery() {
     }
   }
 
-  const handleFilterChange = (newFilter: QuoteListFilter) => {
-    setFilter({ ...newFilter, pageIndex: 1 })
+  const handleFilterChange = (newFilter: QuoteFilter) => {
+    setFilter({ ...newFilter, page: 1 })
   }
 
   const handlePaginationChange = (page: number, pageSize: number) => {
-    setFilter((prev) => ({ ...prev, pageIndex: page, pageSize }))
+    setFilter((prev: QuoteFilter) => ({ ...prev, page, pageSize }))
   }
 
   const handleGotoDetail = () => {

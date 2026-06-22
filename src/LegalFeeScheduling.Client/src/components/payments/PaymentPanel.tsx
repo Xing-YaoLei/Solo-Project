@@ -20,7 +20,7 @@ import { PlusOutlined, DollarOutlined } from '@ant-design/icons'
 import dayjs from 'dayjs'
 import { paymentApi } from '../../api/payments'
 import { useQuoteStore } from '../../store/useQuoteStore'
-import { PaymentRecord, PaymentMethod, PaymentStatus } from '../../types'
+import { PaymentRecord, PaymentMethod, PaymentStatus, CreatePaymentDto } from '../../types'
 
 const { Option } = Select
 
@@ -35,19 +35,20 @@ const methodLabels: Record<PaymentMethod, string> = {
   [PaymentMethod.WeChatPay]: '微信支付',
   [PaymentMethod.Cash]: '现金',
   [PaymentMethod.Check]: '支票',
+  [PaymentMethod.Other]: '其他',
 }
 
 const statusLabels: Record<PaymentStatus, string> = {
-  [PaymentStatus.Pending]: '待确认',
-  [PaymentStatus.Paid]: '已到账',
-  [PaymentStatus.Partial]: '部分到账',
+  [PaymentStatus.Unpaid]: '未支付',
+  [PaymentStatus.PartialPaid]: '部分支付',
+  [PaymentStatus.Paid]: '已支付',
   [PaymentStatus.Overdue]: '逾期',
 }
 
 const statusColors: Record<PaymentStatus, string> = {
-  [PaymentStatus.Pending]: 'gold',
+  [PaymentStatus.Unpaid]: 'gold',
+  [PaymentStatus.PartialPaid]: 'blue',
   [PaymentStatus.Paid]: 'green',
-  [PaymentStatus.Partial]: 'blue',
   [PaymentStatus.Overdue]: 'red',
 }
 
@@ -87,11 +88,16 @@ function PaymentPanel({ quoteId, readOnly = false }: PaymentPanelProps) {
     if (!effectiveQuoteId) return
     try {
       const values = await form.validateFields()
-      const result = await paymentApi.create({
-        ...values,
+      const request: CreatePaymentDto = {
         quoteId: effectiveQuoteId,
+        amount: values.amount,
         paymentDate: values.paymentDate.format('YYYY-MM-DD'),
-      })
+        paymentMethod: values.paymentMethod,
+        bankTransactionNo: values.bankTransactionNo,
+        payer: values.payer,
+        remarks: values.remarks,
+      }
+      const result = await paymentApi.create(request)
       message.success('添加成功')
       addPayment(result)
       setModalOpen(false)
@@ -102,7 +108,7 @@ function PaymentPanel({ quoteId, readOnly = false }: PaymentPanelProps) {
   }
 
   const totalPaid = data.reduce((sum, p) => sum + (p.amount || 0), 0)
-  const expectedAmount = currentQuote?.finalAmount || currentQuote?.totalAmount || 0
+  const expectedAmount = currentQuote?.finalAmount || currentQuote?.amount || 0
   const difference = expectedAmount - totalPaid
 
   const columns: ColumnsType<PaymentRecord> = [
@@ -145,8 +151,8 @@ function PaymentPanel({ quoteId, readOnly = false }: PaymentPanelProps) {
     },
     {
       title: '银行流水号',
-      dataIndex: 'bankReferenceNo',
-      key: 'bankReferenceNo',
+      dataIndex: 'bankTransactionNo',
+      key: 'bankTransactionNo',
       width: 160,
       render: (v?: string) => v || '-',
     },
@@ -155,11 +161,12 @@ function PaymentPanel({ quoteId, readOnly = false }: PaymentPanelProps) {
       dataIndex: 'payer',
       key: 'payer',
       width: 100,
+      render: (v?: string) => v || '-',
     },
     {
       title: '备注',
-      dataIndex: 'remark',
-      key: 'remark',
+      dataIndex: 'remarks',
+      key: 'remarks',
       render: (v?: string) => v || '-',
     },
   ]
@@ -268,30 +275,23 @@ function PaymentPanel({ quoteId, readOnly = false }: PaymentPanelProps) {
               </Form.Item>
             </Col>
             <Col span={12}>
-              <Form.Item
-                name="payer"
-                label="付款人"
-                rules={[{ required: true, message: '请输入付款人' }]}
-              >
+              <Form.Item name="payer" label="付款人">
                 <Input placeholder="请输入付款人" />
               </Form.Item>
             </Col>
           </Row>
           <Row gutter={16}>
             <Col span={12}>
-              <Form.Item name="referenceNo" label="参考号">
-                <Input placeholder="请输入参考号" />
-              </Form.Item>
-            </Col>
-            <Col span={12}>
-              <Form.Item name="bankReferenceNo" label="银行流水号">
+              <Form.Item name="bankTransactionNo" label="银行流水号">
                 <Input placeholder="请输入银行流水号" />
               </Form.Item>
             </Col>
+            <Col span={12}>
+              <Form.Item name="remarks" label="备注">
+                <Input placeholder="请输入备注" />
+              </Form.Item>
+            </Col>
           </Row>
-          <Form.Item name="remark" label="备注">
-            <Input.TextArea rows={3} placeholder="请输入备注" />
-          </Form.Item>
         </Form>
       </Modal>
     </Card>

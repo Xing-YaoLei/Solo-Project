@@ -8,7 +8,7 @@ import { useQuoteStore } from '../store/useQuoteStore'
 import { QuoteStatus } from '../types'
 import { statusLabels, statusColors } from '../components/quotes/QuoteList'
 
-const closedStatuses = [QuoteStatus.Completed, QuoteStatus.Closed, QuoteStatus.Cancelled, QuoteStatus.Rejected]
+const closedStatuses = [QuoteStatus.Completed, QuoteStatus.Closed]
 
 function QuoteReviewDetail() {
   const { id } = useParams<{ id: string }>()
@@ -28,7 +28,7 @@ function QuoteReviewDetail() {
       }
       setLoading(true)
       try {
-        const detail = await quoteApi.getById(id)
+        const detail = await quoteApi.getQuote(id)
         setCurrentQuote(detail)
       } catch {
         message.error('加载报价单详情失败')

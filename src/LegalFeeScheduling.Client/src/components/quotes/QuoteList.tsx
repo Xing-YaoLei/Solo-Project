@@ -3,7 +3,7 @@ import { Table, Button, Tag, Input, Select, DatePicker, Space } from 'antd'
 import type { ColumnsType } from 'antd/es/table'
 import { PlusOutlined, SearchOutlined, EyeOutlined } from '@ant-design/icons'
 import dayjs, { Dayjs } from 'dayjs'
-import { Quote, QuoteStatus, Channel, QuoteListFilter } from '../../types'
+import { Quote, QuoteStatus, Channel, QuoteFilter } from '../../types'
 
 const { RangePicker } = DatePicker
 
@@ -12,7 +12,7 @@ interface QuoteListProps {
   loading?: boolean
   onView?: (quote: Quote) => void
   onCreate?: () => void
-  onFilterChange?: (filter: QuoteListFilter) => void
+  onFilterChange?: (filter: QuoteFilter) => void
   showCreateButton?: boolean
   hideStatusFilter?: boolean
   hideChannelFilter?: boolean
@@ -34,11 +34,7 @@ export const statusColors: Record<QuoteStatus, string> = {
   [QuoteStatus.Approved]: 'blue',
   [QuoteStatus.Processing]: 'cyan',
   [QuoteStatus.AmountException]: 'red',
-  [QuoteStatus.Reconciled]: 'purple',
-  [QuoteStatus.Reviewed]: 'geekblue',
   [QuoteStatus.Completed]: 'green',
-  [QuoteStatus.Rejected]: 'red',
-  [QuoteStatus.Cancelled]: 'gray',
   [QuoteStatus.Closed]: 'gray',
 }
 
@@ -50,19 +46,15 @@ export const statusLabels: Record<QuoteStatus, string> = {
   [QuoteStatus.Approved]: '已审批',
   [QuoteStatus.Processing]: '处理中',
   [QuoteStatus.AmountException]: '金额异常',
-  [QuoteStatus.Reconciled]: '已对账',
-  [QuoteStatus.Reviewed]: '已复盘',
   [QuoteStatus.Completed]: '已完成',
-  [QuoteStatus.Rejected]: '已驳回',
-  [QuoteStatus.Cancelled]: '已取消',
   [QuoteStatus.Closed]: '已关闭',
 }
 
 export const channelLabels: Record<Channel, string> = {
-  [Channel.Direct]: '直客',
-  [Channel.Referral]: '转介绍',
   [Channel.Online]: '线上',
-  [Channel.Corporate]: '企业',
+  [Channel.Offline]: '线下',
+  [Channel.Partner]: '合作伙伴',
+  [Channel.Referral]: '转介绍',
 }
 
 function QuoteList({
@@ -92,7 +84,7 @@ function QuoteList({
       owner,
       startDate: dateRange?.[0]?.format('YYYY-MM-DD'),
       endDate: dateRange?.[1]?.format('YYYY-MM-DD'),
-      pageIndex: 1,
+      page: 1,
       pageSize: 10,
     })
   }
@@ -125,9 +117,16 @@ function QuoteList({
       render: (v: Channel) => channelLabels[v],
     },
     {
-      title: '金额',
-      dataIndex: 'totalAmount',
-      key: 'totalAmount',
+      title: '报价金额',
+      dataIndex: 'amount',
+      key: 'amount',
+      width: 120,
+      render: (v: number) => `¥${v.toLocaleString()}`,
+    },
+    {
+      title: '最终金额',
+      dataIndex: 'finalAmount',
+      key: 'finalAmount',
       width: 120,
       render: (v: number) => `¥${v.toLocaleString()}`,
     },

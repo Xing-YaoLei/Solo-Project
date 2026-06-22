@@ -8,9 +8,9 @@ public class OwnerStatisticsDto
 
     public decimal TotalAmount { get; set; }
 
-    public decimal CollectedAmount { get; set; }
+    public decimal PaidAmount { get; set; }
 
-    public int CompletedCount { get; set; }
+    public decimal OutstandingAmount { get; set; }
 
     public int OverdueCount { get; set; }
 }

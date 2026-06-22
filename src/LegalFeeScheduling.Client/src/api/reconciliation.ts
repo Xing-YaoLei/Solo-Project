@@ -1,7 +1,8 @@
 import apiClient from './client'
-import {
+import type {
   ReconciliationRecord,
-  CreateReconciliationRequest,
+  CreateReconciliationDto,
+  ResolveReconciliationDto,
 } from '../types'
 
 export const reconciliationApi = {
@@ -9,21 +10,21 @@ export const reconciliationApi = {
     return apiClient.get('/reconciliation', { params: { quoteId } })
   },
 
-  create: (quoteId: string, data?: CreateReconciliationRequest): Promise<ReconciliationRecord> => {
-    return apiClient.post('/reconciliation', { quoteId, ...data })
+  create: (data: CreateReconciliationDto): Promise<ReconciliationRecord> => {
+    return apiClient.post('/reconciliation', data)
   },
 
   update: (
     id: string,
-    data: CreateReconciliationRequest
+    data: CreateReconciliationDto
   ): Promise<ReconciliationRecord> => {
     return apiClient.put(`/reconciliation/${id}`, data)
   },
 
   resolve: (
     id: string,
-    remark: string
+    data: ResolveReconciliationDto
   ): Promise<ReconciliationRecord> => {
-    return apiClient.post(`/reconciliation/${id}/resolve`, { remark })
+    return apiClient.post(`/reconciliation/${id}/resolve`, data)
   },
 }

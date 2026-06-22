@@ -5,12 +5,14 @@ import {
   FileTextOutlined,
   DollarOutlined,
   WarningOutlined,
+  CheckCircleOutlined,
+  ClockCircleOutlined,
 } from '@ant-design/icons'
 import { statisticsApi } from '../api/statistics'
 import { paymentApi } from '../api/payments'
 import { reconciliationApi } from '../api/reconciliation'
 import {
-  StatisticsSummary,
+  DashboardSummaryDto,
   PaymentRecord,
   ReconciliationRecord,
   AmountCheckResult,
@@ -26,19 +28,20 @@ const paymentMethodLabels: Record<PaymentMethod, string> = {
   [PaymentMethod.WeChatPay]: '微信支付',
   [PaymentMethod.Cash]: '现金',
   [PaymentMethod.Check]: '支票',
+  [PaymentMethod.Other]: '其他',
 }
 
 const paymentStatusLabels: Record<PaymentStatus, string> = {
-  [PaymentStatus.Pending]: '待确认',
-  [PaymentStatus.Paid]: '已到账',
-  [PaymentStatus.Partial]: '部分到账',
+  [PaymentStatus.Unpaid]: '未支付',
+  [PaymentStatus.PartialPaid]: '部分支付',
+  [PaymentStatus.Paid]: '已支付',
   [PaymentStatus.Overdue]: '逾期',
 }
 
 const paymentStatusColors: Record<PaymentStatus, string> = {
-  [PaymentStatus.Pending]: 'gold',
+  [PaymentStatus.Unpaid]: 'gold',
+  [PaymentStatus.PartialPaid]: 'blue',
   [PaymentStatus.Paid]: 'green',
-  [PaymentStatus.Partial]: 'blue',
   [PaymentStatus.Overdue]: 'red',
 }
 
@@ -57,7 +60,7 @@ const reconciliationStatusColors: Record<ReconciliationStatus, string> = {
 }
 
 function Dashboard() {
-  const [summary, setSummary] = useState<StatisticsSummary | null>(null)
+  const [summary, setSummary] = useState<DashboardSummaryDto | null>(null)
   const [unbalanced, setUnbalanced] = useState<AmountCheckResult[]>([])
   const [payments, setPayments] = useState<PaymentRecord[]>([])
   const [reconciliations, setReconciliations] = useState<ReconciliationRecord[]>([])
@@ -67,7 +70,7 @@ function Dashboard() {
     setLoading(true)
     try {
       const [summaryData, unbalancedData, paymentsData, reconData] = await Promise.all([
-        statisticsApi.getSummary(),
+        statisticsApi.getDashboard(),
         statisticsApi.getUnbalancedQuotes(),
         paymentApi.getByQuoteId(''),
         reconciliationApi.getByQuoteId(''),
@@ -88,17 +91,22 @@ function Dashboard() {
   }, [])
 
   const unbalancedColumns: ColumnsType<AmountCheckResult> = [
-    { title: '报价单号', dataIndex: 'quoteNo', key: 'quoteNo' },
+    { title: '报价单号', dataIndex: 'quoteId', key: 'quoteId' },
     {
-      title: '应收金额',
+      title: '校验类型',
+      dataIndex: 'checkType',
+      key: 'checkType',
+    },
+    {
+      title: '预期金额',
       dataIndex: 'expectedAmount',
       key: 'expectedAmount',
       render: (v: number) => `¥${v.toLocaleString()}`,
     },
     {
-      title: '实收金额',
-      dataIndex: 'totalPaid',
-      key: 'totalPaid',
+      title: '实际金额',
+      dataIndex: 'actualAmount',
+      key: 'actualAmount',
       render: (v: number) => `¥${v.toLocaleString()}`,
     },
     {
@@ -114,7 +122,7 @@ function Dashboard() {
   ]
 
   const paymentColumns: ColumnsType<PaymentRecord> = [
-    { title: '报价单号', dataIndex: 'quoteNo', key: 'quoteNo' },
+    { title: '支付单号', dataIndex: 'paymentNo', key: 'paymentNo' },
     {
       title: '金额',
       dataIndex: 'amount',
@@ -144,7 +152,12 @@ function Dashboard() {
   ]
 
   const reconciliationColumns: ColumnsType<ReconciliationRecord> = [
-    { title: '报价单号', dataIndex: 'quoteNo', key: 'quoteNo' },
+    {
+      title: '对账日期',
+      dataIndex: 'reconcileDate',
+      key: 'reconcileDate',
+      render: (v: string) => dayjs(v).format('YYYY-MM-DD'),
+    },
     {
       title: '应收',
       dataIndex: 'expectedAmount',
@@ -185,9 +198,62 @@ function Dashboard() {
         <Col span={6}>
           <Card>
             <Statistic
+              title="待处理报价单"
+              value={summary?.pendingCount || 0}
+              prefix={<ClockCircleOutlined />}
+            />
+          </Card>
+        </Col>
+        <Col span={6}>
+          <Card>
+            <Statistic
+              title="异常报价单"
+              value={summary?.exceptionCount || 0}
+              prefix={<WarningOutlined style={{ color: '#cf1322' }} />}
+              valueStyle={{ color: '#cf1322' }}
+            />
+          </Card>
+        </Col>
+        <Col span={6}>
+          <Card>
+            <Statistic
+              title="本月收款金额"
+              value={summary?.monthlyCollectedAmount || 0}
+              precision={2}
+              prefix={<DollarOutlined style={{ color: '#3f8600' }} />}
+              valueStyle={{ color: '#3f8600' }}
+            />
+          </Card>
+        </Col>
+        <Col span={6}>
+          <Card>
+            <Statistic
+              title="对账差异数"
+              value={summary?.reconciliationDifferenceCount || 0}
+              prefix={<WarningOutlined style={{ color: '#faad14' }} />}
+              valueStyle={{ color: '#faad14' }}
+            />
+          </Card>
+        </Col>
+      </Row>
+
+      <Row gutter={16} style={{ marginBottom: 24 }}>
+        <Col span={6}>
+          <Card>
+            <Statistic
               title="报价单总数"
-              value={summary?.totalQuotes || 0}
+              value={summary?.totalQuoteCount || 0}
               prefix={<FileTextOutlined />}
+            />
+          </Card>
+        </Col>
+        <Col span={6}>
+          <Card>
+            <Statistic
+              title="已完成报价单"
+              value={summary?.completedQuoteCount || 0}
+              prefix={<CheckCircleOutlined style={{ color: '#52c41a' }} />}
+              valueStyle={{ color: '#52c41a' }}
             />
           </Card>
         </Col>
@@ -204,20 +270,8 @@ function Dashboard() {
         <Col span={6}>
           <Card>
             <Statistic
-              title="已收款金额"
-              value={summary?.totalPaid || 0}
-              precision={2}
-              prefix={<DollarOutlined style={{ color: '#3f8600' }} />}
-              valueStyle={{ color: '#3f8600' }}
-            />
-          </Card>
-        </Col>
-        <Col span={6}>
-          <Card>
-            <Statistic
-              title="待收款金额"
-              value={summary?.pendingAmount || 0}
-              precision={2}
+              title="逾期单数"
+              value={summary?.overdueCount || 0}
               prefix={<WarningOutlined style={{ color: '#cf1322' }} />}
               valueStyle={{ color: '#cf1322' }}
             />
@@ -236,7 +290,7 @@ function Dashboard() {
             }
           >
             <Table
-              rowKey="quoteId"
+              rowKey="id"
               columns={unbalancedColumns}
               dataSource={unbalanced}
               loading={loading}

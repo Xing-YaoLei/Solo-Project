@@ -10,7 +10,7 @@ import StatusTimeline from '../components/workflow/StatusTimeline'
 import WorkflowActions from '../components/workflow/WorkflowActions'
 import { quoteApi } from '../api/quotes'
 import { useQuoteStore } from '../store/useQuoteStore'
-import { Quote, QuoteStatus, QuoteListFilter } from '../types'
+import { Quote, QuoteStatus, QuoteFilter } from '../types'
 
 interface TabData {
   status: QuoteStatus
@@ -18,7 +18,7 @@ interface TabData {
   list: Quote[]
   loading: boolean
   pagination: { current: number; pageSize: number; total: number }
-  filter: QuoteListFilter
+  filter: QuoteFilter
 }
 
 function QuoteProcessing() {
@@ -36,7 +36,7 @@ function QuoteProcessing() {
       pagination: { current: 1, pageSize: 10, total: 0 },
       filter: {
         status: QuoteStatus.Processing,
-        pageIndex: 1,
+        page: 1,
         pageSize: 10,
       },
     },
@@ -48,7 +48,7 @@ function QuoteProcessing() {
       pagination: { current: 1, pageSize: 10, total: 0 },
       filter: {
         status: QuoteStatus.AmountException,
-        pageIndex: 1,
+        page: 1,
         pageSize: 10,
       },
     },
@@ -60,7 +60,7 @@ function QuoteProcessing() {
       pagination: { current: 1, pageSize: 10, total: 0 },
       filter: {
         status: QuoteStatus.Completed,
-        pageIndex: 1,
+        page: 1,
         pageSize: 10,
       },
     },
@@ -73,7 +73,7 @@ function QuoteProcessing() {
       [status]: { ...prev[status], loading: true },
     }))
     try {
-      const result = await quoteApi.getList(tabData.filter)
+      const result = await quoteApi.getQuotes(tabData.filter)
       setTabsData((prev) => ({
         ...prev,
         [status]: {
@@ -81,7 +81,7 @@ function QuoteProcessing() {
           list: result.items,
           loading: false,
           pagination: {
-            current: result.pageIndex,
+            current: result.page,
             pageSize: result.pageSize,
             total: result.totalCount,
           },
@@ -102,19 +102,19 @@ function QuoteProcessing() {
 
   const handleSelectQuote = async (quote: Quote) => {
     try {
-      const detail = await quoteApi.getById(quote.id)
+      const detail = await quoteApi.getQuote(quote.id)
       setCurrentQuote(detail)
     } catch {
       message.error('加载报价单详情失败')
     }
   }
 
-  const handleFilterChange = (status: QuoteStatus, newFilter: QuoteListFilter) => {
+  const handleFilterChange = (status: QuoteStatus, newFilter: QuoteFilter) => {
     setTabsData((prev) => ({
       ...prev,
       [status]: {
         ...prev[status],
-        filter: { ...newFilter, status, pageIndex: 1 },
+        filter: { ...newFilter, status, page: 1 },
       },
     }))
   }
@@ -128,7 +128,7 @@ function QuoteProcessing() {
       ...prev,
       [status]: {
         ...prev[status],
-        filter: { ...prev[status].filter, pageIndex: page, pageSize },
+        filter: { ...prev[status].filter, page, pageSize },
       },
     }))
   }

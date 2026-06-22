@@ -1,6 +1,8 @@
+using LegalFeeScheduling.Domain.DTOs;
 using LegalFeeScheduling.Domain.Entities;
 using LegalFeeScheduling.Infrastructure.Repositories;
 using LegalFeeScheduling.Infrastructure.Services;
+using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Mvc;
 
 namespace LegalFeeScheduling.API.Controllers;
@@ -35,8 +37,8 @@ public class WorkflowController : ControllerBase
             return NotFound();
         }
 
-        await _workflowService.SubmitForReviewAsync(quoteId);
-        var updated = await _quoteRepository.GetByIdAsync(quoteId);
+        await _workflowService.SubmitForReviewAsync(quoteId, "current");
+        var updated = await _quoteRepository.GetByIdWithDetailsAsync(quoteId);
         return Ok(updated);
     }
 
@@ -51,15 +53,15 @@ public class WorkflowController : ControllerBase
             return NotFound();
         }
 
-        await _workflowService.ApproveAsync(quoteId);
-        var updated = await _quoteRepository.GetByIdAsync(quoteId);
+        await _workflowService.ApproveAsync(quoteId, "current");
+        var updated = await _quoteRepository.GetByIdWithDetailsAsync(quoteId);
         return Ok(updated);
     }
 
     [HttpPost("{quoteId:guid}/need-more-info")]
     [ProducesResponseType(StatusCodes.Status200OK)]
     [ProducesResponseType(StatusCodes.Status404NotFound)]
-    public async Task<ActionResult<Quote>> NeedMoreInfo(Guid quoteId, [FromBody] object body)
+    public async Task<ActionResult<Quote>> NeedMoreInfo(Guid quoteId, [FromBody] WorkflowReasonDto dto)
     {
         var quote = await _quoteRepository.GetByIdAsync(quoteId);
         if (quote is null)
@@ -67,21 +69,15 @@ public class WorkflowController : ControllerBase
             return NotFound();
         }
 
-        var reason = string.Empty;
-        if (body is System.Text.Json.JsonElement jsonElement && jsonElement.TryGetProperty("reason", out var reasonProp))
-        {
-            reason = reasonProp.GetString() ?? string.Empty;
-        }
-
-        await _workflowService.RejectWithNeedMoreInfoAsync(quoteId, reason);
-        var updated = await _quoteRepository.GetByIdAsync(quoteId);
+        await _workflowService.RejectWithNeedMoreInfoAsync(quoteId, dto.Reason ?? string.Empty, "current");
+        var updated = await _quoteRepository.GetByIdWithDetailsAsync(quoteId);
         return Ok(updated);
     }
 
     [HttpPost("{quoteId:guid}/escalate")]
     [ProducesResponseType(StatusCodes.Status200OK)]
     [ProducesResponseType(StatusCodes.Status404NotFound)]
-    public async Task<ActionResult<Quote>> Escalate(Guid quoteId, [FromBody] object body)
+    public async Task<ActionResult<Quote>> Escalate(Guid quoteId, [FromBody] WorkflowReasonDto dto)
     {
         var quote = await _quoteRepository.GetByIdAsync(quoteId);
         if (quote is null)
@@ -89,14 +85,8 @@ public class WorkflowController : ControllerBase
             return NotFound();
         }
 
-        var reason = string.Empty;
-        if (body is System.Text.Json.JsonElement jsonElement && jsonElement.TryGetProperty("reason", out var reasonProp))
-        {
-            reason = reasonProp.GetString() ?? string.Empty;
-        }
-
-        await _workflowService.EscalateAsync(quoteId, reason);
-        var updated = await _quoteRepository.GetByIdAsync(quoteId);
+        await _workflowService.EscalateAsync(quoteId, dto.Reason ?? string.Empty, "current");
+        var updated = await _quoteRepository.GetByIdWithDetailsAsync(quoteId);
         return Ok(updated);
     }
 
@@ -111,8 +101,8 @@ public class WorkflowController : ControllerBase
             return NotFound();
         }
 
-        await _workflowService.StartProcessingAsync(quoteId);
-        var updated = await _quoteRepository.GetByIdAsync(quoteId);
+        await _workflowService.StartProcessingAsync(quoteId, "current");
+        var updated = await _quoteRepository.GetByIdWithDetailsAsync(quoteId);
         return Ok(updated);
     }
 
@@ -127,8 +117,8 @@ public class WorkflowController : ControllerBase
             return NotFound();
         }
 
-        await _workflowService.MarkCompletedAsync(quoteId);
-        var updated = await _quoteRepository.GetByIdAsync(quoteId);
+        await _workflowService.MarkCompletedAsync(quoteId, "current");
+        var updated = await _quoteRepository.GetByIdWithDetailsAsync(quoteId);
         return Ok(updated);
     }
 
@@ -143,15 +133,15 @@ public class WorkflowController : ControllerBase
             return NotFound();
         }
 
-        await _workflowService.CloseAsync(quoteId);
-        var updated = await _quoteRepository.GetByIdAsync(quoteId);
+        await _workflowService.CloseAsync(quoteId, "current");
+        var updated = await _quoteRepository.GetByIdWithDetailsAsync(quoteId);
         return Ok(updated);
     }
 
     [HttpPost("{quoteId:guid}/handle-exception")]
     [ProducesResponseType(StatusCodes.Status200OK)]
     [ProducesResponseType(StatusCodes.Status404NotFound)]
-    public async Task<ActionResult<Quote>> HandleException(Guid quoteId, [FromBody] object body)
+    public async Task<ActionResult<Quote>> HandleException(Guid quoteId, [FromBody] WorkflowReasonDto dto)
     {
         var quote = await _quoteRepository.GetByIdAsync(quoteId);
         if (quote is null)
@@ -159,21 +149,15 @@ public class WorkflowController : ControllerBase
             return NotFound();
         }
 
-        var reason = string.Empty;
-        if (body is System.Text.Json.JsonElement jsonElement && jsonElement.TryGetProperty("reason", out var reasonProp))
-        {
-            reason = reasonProp.GetString() ?? string.Empty;
-        }
-
-        await _workflowService.HandleAmountExceptionAsync(quoteId, reason);
-        var updated = await _quoteRepository.GetByIdAsync(quoteId);
+        await _workflowService.HandleAmountExceptionAsync(quoteId, dto.Reason ?? string.Empty, "current");
+        var updated = await _quoteRepository.GetByIdWithDetailsAsync(quoteId);
         return Ok(updated);
     }
 
     [HttpGet("{quoteId:guid}/history")]
     [ProducesResponseType(StatusCodes.Status200OK)]
     [ProducesResponseType(StatusCodes.Status404NotFound)]
-    public async Task<ActionResult<IEnumerable<StatusHistory>>> GetHistory(Guid quoteId)
+    public async Task<ActionResult<IEnumerable<StatusHistoryDto>>> GetHistory(Guid quoteId)
     {
         var quote = await _quoteRepository.GetByIdAsync(quoteId);
         if (quote is null)
@@ -182,6 +166,11 @@ public class WorkflowController : ControllerBase
         }
 
         var history = await _statusHistoryRepository.FindAsync(sh => sh.QuoteId == quoteId);
-        return Ok(history.OrderByDescending(sh => sh.ChangedAt));
+        var historyDtos = history
+            .OrderByDescending(sh => sh.ChangedAt)
+            .Select(sh => sh.ToDto())
+            .ToList();
+
+        return Ok(historyDtos);
     }
 }

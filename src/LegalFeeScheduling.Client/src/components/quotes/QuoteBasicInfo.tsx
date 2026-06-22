@@ -9,10 +9,10 @@ interface QuoteBasicInfoProps {
 }
 
 const channelOptions = [
-  { value: Channel.Direct, label: '直客' },
-  { value: Channel.Referral, label: '转介绍' },
   { value: Channel.Online, label: '线上' },
-  { value: Channel.Corporate, label: '企业' },
+  { value: Channel.Offline, label: '线下' },
+  { value: Channel.Partner, label: '合作伙伴' },
+  { value: Channel.Referral, label: '转介绍' },
 ]
 
 function QuoteBasicInfo({ mode = 'edit' }: QuoteBasicInfoProps) {
@@ -31,7 +31,7 @@ function QuoteBasicInfo({ mode = 'edit' }: QuoteBasicInfoProps) {
   }
 
   const itemsTotal = currentQuote.items.reduce(
-    (sum, item) => sum + (item.amount || 0),
+    (sum, item) => sum + (item.subtotal || 0),
     0
   )
 
@@ -58,7 +58,7 @@ function QuoteBasicInfo({ mode = 'edit' }: QuoteBasicInfoProps) {
               ? dayjs(allValues.expectedPaymentDate).format('YYYY-MM-DD')
               : undefined,
             owner: allValues.owner,
-            remark: allValues.remark,
+            remarks: allValues.remarks,
           })
         }}
       >
@@ -137,7 +137,7 @@ function QuoteBasicInfo({ mode = 'edit' }: QuoteBasicInfoProps) {
             <Form.Item label="报价单金额">
               <InputNumber<number>
                 style={{ width: '100%' }}
-                value={currentQuote.totalAmount}
+                value={currentQuote.amount}
                 formatter={(value) => `¥ ${value}`.replace(/\B(?=(\d{3})+(?!\d))/g, ',')}
                 parser={(value) => Number(value?.replace(/[^\d.]/g, '')) || 0}
                 disabled
@@ -178,7 +178,7 @@ function QuoteBasicInfo({ mode = 'edit' }: QuoteBasicInfoProps) {
                 disabled
                 style={{
                   color:
-                    Math.abs(itemsTotal - (currentQuote.totalAmount || 0)) > 0.01
+                    Math.abs(itemsTotal - (currentQuote.amount || 0)) > 0.01
                       ? '#cf1322'
                       : '#3f8600',
                 }}
@@ -192,7 +192,7 @@ function QuoteBasicInfo({ mode = 'edit' }: QuoteBasicInfoProps) {
           </Col>
         </Row>
 
-        <Form.Item label="备注" name="remark">
+        <Form.Item label="备注" name="remarks">
           <Input.TextArea
             rows={3}
             placeholder="请输入备注"
