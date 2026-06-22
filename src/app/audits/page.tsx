@@ -1,7 +1,9 @@
-'use client';
+import { AuditListTable } from '@/components/features/AuditListTable';
 
-import MyTasksPage from '../my-tasks/page';
-
-export default function AuditsPage() {
-  return <MyTasksPage />;
+export default function AllAuditsPage({
+  searchParams,
+}: {
+  searchParams: any;
+}) {
+  return <AuditListTable scope="all" searchParams={searchParams} />;
 }

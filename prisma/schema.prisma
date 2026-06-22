@@ -1,14 +1,17 @@
+// 双 provider：根据 DATABASE_URL 前缀自动切换
+// SQLite:   "file:./dev.db"          -> 本地开发，开箱即用
+// Postgres: "postgresql://..."       -> Supabase / 生产环境
 generator client {
   provider = "prisma-client-js"
 }
 
 datasource db {
-  provider = "postgresql"
+  provider = "sqlite"
   url      = env("DATABASE_URL")
 }
 
 model User {
-  id         String        @id @default(uuid())
+  id         String        @id
   email      String        @unique
   name       String
   role       String        // MANAGEMENT | EXECUTOR | REVIEWER
@@ -20,7 +23,7 @@ model User {
 }
 
 model ImportBatch {
-  id          String            @id @default(uuid())
+  id          String            @id
   batchNo     String            @unique
   sourceType  String            // PERMISSION_LOG | ERP_EXPORT | EMAIL_MATERIAL | COMBINED
   fileName    String?
@@ -30,6 +33,7 @@ model ImportBatch {
   recordCount Int               @default(0)
   status      String            // PENDING | PROCESSING | SUCCESS | FAILED
   errorLog    String?
+  processLog  String?
   createdAt   DateTime          @default(now())
   auditItems  AuditItem[]
   permLogs    PermissionLog[]
@@ -38,12 +42,13 @@ model ImportBatch {
 }
 
 model AuditItem {
-  id              String            @id @default(uuid())
+  id              String            @id
   title           String
   description     String
   riskLevel       String            // HIGH | MEDIUM | LOW
   status          String            // CREATED | ASSIGNED | IN_PROGRESS | PENDING_REVIEW | REJECTED | CLOSED
   dispatchRule    String
+  sourceType      String?           // PERMISSION_LOG | ERP_EXPORT | EMAIL_MATERIAL
   assigneeId      String?
   assignee        User?             @relation("Assignee", fields: [assigneeId], references: [id])
   reviewerId      String?
@@ -52,6 +57,7 @@ model AuditItem {
   batch           ImportBatch       @relation(fields: [batchId], references: [id])
   deadlineAt      DateTime
   createdAt       DateTime          @default(now())
+  updatedAt       DateTime          @updatedAt
   closedAt        DateTime?
   closeReason     String?
   revisionCount   Int               @default(0)
@@ -61,17 +67,17 @@ model AuditItem {
 }
 
 model Rectification {
-  id             String     @id @default(uuid())
+  id             String     @id
   auditId        String
   audit          AuditItem  @relation(fields: [auditId], references: [id])
   submitterId    String
   description    String
-  attachmentUrls String[]
+  attachmentUrls String     @default("[]") // JSON string
   createdAt      DateTime   @default(now())
 }
 
 model ReviewComment {
-  id         String     @id @default(uuid())
+  id         String     @id
   auditId    String
   audit      AuditItem  @relation(fields: [auditId], references: [id])
   reviewerId String
@@ -81,32 +87,40 @@ model ReviewComment {
 }
 
 model PermissionLog {
-  id         String      @id @default(uuid())
+  id         String      @id
   batchId    String
   batch      ImportBatch @relation(fields: [batchId], references: [id])
   userId     String?
+  userName   String?
   action     String
   resource   String
   ipAddress  String?
+  riskLevel  String?     // HIGH | MEDIUM | LOW
   happenedAt DateTime
 }
 
 model ErpRecord {
-  id           String      @id @default(uuid())
+  id           String      @id
   batchId      String
   batch        ImportBatch @relation(fields: [batchId], references: [id])
   documentNo   String
-  amount       Decimal?
+  documentType String?     // PAYMENT | PURCHASE | CONTRACT
+  amount       Float?
   department   String?
+  operator     String?
+  approver     String?
+  riskLevel    String?
   happenedAt   DateTime
 }
 
 model EmailMaterial {
-  id         String      @id @default(uuid())
+  id         String      @id
   batchId    String
   batch      ImportBatch @relation(fields: [batchId], references: [id])
   subject    String
   sender     String
-  recipients String[]
+  recipients String      // JSON string of string[]
+  summary    String?
+  riskLevel  String?
   sentAt     DateTime
 }

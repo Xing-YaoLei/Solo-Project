@@ -91,3 +91,22 @@ export const SOURCE_LABEL: Record<SourceType, string> = {
   EMAIL_MATERIAL: '邮件材料',
   COMBINED: '多源合并',
 };
+
+export const STEP_INDEX: Record<AuditStatus, number> = {
+  CREATED: 0,
+  ASSIGNED: 1,
+  IN_PROGRESS: 2,
+  PENDING_REVIEW: 3,
+  REJECTED: 2,
+  CLOSED: 4,
+};
+
+export function formatDateShort(input: Date | string | null | undefined): string {
+  if (!input) return '-';
+  const date = typeof input === 'string' ? new Date(input) : input;
+  const m = (date.getMonth() + 1).toString().padStart(2, '0');
+  const d = date.getDate().toString().padStart(2, '0');
+  const hh = date.getHours().toString().padStart(2, '0');
+  const mm = date.getMinutes().toString().padStart(2, '0');
+  return `${m}/${d} ${hh}:${mm}`;
+}
