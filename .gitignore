@@ -1,0 +1,25 @@
+# Godot 4 generated files
+.godot/
+*.import
+
+# Exported builds
+/build/
+/web_build/
+*.html
+*.js
+*.wasm
+*.pck
+*.zip
+
+# OS files
+.DS_Store
+Thumbs.db
+
+# Editor backups
+*.bak
+*.tmp
+*~
+
+# User data (training records, game data saved locally)
+# Note: these can be kept for testing if desired
+# user:// maps to OS standard user data dir in Godot
