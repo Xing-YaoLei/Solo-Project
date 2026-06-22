@@ -81,14 +81,14 @@ public class QuotesController : ControllerBase
         quote.Status = QuoteStatus.Draft;
         quote.CreatedBy = "current";
 
-        if (dto.Items != null && dto.Items.Any())
+        if (quote.Items != null)
         {
-            foreach (var itemDto in dto.Items)
+            foreach (var item in quote.Items)
             {
-                var item = itemDto.ToEntity();
                 item.QuoteId = quote.Id;
-                item.Subtotal = itemDto.UnitPrice * itemDto.Quantity;
-                quote.Items.Add(item);
+                item.Subtotal = item.UnitPrice * item.Quantity;
+                item.CreatedAt = DateTime.UtcNow;
+                item.UpdatedAt = DateTime.UtcNow;
             }
             quote.FinalAmount = dto.Amount - dto.DiscountAmount;
         }

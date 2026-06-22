@@ -37,6 +37,11 @@ export const workflowApi = {
     return apiClient.post(`/workflow/${quoteId}/handle-exception`, body)
   },
 
+  resumeProcessing: (quoteId: string, reason?: string): Promise<Quote> => {
+    const body: WorkflowReasonDto = { reason }
+    return apiClient.post(`/workflow/${quoteId}/resume-processing`, body)
+  },
+
   getStatusHistory: (quoteId: string): Promise<StatusHistory[]> => {
     return apiClient.get(`/workflow/${quoteId}/history`)
   },

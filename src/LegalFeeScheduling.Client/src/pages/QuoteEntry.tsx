@@ -11,8 +11,11 @@ import {
   Empty,
   Card,
   InputNumber,
+  Table,
+  Popconfirm,
 } from 'antd'
-import { PlusOutlined } from '@ant-design/icons'
+
+import { PlusOutlined, DeleteOutlined } from '@ant-design/icons'
 import QuoteList from '../components/quotes/QuoteList'
 import QuoteBasicInfo from '../components/quotes/QuoteBasicInfo'
 import QuoteItemsPanel from '../components/quotes/QuoteItemsPanel'
@@ -25,8 +28,18 @@ import {
   QuoteFilter,
   Channel,
   CreateQuoteDto,
+  CreateQuoteItemDto,
 } from '../types'
 import { channelLabels } from '../components/quotes/QuoteList'
+
+interface TempQuoteItem {
+  id: string
+  itemName: string
+  description?: string
+  unitPrice: number
+  quantity: number
+  subtotal: number
+}
 
 function QuoteEntry() {
   const [list, setList] = useState<Quote[]>([])
@@ -45,6 +58,7 @@ function QuoteEntry() {
   const currentQuote = useQuoteStore((s) => s.currentQuote)
   const setCurrentQuote = useQuoteStore((s) => s.setCurrentQuote)
   const [form] = Form.useForm()
+  const [quoteItems, setQuoteItems] = useState<TempQuoteItem[]>([])
 
   const loadData = async () => {
     setLoading(true)
@@ -76,9 +90,44 @@ function QuoteEntry() {
     }
   }
 
+  const handleAddItem = () => {
+    const newItem: TempQuoteItem = {
+      id: `temp-${Date.now()}`,
+      itemName: '',
+      unitPrice: 0,
+      quantity: 1,
+      subtotal: 0,
+    }
+    setQuoteItems([...quoteItems, newItem])
+  }
+
+  const handleDeleteItem = (id: string) => {
+    setQuoteItems(quoteItems.filter((item) => item.id !== id))
+  }
+
+  const handleUpdateItem = (id: string, field: keyof TempQuoteItem, value: any) => {
+    setQuoteItems(
+      quoteItems.map((item) => {
+        if (item.id !== id) return item
+        const updated = { ...item, [field]: value }
+        if (field === 'quantity' || field === 'unitPrice') {
+          updated.subtotal =
+            (Number(updated.quantity) || 0) * (Number(updated.unitPrice) || 0)
+        }
+        return updated
+      })
+    )
+  }
+
   const handleCreate = async () => {
     try {
       const values = await form.validateFields()
+      const items: CreateQuoteItemDto[] = quoteItems.map((item) => ({
+        itemName: item.itemName,
+        description: item.description,
+        unitPrice: item.unitPrice,
+        quantity: item.quantity,
+      }))
       const request: CreateQuoteDto = {
         clientName: values.clientName,
         caseName: values.caseName,
@@ -89,12 +138,13 @@ function QuoteEntry() {
         owner: values.owner,
         remarks: values.remarks,
         expectedPaymentDate: values.expectedPaymentDate,
-        items: [],
+        items,
       }
       const newQuote = await quoteApi.createQuote(request)
       message.success('创建成功')
       setCreateModalOpen(false)
       form.resetFields()
+      setQuoteItems([])
       loadData()
       handleSelectQuote(newQuote)
     } catch {
@@ -176,9 +226,10 @@ function QuoteEntry() {
         onCancel={() => {
           setCreateModalOpen(false)
           form.resetFields()
+          setQuoteItems([])
         }}
         destroyOnClose
-        width={600}
+        width={900}
         okText="创建"
         cancelText="取消"
       >
@@ -274,6 +325,100 @@ function QuoteEntry() {
           <Form.Item name="remarks" label="备注">
             <Input.TextArea rows={3} placeholder="请输入备注" />
           </Form.Item>
+
+          <div style={{ marginTop: 16 }}>
+            <div style={{ marginBottom: 12, display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+              <span style={{ fontWeight: 500 }}>报价明细</span>
+              <Button type="primary" icon={<PlusOutlined />} onClick={handleAddItem} size="small">
+                添加明细
+              </Button>
+            </div>
+            <Table
+              rowKey="id"
+              dataSource={quoteItems}
+              pagination={false}
+              size="small"
+              columns={[
+                {
+                  title: '项目名称',
+                  dataIndex: 'itemName',
+                  key: 'itemName',
+                  render: (value, record) => (
+                    <Input
+                      value={value}
+                      onChange={(e) => handleUpdateItem(record.id, 'itemName', e.target.value)}
+                      placeholder="请输入项目名称"
+                    />
+                  ),
+                },
+                {
+                  title: '描述',
+                  dataIndex: 'description',
+                  key: 'description',
+                  render: (value, record) => (
+                    <Input
+                      value={value}
+                      onChange={(e) => handleUpdateItem(record.id, 'description', e.target.value)}
+                      placeholder="描述"
+                    />
+                  ),
+                },
+                {
+                  title: '单价',
+                  dataIndex: 'unitPrice',
+                  key: 'unitPrice',
+                  width: 140,
+                  render: (value, record) => (
+                    <InputNumber<number>
+                      min={0}
+                      style={{ width: '100%' }}
+                      value={value}
+                      formatter={(v) => `¥ ${v}`.replace(/\B(?=(\d{3})+(?!\d))/g, ',')}
+                      parser={(v) => Number(v?.replace(/[^\d.]/g, '')) || 0}
+                      onChange={(v) => handleUpdateItem(record.id, 'unitPrice', Number(v) || 0)}
+                    />
+                  ),
+                },
+                {
+                  title: '数量',
+                  dataIndex: 'quantity',
+                  key: 'quantity',
+                  width: 100,
+                  render: (value, record) => (
+                    <InputNumber<number>
+                      min={0}
+                      style={{ width: '100%' }}
+                      value={value}
+                      onChange={(v) => handleUpdateItem(record.id, 'quantity', Number(v) || 0)}
+                    />
+                  ),
+                },
+                {
+                  title: '小计',
+                  dataIndex: 'subtotal',
+                  key: 'subtotal',
+                  width: 140,
+                  render: (value: number) => `¥${(value || 0).toLocaleString()}`,
+                },
+                {
+                  title: '操作',
+                  key: 'action',
+                  width: 60,
+                  render: (_, record) => (
+                    <Popconfirm title="确定删除此项目？" onConfirm={() => handleDeleteItem(record.id)}>
+                      <Button type="link" danger icon={<DeleteOutlined />} size="small" />
+                    </Popconfirm>
+                  ),
+                },
+              ]}
+            />
+            {quoteItems.length > 0 && (
+              <div style={{ textAlign: 'right', marginTop: 8, fontWeight: 500 }}>
+                明细合计：¥
+                {quoteItems.reduce((sum, item) => sum + (item.subtotal || 0), 0).toLocaleString()}
+              </div>
+            )}
+          </div>
         </Form>
       </Modal>
     </div>

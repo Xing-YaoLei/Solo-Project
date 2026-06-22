@@ -10,5 +10,5 @@ public interface IQuoteWorkflowService
     Task MarkCompletedAsync(Guid quoteId, string? userId = null);
     Task CloseAsync(Guid quoteId, string? userId = null);
     Task HandleAmountExceptionAsync(Guid quoteId, string reason, string? userId = null);
-    Task ResumeFromExceptionAsync(Guid quoteId, string reason, string? userId = null);
+    Task ResumeFromExceptionAsync(Guid quoteId, string? reason = null, string? userId = null);
 }

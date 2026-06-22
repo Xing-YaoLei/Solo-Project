@@ -68,10 +68,15 @@ const actionConfig: Record<QuoteStatus, WorkflowAction[]> = {
   ],
   [QuoteStatus.AmountException]: [
     {
+      label: '恢复处理',
+      action: 'resumeProcessing',
+      icon: <PlayCircleOutlined />,
+      type: 'primary',
+    },
+    {
       label: '处理异常',
       action: 'handleException',
       icon: <WarningOutlined />,
-      type: 'primary',
       requireReason: true,
     },
     { label: '完成处理', action: 'complete', icon: <FileDoneOutlined /> },
@@ -152,6 +157,9 @@ function WorkflowActions({ onSuccess }: WorkflowActionsProps) {
           break
         case 'handleException':
           result = await workflowApi.handleException(quoteId, actionRemark)
+          break
+        case 'resumeProcessing':
+          result = await workflowApi.resumeProcessing(quoteId, actionRemark)
           break
         default:
           return

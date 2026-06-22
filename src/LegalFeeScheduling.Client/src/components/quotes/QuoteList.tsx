@@ -43,7 +43,7 @@ export const statusLabels: Record<QuoteStatus, string> = {
   [QuoteStatus.PendingReview]: '待审核',
   [QuoteStatus.NeedMoreInfo]: '补资料',
   [QuoteStatus.Escalated]: '升级复核',
-  [QuoteStatus.Approved]: '已审批',
+  [QuoteStatus.Approved]: '审核通过',
   [QuoteStatus.Processing]: '处理中',
   [QuoteStatus.AmountException]: '金额异常',
   [QuoteStatus.Completed]: '已完成',

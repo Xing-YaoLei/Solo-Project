@@ -191,12 +191,12 @@ public class QuoteWorkflowService : IQuoteWorkflowService
         await _context.SaveChangesAsync();
     }
 
-    public async Task ResumeFromExceptionAsync(Guid quoteId, string reason, string? userId = null)
+    public async Task ResumeFromExceptionAsync(Guid quoteId, string? reason = null, string? userId = null)
     {
         await ChangeStatusWithHistoryAsync(
             quoteId,
             QuoteStatus.Processing,
             userId,
-            $"金额异常已解决，恢复处理: {reason}");
+            string.IsNullOrEmpty(reason) ? "金额异常已解决，恢复处理" : $"金额异常已解决，恢复处理: {reason}");
     }
 }

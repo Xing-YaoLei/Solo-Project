@@ -154,6 +154,22 @@ public class WorkflowController : ControllerBase
         return Ok(updated);
     }
 
+    [HttpPost("{quoteId:guid}/resume-processing")]
+    [ProducesResponseType(StatusCodes.Status200OK)]
+    [ProducesResponseType(StatusCodes.Status404NotFound)]
+    public async Task<ActionResult<Quote>> ResumeProcessing(Guid quoteId, [FromBody] WorkflowReasonDto? dto = null)
+    {
+        var quote = await _quoteRepository.GetByIdAsync(quoteId);
+        if (quote is null)
+        {
+            return NotFound();
+        }
+
+        await _workflowService.ResumeFromExceptionAsync(quoteId, dto?.Reason, "current");
+        var updated = await _quoteRepository.GetByIdWithDetailsAsync(quoteId);
+        return Ok(updated);
+    }
+
     [HttpGet("{quoteId:guid}/history")]
     [ProducesResponseType(StatusCodes.Status200OK)]
     [ProducesResponseType(StatusCodes.Status404NotFound)]
