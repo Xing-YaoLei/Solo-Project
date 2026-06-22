@@ -381,3 +381,237 @@ class VersionAnalytics:
         ]).sort("total_rejects", descending=True).rename({"tag_list": "tag"})
 
         return result
+
+
+class VersionConversionLinkage:
+    def __init__(self, case_df: pl.DataFrame, version_df: pl.DataFrame, schedule_df: pl.DataFrame):
+        self.case_df = case_df
+        self.version_df = version_df
+        self.schedule_df = schedule_df
+
+    def _enrich_cases(self) -> pl.DataFrame:
+        version_stats = self.version_df.group_by("case_id").agg([
+            pl.col("version").max().alias("total_versions"),
+            (pl.col("review_status") == "退回修改").sum().alias("reject_times"),
+            (pl.col("review_status") == "通过").sum().alias("pass_times"),
+            pl.col("version_date").min().alias("first_version_date"),
+            pl.col("version_date").max().alias("final_version_date"),
+            pl.col("word_count_delta").sum().alias("total_word_delta"),
+        ])
+
+        enriched = self.case_df.join(
+            version_stats, on="case_id", how="left"
+        ).with_columns([
+            pl.col("total_versions").fill_null(1).alias("total_versions"),
+            pl.col("reject_times").fill_null(0).alias("reject_times"),
+            pl.col("pass_times").fill_null(0).alias("pass_times"),
+            pl.col("total_word_delta").fill_null(0).alias("total_word_delta"),
+        ])
+
+        enriched = enriched.with_columns([
+            (pl.col("total_versions") > 1).alias("has_iteration"),
+            pl.when(pl.col("reject_times") >= 3)
+            .then(pl.lit("多次退回"))
+            .when(pl.col("reject_times") >= 1)
+            .then(pl.lit("少量退回"))
+            .otherwise(pl.lit("一次通过"))
+            .alias("review_quality"),
+        ])
+
+        return enriched
+
+    def _build_conversion_index(self, period: str = "month") -> pl.DataFrame:
+        df = self.schedule_df.with_columns(
+            pl.col("publish_date").str.to_date().alias("date")
+        )
+        if period == "day":
+            df = df.with_columns(pl.col("date").alias("period"))
+        elif period == "week":
+            df = df.with_columns(pl.col("date").dt.truncate("1w").alias("period"))
+        else:
+            df = df.with_columns(pl.col("date").dt.truncate("1mo").alias("period"))
+
+        conv_index = df.group_by("period").agg([
+            pl.col("conversion_rate").mean().alias("period_avg_conversion_rate"),
+            pl.col("conversions").sum().alias("period_total_conversions"),
+            pl.col("views").sum().alias("period_total_views"),
+            pl.col("schedule_id").count().alias("period_content_count"),
+            pl.col("target_rate").mean().alias("period_avg_target_rate"),
+        ]).sort("period")
+
+        return conv_index
+
+    def _attach_period(self, df: pl.DataFrame, date_col: str, period: str) -> pl.DataFrame:
+        result = df.with_columns(pl.col(date_col).str.to_date().alias("_date_tmp"))
+        if period == "day":
+            result = result.with_columns(pl.col("_date_tmp").alias("period"))
+        elif period == "week":
+            result = result.with_columns(pl.col("_date_tmp").dt.truncate("1w").alias("period"))
+        else:
+            result = result.with_columns(pl.col("_date_tmp").dt.truncate("1mo").alias("period"))
+        return result.drop("_date_tmp")
+
+    def version_iteration_vs_conversion(self, period: str = "month") -> pl.DataFrame:
+        conv_index = self._build_conversion_index(period)
+        enriched_cases = self._enrich_cases()
+        cases_with_period = self._attach_period(enriched_cases, "submit_date", period)
+
+        case_stats = cases_with_period.group_by("period").agg([
+            pl.col("case_id").count().alias("case_count"),
+            pl.col("total_versions").mean().round(2).alias("avg_case_versions"),
+            pl.col("reject_times").mean().round(2).alias("avg_reject_times"),
+            (pl.col("has_iteration")).mean().round(4).alias("iteration_ratio"),
+            (pl.col("review_quality") == "一次通过").mean().round(4).alias("one_pass_ratio"),
+            (pl.col("status") == "已归档").mean().round(4).alias("archived_ratio"),
+        ])
+
+        merged = case_stats.join(conv_index, on="period", how="inner").sort("period")
+
+        merged = merged.with_columns([
+            (pl.col("iteration_ratio") * 100).round(2).alias("iteration_ratio_pct"),
+            (pl.col("one_pass_ratio") * 100).round(2).alias("one_pass_ratio_pct"),
+            (pl.col("archived_ratio") * 100).round(2).alias("archived_ratio_pct"),
+        ])
+
+        return merged
+
+    def conversion_improvement_by_version_group(self) -> pl.DataFrame:
+        conv_index = self._build_conversion_index("month")
+        enriched_cases = self._enrich_cases()
+        cases_with_period = self._attach_period(enriched_cases, "submit_date", "month")
+
+        cases_with_period = cases_with_period.with_columns([
+            pl.when(pl.col("total_versions") == 1)
+            .then(pl.lit("V1 一次成型"))
+            .when(pl.col("total_versions") == 2)
+            .then(pl.lit("V2 小范围优化"))
+            .when(pl.col("total_versions") == 3)
+            .then(pl.lit("V3 中度迭代"))
+            .otherwise(pl.lit("V4+ 深度打磨"))
+            .alias("version_group"),
+        ])
+
+        grouped = cases_with_period.group_by(["period", "version_group"]).agg([
+            pl.col("case_id").count().alias("group_case_count"),
+            pl.col("reject_times").mean().round(2).alias("group_avg_rejects"),
+            pl.col("total_word_delta").mean().round(0).alias("group_avg_word_delta"),
+        ]).join(conv_index, on="period", how="inner").sort(["version_group", "period"])
+
+        summary = grouped.group_by("version_group").agg([
+            pl.col("group_case_count").sum().alias("total_cases"),
+            pl.col("period_avg_conversion_rate").mean().round(2).alias("avg_conversion_rate"),
+            pl.col("period_total_conversions").mean().round(0).alias("avg_period_conversions"),
+            pl.col("group_avg_rejects").mean().round(2).alias("avg_reject_times"),
+            pl.col("group_avg_word_delta").mean().round(0).alias("avg_word_delta"),
+        ])
+
+        baseline = summary.filter(pl.col("version_group") == "V1 一次成型")
+        if baseline.height > 0:
+            baseline_rate = baseline["avg_conversion_rate"][0]
+            summary = summary.with_columns([
+                (pl.col("avg_conversion_rate") - baseline_rate).round(2).alias("conversion_rate_diff"),
+                ((pl.col("avg_conversion_rate") - baseline_rate) / baseline_rate * 100).round(2).alias("conversion_improvement_pct"),
+            ])
+        else:
+            summary = summary.with_columns([
+                pl.lit(0.0).alias("conversion_rate_diff"),
+                pl.lit(0.0).alias("conversion_improvement_pct"),
+            ])
+
+        return summary.sort("version_group")
+
+    def improvement_trend(self, period: str = "month") -> pl.DataFrame:
+        trend = self.version_iteration_vs_conversion(period)
+
+        trend = trend.with_columns([
+            pl.col("avg_case_versions").shift(1).alias("prev_versions"),
+            pl.col("period_avg_conversion_rate").shift(1).alias("prev_conversion_rate"),
+        ])
+
+        trend = trend.with_columns([
+            (pl.col("avg_case_versions") - pl.col("prev_versions")).round(2).alias("version_change"),
+            (pl.col("period_avg_conversion_rate") - pl.col("prev_conversion_rate")).round(2).alias("conversion_rate_change"),
+        ])
+
+        trend = trend.with_columns([
+            pl.when(
+                (pl.col("version_change").is_not_null()) & (pl.col("version_change") != 0)
+            )
+            .then((pl.col("conversion_rate_change") / pl.col("version_change").abs()).round(4))
+            .otherwise(None)
+            .alias("improvement_per_version"),
+        ])
+
+        return trend
+
+    def quality_review_conversion_matrix(self) -> pl.DataFrame:
+        conv_index = self._build_conversion_index("month")
+        enriched_cases = self._enrich_cases()
+        cases_with_period = self._attach_period(enriched_cases, "submit_date", "month")
+
+        matrix = cases_with_period.group_by(["period", "review_quality"]).agg([
+            pl.col("case_id").count().alias("case_count"),
+        ]).join(conv_index, on="period", how="inner")
+
+        pivot = matrix.group_by("review_quality").agg([
+            pl.col("case_count").sum().alias("total_cases"),
+            pl.col("period_avg_conversion_rate").mean().round(2).alias("avg_conversion_rate"),
+            pl.col("period_total_conversions").mean().round(0).alias("avg_period_conversions"),
+        ]).sort("avg_conversion_rate", descending=True)
+
+        baseline = pivot["avg_conversion_rate"].min() if pivot.height > 0 else 0
+        pivot = pivot.with_columns([
+            (pl.col("avg_conversion_rate") - baseline).round(2).alias("vs_baseline_diff"),
+        ])
+
+        return pivot
+
+    def core_retrospective_metrics(self) -> Dict:
+        enriched = self._enrich_cases()
+
+        total_cases = enriched.height
+        one_pass_count = enriched.filter(pl.col("review_quality") == "一次通过").height
+        one_pass_rate = round(one_pass_count / total_cases * 100, 2) if total_cases > 0 else 0
+
+        iter_cases = enriched.filter(pl.col("has_iteration")).height
+        iter_ratio = round(iter_cases / total_cases * 100, 2) if total_cases > 0 else 0
+
+        avg_versions = round(enriched["total_versions"].mean(), 2) if total_cases > 0 else 0
+        avg_rejects = round(enriched["reject_times"].mean(), 2) if total_cases > 0 else 0
+
+        version_conv = self.conversion_improvement_by_version_group()
+        if version_conv.height > 0:
+            best_row = version_conv.sort("conversion_improvement_pct", descending=True).head(1)
+            best_group = best_row["version_group"][0] if best_row.height > 0 else "N/A"
+            best_improvement = best_row["conversion_improvement_pct"][0] if best_row.height > 0 else 0
+        else:
+            best_group = "N/A"
+            best_improvement = 0
+
+        quality_matrix = self.quality_review_conversion_matrix()
+        if quality_matrix.height > 0:
+            best_quality = quality_matrix.head(1)["review_quality"][0]
+            best_quality_rate = quality_matrix.head(1)["avg_conversion_rate"][0]
+        else:
+            best_quality = "N/A"
+            best_quality_rate = 0
+
+        return {
+            "overview": {
+                "total_cases": total_cases,
+                "one_pass_rate": one_pass_rate,
+                "iteration_ratio": iter_ratio,
+                "avg_versions": avg_versions,
+                "avg_reject_times": avg_rejects,
+            },
+            "best_version_group": {
+                "group": best_group,
+                "improvement_pct": best_improvement,
+            },
+            "best_quality": {
+                "quality": best_quality,
+                "avg_conversion_rate": best_quality_rate,
+            },
+            "version_group_detail": version_conv,
+            "quality_matrix": quality_matrix,
+        }

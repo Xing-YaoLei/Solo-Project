@@ -176,42 +176,62 @@ def generate_schedule_data() -> pl.DataFrame:
     return pl.DataFrame(records)
 
 
-def generate_version_history() -> pl.DataFrame:
-    case_data = generate_case_system_data()
-
+def generate_version_history(case_data: pl.DataFrame) -> pl.DataFrame:
     version_records = []
     for row in case_data.iter_rows(named=True):
         base_version = row["version"]
         for v in range(1, base_version + 1):
+            is_last = v == base_version
+            change_summary = (
+                "初始版本" if v == 1
+                else random.choice([
+                    "补充事实陈述",
+                    "调整法律依据",
+                    "修正格式问题",
+                    "更新证据清单",
+                    "完善诉讼请求",
+                ])
+            )
+
+            if is_last:
+                status_map = {
+                    "已归档": "通过",
+                    "已发布": "通过",
+                    "已退回": "退回修改",
+                    "审核中": "待审核",
+                    "待提交": "待审核",
+                }
+                review_status = status_map.get(row["status"], "待审核")
+            else:
+                review_status = random.choice(["通过", "退回修改"])
+
+            word_delta = random.randint(-500, 2000) if v > 1 else 0
+
             version_records.append({
                 "case_id": row["case_id"],
+                "case_type": row["case_type"],
+                "department": row["department"],
+                "lawyer": row["lawyer"],
                 "version": v,
+                "is_latest": is_last,
                 "version_date": (
                     datetime.strptime(row["submit_date"], "%Y-%m-%d")
                     - timedelta(days=(base_version - v) * random.randint(1, 3))
                 ).strftime("%Y-%m-%d"),
-                "change_summary": (
-                    "初始版本" if v == 1
-                    else random.choice([
-                        "补充事实陈述",
-                        "调整法律依据",
-                        "修正格式问题",
-                        "更新证据清单",
-                        "完善诉讼请求",
-                    ])
-                ),
-                "word_count_delta": random.randint(-500, 2000),
-                "review_status": random.choice(["通过", "退回修改", "待审核"]),
+                "change_summary": change_summary,
+                "word_count_delta": word_delta,
+                "review_status": review_status,
             })
 
     return pl.DataFrame(version_records)
 
 
 def generate_all_data() -> Dict[str, pl.DataFrame]:
+    case_system = generate_case_system_data()
     return {
-        "case_system": generate_case_system_data(),
+        "case_system": case_system,
         "email_attachments": generate_email_attachment_data(),
         "payment_flow": generate_payment_flow_data(),
         "publish_schedule": generate_schedule_data(),
-        "version_history": generate_version_history(),
+        "version_history": generate_version_history(case_system),
     }
