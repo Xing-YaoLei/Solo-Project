@@ -130,6 +130,47 @@ def get_trend_data(months: int = 6) -> pd.DataFrame:
         db.close()
 
 
+def get_issues_by_filter(department_id: Optional[int] = None, 
+                         risk_level: Optional[str] = None,
+                         status: Optional[str] = None,
+                         date_range: Optional[Tuple[datetime, datetime]] = None,
+                         limit: int = 50) -> List[Dict[str, Any]]:
+    db = SessionLocal()
+    try:
+        query = db.query(AuditIssue, Department).join(
+            Department, AuditIssue.department_id == Department.id
+        )
+        
+        if department_id:
+            query = query.filter(AuditIssue.department_id == department_id)
+        if risk_level:
+            query = query.filter(AuditIssue.risk_level == risk_level)
+        if status:
+            query = query.filter(AuditIssue.status == status)
+        if date_range:
+            query = query.filter(AuditIssue.discovered_date.between(
+                date_range[0].date(), date_range[1].date()
+            ))
+        
+        issues = query.order_by(AuditIssue.created_at.desc()).limit(limit).all()
+        
+        result = []
+        for issue, dept in issues:
+            result.append({
+                'id': issue.id,
+                'title': issue.title,
+                'description': issue.description,
+                'department': dept.name,
+                'risk_level': issue.risk_level,
+                'status': issue.status,
+                'discovered_date': str(issue.discovered_date)
+            })
+        
+        return result
+    finally:
+        db.close()
+
+
 def get_checklist_tree(category_id: Optional[int] = None) -> List[Dict[str, Any]]:
     db = SessionLocal()
     try:
@@ -151,16 +192,28 @@ def get_checklist_tree(category_id: Optional[int] = None) -> List[Dict[str, Any]
                     ChecklistSubitem.item_id == item.id
                 ).order_by(ChecklistSubitem.sort_order).all()
                 
-                issue_count = db.query(AuditIssue).filter(
+                issues_query = db.query(AuditIssue).filter(
                     AuditIssue.checklist_item_id == item.id
-                ).count()
+                ).order_by(AuditIssue.created_at.desc()).all()
                 
-                completed_count = db.query(AuditIssue).filter(
-                    AuditIssue.checklist_item_id == item.id,
-                    AuditIssue.status.in_(['verified', 'resolved', 'closed'])
-                ).count()
+                issue_count = len(issues_query)
+                
+                completed_count = sum(
+                    1 for issue in issues_query if issue.status in ['verified', 'resolved', 'closed'])
                 
                 completion_rate = round(completed_count / issue_count * 100, 1) if issue_count > 0 else 100
+                
+                issues_data = []
+                for issue in issues_query:
+                    issues_data.append({
+                        'id': issue.id,
+                        'title': issue.title,
+                        'description': issue.description,
+                        'risk_level': issue.risk_level,
+                        'status': issue.status,
+                        'discovered_date': str(issue.discovered_date),
+                        'has_evidence': issue.has_evidence
+                    })
                 
                 items_data.append({
                     'id': item.id,
@@ -170,6 +223,7 @@ def get_checklist_tree(category_id: Optional[int] = None) -> List[Dict[str, Any]
                     'risk_level': item.risk_level,
                     'issue_count': issue_count,
                     'completion_rate': completion_rate,
+                    'issues': issues_data,
                     'subitems': [{
                         'id': s.id,
                         'title': s.title,

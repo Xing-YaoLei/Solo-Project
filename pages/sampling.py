@@ -286,6 +286,7 @@ def update_sampling_data(dept_filter, result_filter):
             'result': result,
             'result_class': f'status-badge {result_class}',
             'transaction_no': r.get('transaction_no', '-'),
+            'issue_id': r.get('issue_id', 1),
             'action': '查看详情'
         }
         table_data.append(row)
@@ -454,11 +455,11 @@ def toggle_sampling_modal(active_cell, close_click, table_data, is_open):
                         ], style={'display': 'flex'}),
                         
                         html.Div([
-                            html.Button(
+                            dcc.Link(
                                 '🔗 查看完整问题详情',
-                                id={'type': 'go-to-detail', 'index': record['issue_id']},
+                                href=f'/detail?issue_id={record["issue_id"]}',
                                 className='btn btn-primary',
-                                style={'marginTop': '16px'}
+                                style={'marginTop': '16px', 'textDecoration': 'none'}
                             )
                         ])
                     ])

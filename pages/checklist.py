@@ -319,6 +319,53 @@ def toggle_issues_modal(n_clicks, close_click, is_open):
                 break
         
         if target_item:
+            issues = target_item.get('issues', [])
+            
+            status_display = {
+                'pending': '待处理',
+                'in_progress': '处理中',
+                'verified': '已核实',
+                'resolved': '已解决',
+                'closed': '已关闭'
+            }
+            
+            issues_rows = []
+            for issue in issues:
+                issues_rows.append(html.Div([
+                    html.Div(f"#{issue['id']}", style={
+                        'flex': '0 0 60px',
+                        'fontFamily': 'var(--font-mono)',
+                        'fontSize': '12px',
+                        'color': '#666'
+                    }),
+                    html.Div([
+                        html.Div(issue['title'], style={'fontWeight': '500'}),
+                        html.Div(issue['description'][:80] + ('...' if len(issue['description']) > 80 else ''),
+                                 style={'fontSize': '12px', 'color': '#666', 'marginTop': '2px'})
+                    ], style={'flex': '1'}),
+                    html.Div([
+                        html.Span(issue['risk_level'].upper(), 
+                                 className=f'risk-badge {issue["risk_level"]}',
+                                 style={'marginRight': '8px'}),
+                        html.Span(status_display.get(issue['status'], issue['status']),
+                                 className=f'status-badge {issue["status"]}')
+                    ], style={'flex': '0 0 180px', 'textAlign': 'right'}),
+                    html.Div([
+                        dcc.Link(
+                            '🔍 查看详情',
+                            href=f'/detail?issue_id={issue["id"]}',
+                            className='btn btn-primary btn-sm',
+                            style={'padding': '4px 12px'}
+                        )
+                    ], style={'flex': '0 0 100px', 'textAlign': 'right'})
+                ], style={
+                    'display': 'flex',
+                    'alignItems': 'center',
+                    'padding': '12px',
+                    'borderBottom': '1px solid #e9ecef',
+                    'gap': '12px'
+                }))
+            
             body = html.Div([
                 html.Div([
                     html.Strong('检查项：'),
@@ -334,13 +381,30 @@ def toggle_issues_modal(n_clicks, close_click, is_open):
                              className=f'risk-badge {target_item["risk_level"]}')
                 ], style={'marginBottom': '20px'}),
                 html.Hr(),
-                html.H5(f'相关问题 ({target_item["issue_count"]}个)'),
+                html.H5(f'相关问题 ({len(issues)}个)', style={'marginBottom': '12px'}),
                 html.Div([
                     html.Div([
-                        html.Div('待开发：具体问题列表将在此处展示', 
-                                style={'padding': '20px', 'textAlign': 'center', 'color': '#666'})
-                    ], className='table-container')
-                ])
+                        html.Div('ID', style={'flex': '0 0 60px', 'fontWeight': '500', 'color': 'var(--primary)'}),
+                        html.Div('问题描述', style={'flex': '1', 'fontWeight': '500', 'color': 'var(--primary)'}),
+                        html.Div('状态', style={'flex': '0 0 180px', 'fontWeight': '500', 'color': 'var(--primary)', 'textAlign': 'right'}),
+                        html.Div('操作', style={'flex': '0 0 100px', 'fontWeight': '500', 'color': 'var(--primary)', 'textAlign': 'right'}),
+                    ], style={
+                        'display': 'flex',
+                        'alignItems': 'center',
+                        'padding': '10px 12px',
+                        'background': '#f8f9fa',
+                        'borderRadius': '4px 4px 0 0',
+                        'gap': '12px'
+                    }),
+                    *issues_rows
+                ], style={
+                    'border': '1px solid #e9ecef',
+                    'borderRadius': '4px',
+                    'overflow': 'hidden'
+                }) if issues else html.Div(
+                    '暂无相关问题',
+                    style={'padding': '40px', 'textAlign': 'center', 'color': '#666'}
+                )
             ])
             return True, body
     

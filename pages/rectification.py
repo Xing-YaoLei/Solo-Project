@@ -383,7 +383,8 @@ def update_rectification_data(status_filter, risk_filter):
             'status': status_display,
             'is_overdue': p['is_overdue'],
             'action': '详情',
-            'plan_id': p['id']
+            'plan_id': p['id'],
+            'issue_id': p['issue_id']
         })
     
     risk_colors = Config.RISK_COLORS
@@ -576,10 +577,11 @@ def toggle_plan_modal(active_cell, close_click, table_data, is_open):
                         ], style={'marginBottom': '16px'}),
                         
                         html.Div([
-                            html.Button(
+                            dcc.Link(
                                 '🔗 查看问题详情',
-                                id={'type': 'go-to-issue-detail', 'index': plan['issue_id']},
-                                className='btn btn-primary'
+                                href=f'/detail?issue_id={plan["issue_id"]}',
+                                className='btn btn-primary',
+                                style={'textDecoration': 'none'}
                             )
                         ])
                     ])

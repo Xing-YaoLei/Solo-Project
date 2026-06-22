@@ -5,7 +5,7 @@ import os
 
 from app.config import Config
 
-DB_TYPE = os.getenv('DB_TYPE', 'sqlite')
+DB_TYPE = os.getenv('DB_TYPE', 'postgresql')
 
 if DB_TYPE == 'sqlite':
     engine = create_engine('sqlite:///audit_compliance.db', echo=False)

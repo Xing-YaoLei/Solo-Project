@@ -6,7 +6,7 @@ import plotly.express as px
 from datetime import datetime, timedelta
 import pandas as pd
 
-from utils.data_service import get_risk_summary, get_trend_data
+from utils.data_service import get_risk_summary, get_trend_data, get_issues_by_filter
 from app.config import Config
 
 dash.register_page(__name__, path='/', name='风险监测')
@@ -35,11 +35,18 @@ def create_metric_card(value, label, trend=None, trend_up=False, variant='primar
 
 def create_heatmap(data):
     depts = [d['department'] for d in data['department_risks']]
+    dept_ids = [d['department_id'] for d in data['department_risks']]
     risk_levels = ['critical', 'high', 'medium', 'low']
     
     z = []
+    customdata = []
     for d in data['department_risks']:
-        z.append([d['critical'], d['high'], d['medium'], d['low']])
+        row = [d['critical'], d['high'], d['medium'], d['low']]
+        z.append(row)
+        customdata_row = []
+        for i, rl in enumerate(risk_levels):
+            customdata_row.append([d['department_id'], rl, d['department']])
+        customdata.append(customdata_row)
     
     colorscale = [
         [0, '#ffffff'],
@@ -54,6 +61,7 @@ def create_heatmap(data):
         z=z,
         x=risk_levels,
         y=depts,
+        customdata=customdata,
         colorscale=colorscale,
         showscale=True,
         hovertemplate='<b>%{y}</b><br>' +
@@ -238,6 +246,20 @@ def layout():
             id='interval-component',
             interval=60*1000,
             n_intervals=0
+        ),
+        
+        dbc.Modal(
+            [
+                dbc.ModalHeader(id='chart-modal-header'),
+                dbc.ModalBody(id='chart-modal-body'),
+                dbc.ModalFooter(
+                    dbc.Button('关闭', id='close-chart-modal', className='ms-auto')
+                ),
+            ],
+            id='chart-modal',
+            is_open=False,
+            size='lg',
+            scrollable=True
         )
     ])
 
@@ -277,6 +299,159 @@ def update_dashboard(start_date, end_date, dept_filter, n_clicks, n):
         create_trend_chart(trend_df),
         create_status_bar_chart(data['status_distribution'])
     )
+
+
+@callback(
+    [Output('chart-modal', 'is_open'),
+     Output('chart-modal-header', 'children'),
+     Output('chart-modal-body', 'children')],
+    [Input('heatmap-chart', 'clickData'),
+     Input('risk-pie-chart', 'clickData'),
+     Input('trend-chart', 'clickData'),
+     Input('status-chart', 'clickData'),
+     Input('close-chart-modal', 'n_clicks')],
+    [State('date-range', 'start_date'),
+     State('date-range', 'end_date'),
+     State('dept-filter', 'value'),
+     State('chart-modal', 'is_open')],
+    prevent_initial_call=True
+)
+def handle_chart_click(heatmap_click, pie_click, trend_click, status_click,
+                       close_click, start_date, end_date, dept_filter, is_open):
+    from dash import ctx
+    
+    triggered = ctx.triggered[0]['prop_id']
+    
+    if 'close-chart-modal' in triggered:
+        return False, None, None
+    
+    status_display = {
+        'pending': '待处理',
+        'in_progress': '处理中',
+        'verified': '已核实',
+        'resolved': '已解决',
+        'closed': '已关闭'
+    }
+    
+    dept_id = None
+    risk_level = None
+    status = None
+    modal_title = ''
+    issues = []
+    
+    start_dt = datetime.strptime(start_date, '%Y-%m-%d')
+    end_dt = datetime.strptime(end_date, '%Y-%m-%d')
+    date_range = (start_dt, end_dt)
+    
+    if 'heatmap-chart' in triggered and heatmap_click:
+        points = heatmap_click['points'][0]
+        cd = points.get('customdata')
+        if cd:
+            dept_id = cd[0]
+            risk_level = cd[1]
+            dept_name = cd[2]
+            modal_title = f'{dept_name} - {risk_level.upper()} 级风险问题'
+            issues = get_issues_by_filter(
+                department_id=dept_id, risk_level=risk_level, date_range=date_range
+            )
+    elif 'risk-pie-chart' in triggered and pie_click:
+        points = pie_click['points'][0]
+        risk_level = points['label']
+        modal_title = f'{risk_level.upper()} 级风险问题列表'
+        dept_id = None if dept_filter == 'all' else dept_filter
+        issues = get_issues_by_filter(
+            department_id=dept_id, risk_level=risk_level, date_range=date_range
+        )
+    elif 'trend-chart' in triggered and trend_click:
+        points = trend_click['points'][0]
+        risk_level = points['curveNumber']
+        risk_mapping = ['critical', 'high', 'medium', 'low']
+        risk_level = risk_mapping[risk_level] if risk_level < 4 else None
+        modal_title = f'{risk_level.upper()} 级风险趋势明细'
+        dept_id = None if dept_filter == 'all' else dept_filter
+        issues = get_issues_by_filter(
+            department_id=dept_id, risk_level=risk_level, date_range=date_range
+        )
+    elif 'status-chart' in triggered and status_click:
+        points = status_click['points'][0]
+        status_cn = points['x']
+        status_mapping = {'待处理': 'pending', '处理中': 'in_progress', 
+                         '已核实': 'verified', '已解决': 'resolved', '已关闭': 'closed'}
+        status = status_mapping.get(status_cn)
+        modal_title = f'{status_cn} 问题列表'
+        dept_id = None if dept_filter == 'all' else dept_filter
+        issues = get_issues_by_filter(
+            department_id=dept_id, status=status, date_range=date_range
+        )
+    
+    if not issues:
+        body = html.Div('暂无符合条件的问题', 
+                       style={'padding': '40px', 'textAlign': 'center', 'color': '#666'})
+        return True, modal_title, body
+    
+    issues_rows = []
+    for issue in issues:
+        issues_rows.append(html.Div([
+            html.Div(f"#{issue['id']}", style={
+                'flex': '0 0 60px',
+                'fontFamily': 'var(--font-mono)',
+                'fontSize': '12px',
+                'color': '#666'
+            }),
+            html.Div([
+                html.Div(issue['title'], style={'fontWeight': '500'}),
+                html.Div([
+                    html.Span(f"[{issue['department']}]", 
+                             style={'fontSize': '12px', 'color': '#666', 'marginRight': '8px'}),
+                    html.Span(issue['discovered_date'], 
+                             style={'fontSize': '12px', 'color': '#666'})
+                ], style={'marginTop': '2px'})
+            ], style={'flex': '1'}),
+            html.Div([
+                html.Span(issue['risk_level'].upper(), 
+                         className=f'risk-badge {issue["risk_level"]}',
+                         style={'marginRight': '8px'}),
+                html.Span(status_display.get(issue['status'], issue['status']),
+                         className=f'status-badge {issue["status"]}')
+            ], style={'flex': '0 0 180px', 'textAlign': 'right'}),
+            html.Div([
+                dcc.Link(
+                    '🔍 查看详情',
+                    href=f'/detail?issue_id={issue["id"]}',
+                    className='btn btn-primary btn-sm',
+                    style={'padding': '4px 12px', 'textDecoration': 'none'}
+                )
+            ], style={'flex': '0 0 100px', 'textAlign': 'right'})
+        ], style={
+            'display': 'flex',
+            'alignItems': 'center',
+            'padding': '12px',
+            'borderBottom': '1px solid #e9ecef',
+            'gap': '12px'
+        }))
+    
+    body = html.Div([
+        html.Div([
+            html.Div('ID', style={'flex': '0 0 60px', 'fontWeight': '500', 'color': 'var(--primary)'}),
+            html.Div('问题描述', style={'flex': '1', 'fontWeight': '500', 'color': 'var(--primary)'}),
+            html.Div('状态', style={'flex': '0 0 180px', 'fontWeight': '500', 'color': 'var(--primary)', 'textAlign': 'right'}),
+            html.Div('操作', style={'flex': '0 0 100px', 'fontWeight': '500', 'color': 'var(--primary)', 'textAlign': 'right'}),
+        ], style={
+            'display': 'flex',
+            'alignItems': 'center',
+            'padding': '10px 12px',
+            'background': '#f8f9fa',
+            'borderRadius': '4px 4px 0 0',
+            'gap': '12px'
+        }),
+        *issues_rows
+    ], style={
+        'border': '1px solid #e9ecef',
+        'borderRadius': '4px',
+        'overflow': 'hidden'
+    })
+    
+    return True, modal_title, body
 
 
 layout = layout
