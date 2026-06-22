@@ -2,7 +2,16 @@
 
 import { prisma } from '@/lib/prisma';
 import { requireUser } from './auth';
-import type { SourceType, RiskLevel } from '@/lib/utils';
+import type { SourceType, RiskLevel, AuditStatus } from '@/lib/utils';
+import {
+  parsePermissionLogs,
+  parseErpRecords,
+  parseEmailMaterials,
+  classifyRisk,
+  type ParsedPermissionLog,
+  type ParsedErpRecord,
+  type ParsedEmail,
+} from '@/lib/parsers';
 
 function uid(prefix: string) {
   return `${prefix}-${Math.random().toString(36).slice(2, 8)}${Date.now().toString(36).slice(-4)}`;
@@ -52,6 +61,47 @@ const EMAIL_TEMPLATES = [
   { subj: '供应商资质异常提醒', risk: 'HIGH' as RiskLevel, summary: '供应商资质已过期 47 天，仍在继续付款。' },
 ];
 
+export async function previewParse(input: CreateBatchInput) {
+  await requireUser(['MANAGEMENT', 'REVIEWER']);
+  const permLogs = parsePermissionLogs(input.permissionCsv ?? '');
+  const erpRows = parseErpRecords(input.erpCsv ?? '');
+  const emRows = parseEmailMaterials(input.emailEmlPack ?? '');
+
+  const permCount = permLogs.length;
+  const erpCount = erpRows.length;
+  const emailCount = emRows.length;
+
+  const riskBreakdown = {
+    HIGH: 0,
+    MEDIUM: 0,
+    LOW: 0,
+  };
+  for (const p of permLogs) riskBreakdown[p.riskLevel]++;
+  for (const e of erpRows) riskBreakdown[e.riskLevel]++;
+  for (const m of emRows) riskBreakdown[m.riskLevel]++;
+
+  const sourceType: SourceType =
+    permCount > 0 && erpCount > 0 && emailCount > 0
+      ? 'COMBINED'
+      : permCount > 0
+        ? 'PERMISSION_LOG'
+        : erpCount > 0
+          ? 'ERP_EXPORT'
+          : 'EMAIL_MATERIAL';
+
+  return {
+    ok: true,
+    counts: { permission: permCount, erp: erpCount, email: emailCount, total: permCount + erpCount + emailCount },
+    sourceType,
+    riskBreakdown,
+    preview: {
+      permission: permLogs.slice(0, 3),
+      erp: erpRows.slice(0, 3),
+      email: emRows.slice(0, 3),
+    },
+  };
+}
+
 export async function createAuditBatch(input: CreateBatchInput) {
   const user = await requireUser(['MANAGEMENT', 'REVIEWER']);
   const log: Array<{ t: string; step: string; msg: string }> = [];
@@ -61,9 +111,59 @@ export async function createAuditBatch(input: CreateBatchInput) {
   const batchId = uid('batch');
   const no = batchNo();
 
-  const permCount = (input.permissionCsv ?? '').split('\n').filter((l) => l.trim()).length || Math.floor(4 + Math.random() * 6);
-  const erpCount = (input.erpCsv ?? '').split('\n').filter((l) => l.trim()).length || Math.floor(3 + Math.random() * 4);
-  const emailCount = (input.emailEmlPack ?? '').split('\n').filter((l) => l.trim()).length || Math.floor(2 + Math.random() * 4);
+  push('2', '解析权限日志...');
+  const parsedPerm = parsePermissionLogs(input.permissionCsv ?? '');
+  const permLogs = parsedPerm.map((p) => ({
+    id: uid('pl'),
+    batchId,
+    userId: p.userId,
+    userName: p.userName,
+    action: p.action,
+    resource: p.resource,
+    ipAddress: p.ipAddress,
+    riskLevel: p.riskLevel,
+    happenedAt: p.happenedAt,
+    rawLine: p._raw || null,
+  }));
+  push('2.1', `权限日志解析完成：${permLogs.length} 条（H=${permLogs.filter((p) => p.riskLevel === 'HIGH').length} M=${permLogs.filter((p) => p.riskLevel === 'MEDIUM').length}）`);
+
+  push('3', '解析 ERP 导出...');
+  const parsedErp = parseErpRecords(input.erpCsv ?? '');
+  const erpRows = parsedErp.map((e) => ({
+    id: uid('erp'),
+    batchId,
+    documentNo: e.documentNo,
+    documentType: e.documentType,
+    amount: e.amount,
+    department: e.department,
+    operator: e.operator,
+    approver: e.approver,
+    riskLevel: e.riskLevel,
+    happenedAt: e.happenedAt,
+    _title: e._title,
+    rawLine: e._raw || null,
+  }));
+  push('3.1', `ERP 导出解析完成：${erpRows.length} 条（H=${erpRows.filter((p) => p.riskLevel === 'HIGH').length} M=${erpRows.filter((p) => p.riskLevel === 'MEDIUM').length}）`);
+
+  push('4', '解析邮件材料...');
+  const parsedEm = parseEmailMaterials(input.emailEmlPack ?? '');
+  const emRows = parsedEm.map((m) => ({
+    id: uid('em'),
+    batchId,
+    subject: m.subject,
+    sender: m.sender,
+    recipients: m.recipients,
+    summary: m.summary,
+    riskLevel: m.riskLevel,
+    sentAt: m.sentAt,
+    rawContent: m._raw || null,
+  }));
+  push('4.1', `邮件材料解析完成：${emRows.length} 封（H=${emRows.filter((p) => p.riskLevel === 'HIGH').length} M=${emRows.filter((p) => p.riskLevel === 'MEDIUM').length}）`);
+
+  const permCount = permLogs.length;
+  const erpCount = erpRows.length;
+  const emailCount = emRows.length;
+  const totalRaw = permCount + erpCount + emailCount;
 
   const sourceType: SourceType =
     permCount > 0 && erpCount > 0 && emailCount > 0
@@ -87,61 +187,24 @@ export async function createAuditBatch(input: CreateBatchInput) {
     },
   });
 
-  push('2', `解析权限日志 ${permCount} 条...`);
-  const permLogs = Array.from({ length: permCount }).map((_, i) => {
-    const t = PERM_ACTIONS[i % PERM_ACTIONS.length];
-    return {
-      id: uid('pl'),
-      batchId,
-      userId: `u-${i}`,
-      userName: `用户${String.fromCharCode(65 + i)}`,
-      action: t.a,
-      resource: t.r,
-      ipAddress: `10.10.${1 + i}.${20 + i}`,
-      riskLevel: t.risk,
-      happenedAt: daysAgo(Math.floor(Math.random() * 8)),
-    };
-  });
-  if (permLogs.length) await prisma.permissionLog.createMany({ data: permLogs });
-
-  push('3', `解析 ERP 导出 ${erpCount} 条...`);
-  const erpRows = Array.from({ length: erpCount }).map((_, i) => {
-    const t = ERP_TEMPLATES[i % ERP_TEMPLATES.length];
-    return {
-      id: uid('erp'),
-      batchId,
-      documentNo: `${t.no}-2026-${Math.floor(1000 + Math.random() * 9000)}`,
-      documentType: t.type,
-      amount: 100000 + Math.floor(Math.random() * 5000000),
-      department: ['采购部', '财务部', '市场部', '行政部'][i % 4],
-      operator: ['李华', '陈伟', '刘洋', '王磊'][i % 4],
-      approver: ['财务总监', 'CEO', '审计经理', '技术总监'][i % 4],
-      riskLevel: t.risk,
-      happenedAt: daysAgo(i),
-      _title: t.title,
-    };
-  });
-  if (erpRows.length) {
-    await prisma.erpRecord.createMany({
-      data: erpRows.map(({ _title, ...rest }) => rest),
+  if (permLogs.length) {
+    const { rawLine, ...dbPerm } = permLogs[0] as any;
+    await prisma.permissionLog.createMany({
+      data: permLogs.map(({ rawLine, ...rest }: any) => rest),
     });
   }
 
-  push('4', `解析邮件材料 ${emailCount} 封...`);
-  const emRows = Array.from({ length: emailCount }).map((_, i) => {
-    const t = EMAIL_TEMPLATES[i % EMAIL_TEMPLATES.length];
-    return {
-      id: uid('em'),
-      batchId,
-      subject: t.subj,
-      sender: ['audit-alert@company.com', 'vendor-risk@company.com', 'legal-review@company.com'][i % 3],
-      recipients: JSON.stringify(['management@company.com', 'reviewer@company.com']),
-      summary: t.summary,
-      riskLevel: t.risk,
-      sentAt: daysAgo(i + 1),
-    };
-  });
-  if (emRows.length) await prisma.emailMaterial.createMany({ data: emRows });
+  if (erpRows.length) {
+    await prisma.erpRecord.createMany({
+      data: erpRows.map(({ _title, rawLine, ...rest }: any) => rest),
+    });
+  }
+
+  if (emRows.length) {
+    await prisma.emailMaterial.createMany({
+      data: emRows.map(({ rawContent, ...rest }: any) => rest),
+    });
+  }
 
   push('5', '三源合并、去重并生成整改项...');
   type AuditSeed = {
@@ -182,39 +245,59 @@ export async function createAuditBatch(input: CreateBatchInput) {
     });
   }
 
-  const RULES = ['按地域划分', '按部门归属', '按流程分类', '按资产类别', '按风险等级委派'];
-  const EXECS = ['exec-001', 'exec-002'];
-  const audits = seeds.map((s, i) => ({
-    id: uid('aud'),
-    title: s.title,
-    description: s.description,
-    riskLevel: s.riskLevel,
-    status: i < seeds.length / 3 ? 'ASSIGNED' : i < (seeds.length * 2) / 3 ? 'IN_PROGRESS' : 'CREATED',
-    dispatchRule: RULES[Math.floor(Math.random() * RULES.length)],
-    sourceType: s.sourceType,
-    assigneeId: s.riskLevel === 'MEDIUM' || s.riskLevel === 'HIGH' ? EXECS[Math.floor(Math.random() * EXECS.length)] : null,
-    reviewerId: s.riskLevel === 'HIGH' ? 'rev-001' : null,
-    batchId,
-    deadlineAt: daysFromNow(s.deadlineDays - Math.floor(i / 3)),
-    revisionCount: 0,
-  }));
-
-  for (const a of audits) {
-    await prisma.auditItem.create({ data: a });
+  function assignerFor(risk: RiskLevel, source: SourceType): { assigneeId: string | null; reviewerId: string | null; rule: string } {
+    if (source === 'PERMISSION_LOG' && risk === 'HIGH') {
+      return { assigneeId: 'exec-002', reviewerId: 'rev-001', rule: '高风险权限异常 → 陈伟（首席）' };
+    }
+    if (source === 'EMAIL_MATERIAL' && risk === 'HIGH') {
+      return { assigneeId: 'exec-002', reviewerId: 'rev-001', rule: '高风险邮件预警 → 陈伟（首席）' };
+    }
+    if (source === 'ERP_EXPORT') {
+      return { assigneeId: 'exec-001', reviewerId: 'rev-001', rule: 'ERP 单据审计 → 李华（财务审计）' };
+    }
+    if (risk === 'MEDIUM') {
+      return { assigneeId: 'exec-001', reviewerId: null, rule: '中风险 → 李华' };
+    }
+    if (risk === 'HIGH') {
+      return { assigneeId: 'exec-001', reviewerId: 'rev-001', rule: '高风险 → 李华 + 复核' };
+    }
+    return { assigneeId: null, reviewerId: null, rule: '待分派' };
   }
 
-  push('OK', `成功！批次 ${no}：三源记录 ${permCount + erpCount + emailCount} 条 / 整改项 ${audits.length} 条`);
+  const audits = seeds.map((s, i) => {
+    const { assigneeId, reviewerId, rule } = assignerFor(s.riskLevel, s.sourceType);
+    return {
+      id: uid('aud'),
+      title: s.title,
+      description: s.description,
+      riskLevel: s.riskLevel,
+      status: (assigneeId ? 'ASSIGNED' : 'CREATED') as AuditStatus,
+      dispatchRule: rule,
+      sourceType: s.sourceType,
+      assigneeId,
+      reviewerId,
+      batchId,
+      deadlineAt: daysFromNow(Math.max(1, s.deadlineDays - Math.floor(i / 5))),
+      revisionCount: 0,
+    };
+  });
+
+  if (audits.length) {
+    await prisma.auditItem.createMany({ data: audits });
+  }
+
+  push('OK', `成功！批次 ${no}：三源记录 ${totalRaw} 条 / 整改项 ${audits.length} 条`);
 
   await prisma.importBatch.update({
     where: { id: batchId },
     data: {
       status: 'SUCCESS',
-      recordCount: permCount + erpCount + emailCount + audits.length,
+      recordCount: totalRaw + audits.length,
       processLog: JSON.stringify(log),
     },
   });
 
-  return { ok: true, batchId, batchNo: no, auditCount: audits.length, log };
+  return { ok: true, batchId, batchNo: no, auditCount: audits.length, log, counts: { permission: permCount, erp: erpCount, email: emailCount } };
 }
 
 export async function listBatches() {

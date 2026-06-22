@@ -1,6 +1,6 @@
 import Link from 'next/link';
 import { redirect } from 'next/navigation';
-import { listBatches, createAuditBatch } from '@/app/actions/batches';
+import { listBatches } from '@/app/actions/batches';
 import { SourceBadge, BatchStatusBadge, RiskBadge } from '@/components/ui/Badges';
 import { cn, formatDateTime, formatNumber, SOURCE_LABEL } from '@/lib/utils';
 import type { SourceType } from '@/lib/utils';
@@ -75,7 +75,7 @@ export default async function ImportCenterPage() {
             点击批次进入详情，查看原始权限日志 / ERP / 邮件 与生成的整改项
           </p>
         </div>
-        <ImportWizardButton onCreate={createAuditBatch as any} />
+        <ImportWizardButton />
       </div>
 
       <div className="card overflow-hidden">

@@ -64,7 +64,7 @@ export async function getAuditDetail(id: string) {
   const audit = await prisma.auditItem.findUnique({
     where: { id },
     include: {
-      batch: { select: { id: true, batchNo: true, sourceType: true, fileName: true } },
+      batch: { select: { id: true, batchNo: true, sourceType: true, fileName: true, createdById: true } },
       assignee: { select: { id: true, name: true, email: true, department: true } },
       reviewer: { select: { id: true, name: true, email: true } },
       rectifications: { orderBy: { createdAt: 'desc' } },
@@ -74,7 +74,31 @@ export async function getAuditDetail(id: string) {
   if (!audit) return { user, audit: null as any, forbidden: false };
 
   const forbidden = user.role === 'EXECUTOR' && audit.assigneeId !== user.id;
-  return { user, audit, forbidden };
+  if (forbidden) {
+    const sanitized = {
+      ...audit,
+      title: '无权限查看',
+      description: '您没有权限查看该整改项的内容',
+      assignee: null,
+      reviewer: null,
+      assigneeId: null,
+      reviewerId: null,
+      batch: { id: audit.batch.id, batchNo: '********', sourceType: null, fileName: null, createdById: null },
+      rectifications: [],
+      reviews: [],
+      dispatchRule: '***',
+      riskLevel: 'MEDIUM' as const,
+      status: 'CREATED' as const,
+      deadlineAt: new Date(),
+      createdAt: new Date(),
+      closedAt: null,
+      closeReason: null,
+      revisionCount: 0,
+      firstTimePass: null,
+    };
+    return { user, audit: sanitized, forbidden: true };
+  }
+  return { user, audit, forbidden: false };
 }
 
 export async function submitRectification(auditId: string, description: string, fileNames: string[] = []) {
