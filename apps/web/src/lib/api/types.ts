@@ -266,6 +266,7 @@ export interface Attachment {
   evidenceId: string;
   version: number;
   isSupplement: boolean;
+  supplementId?: string;
   uploadedById?: string;
   uploadedBy?: User;
   createdAt: string;

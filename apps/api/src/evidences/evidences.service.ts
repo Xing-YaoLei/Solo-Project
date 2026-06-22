@@ -60,7 +60,8 @@ const attachmentSelectFields = {
   fileHash: true,
   version: true,
   isSupplement: true,
-  uploadedAt: true,
+  supplementId: true,
+  createdAt: true,
   uploadedBy: {
     select: {
       id: true,
@@ -404,12 +405,13 @@ export class EvidencesService {
         },
       });
 
-      await tx.evidence.update({
+      const updatedEvidence = await tx.evidence.update({
         where: { id: requestDto.evidenceId },
         data: { status: EvidenceStatus.NEED_SUPPLEMENT },
+        select: evidenceSelectFields,
       });
 
-      return supplement;
+      return { ...supplement, evidenceId: requestDto.evidenceId, updatedEvidence };
     });
 
     this.logger.log(`发起补附件请求: 证据[${evidence.evidenceNo}]`);

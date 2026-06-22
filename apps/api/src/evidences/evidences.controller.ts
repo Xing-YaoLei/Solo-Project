@@ -198,6 +198,7 @@ export class EvidencesController {
     description: '发起补附件请求',
     beforeDataTargetIdField: 'evidenceId',
     getTargetId: (_ctx, result) => result?.evidenceId || '',
+    getAfterData: (result: any) => result?.updatedEvidence || null,
   })
   @ApiOperation({ summary: '发起补附件请求' })
   requestSupplement(
