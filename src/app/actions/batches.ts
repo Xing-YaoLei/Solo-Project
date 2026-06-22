@@ -179,7 +179,7 @@ export async function createAuditBatch(input: CreateBatchInput) {
 
   if (totalRaw === 0) {
     push('ERR', '未解析到任何有效记录，请检查输入内容是否符合格式要求');
-    throw new Error('未解析到任何有效记录，请检查输入内容是否符合格式要求');
+    return { ok: false, error: '未解析到任何有效记录，请检查输入内容是否符合格式要求', log, counts: { permission: 0, erp: 0, email: 0, total: 0 } };
   }
 
   const sourceType: SourceType = input.sourceType;
@@ -198,7 +198,6 @@ export async function createAuditBatch(input: CreateBatchInput) {
   });
 
   if (permLogs.length) {
-    const { rawLine, ...dbPerm } = permLogs[0] as any;
     await prisma.permissionLog.createMany({
       data: permLogs.map(({ rawLine, ...rest }: any) => rest),
     });
@@ -307,7 +306,7 @@ export async function createAuditBatch(input: CreateBatchInput) {
     },
   });
 
-  return { ok: true, batchId, batchNo: no, auditCount: audits.length, log, counts: { permission: permCount, erp: erpCount, email: emailCount } };
+  return { ok: true, batchId, batchNo: no, auditCount: audits.length, log, counts: { permission: permCount, erp: erpCount, email: emailCount, total: totalRaw } };
 }
 
 export async function listBatches() {

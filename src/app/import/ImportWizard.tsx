@@ -29,6 +29,7 @@ type Step = 1 | 2 | 3;
 
 interface PreviewResult {
   ok: boolean;
+  error?: string;
   counts: { permission: number; erp: number; email: number; total: number };
   sourceType: SourceType;
   riskBreakdown: { HIGH: number; MEDIUM: number; LOW: number };
@@ -132,6 +133,10 @@ export function ImportWizardButton({ onCreated }: Props) {
   }
 
   async function confirm() {
+    if (!preview || !preview.ok || preview.counts.total === 0) {
+      setError('当前数据源没有解析到有效记录，请粘贴内容或上传文件后再提交。');
+      return;
+    }
     setRunning(true);
     setError(null);
     try {
@@ -476,11 +481,19 @@ export function ImportWizardButton({ onCreated }: Props) {
                           </div>
                         )}
 
-                        {preview.counts.total === 0 && (
+                        {preview.error && (
+                          <div className="flex items-start gap-2 bg-rose-50 rounded-lg p-3 border border-rose-200">
+                            <AlertTriangle className="w-4 h-4 text-rose-600 flex-shrink-0 mt-0.5" />
+                            <div className="text-[11px] text-rose-800">
+                              {preview.error}
+                            </div>
+                          </div>
+                        )}
+                        {!preview.error && preview.counts.total === 0 && (
                           <div className="flex items-start gap-2 bg-amber-50 rounded-lg p-3 border border-amber-200">
                             <AlertTriangle className="w-4 h-4 text-amber-600 flex-shrink-0 mt-0.5" />
                             <div className="text-[11px] text-amber-800">
-                              当前无解析到记录。留空将自动生成示例数据，用于验证三源合并→整改项写入流程。
+                              当前无解析到记录，请粘贴 CSV/EML 内容或上传对应文件。
                             </div>
                           </div>
                         )}
