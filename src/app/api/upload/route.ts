@@ -5,16 +5,28 @@ import { nanoid } from 'nanoid'
 import { getCurrentUserId } from '@/lib/auth'
 import { prisma } from '@/lib/prisma'
 import Papa from 'papaparse'
+import type { Prisma } from '@prisma/client'
 
-interface UploadResult {
-  fileName: string
-  fileUrl: string
-  importType: string
+interface LinkedTicketInfo {
+  ticketId: string
+  ticketNo: string
+  title: string
+  row?: number
+}
+
+interface ProcessedResult {
   totalRows: number
   successRows: number
   errorRows: number
-  errors?: Array<{ row: number; field?: string; ticket_no?: string; message?: string; reason?: string }>
-  linkedTickets?: number
+  linkedTickets: number
+  errors: Array<{ row: number; field?: string; ticket_no?: string; message?: string; reason?: string }>
+  linkedTicketInfos: LinkedTicketInfo[]
+}
+
+interface UploadResult extends ProcessedResult {
+  fileName: string
+  fileUrl: string
+  importType: string
 }
 
 function parseCsvRows(content: string): any[] {
@@ -28,14 +40,37 @@ function parseCsvRows(content: string): any[] {
   }) as any as any[]
 }
 
+function buildErpEmailBody(row: Record<string, any>, originalFileName: string): string {
+  const parts: string[] = [
+    `【ERP导出原始记录】`,
+    ``,
+    `标题：${row.title || ''}`,
+    `部门：${row.department || ''}`,
+    `问题描述：${row.description || ''}`,
+  ]
+  if (row.assignee_email) parts.push(`整改负责人：${row.assignee_email}`)
+  if (row.due_date) parts.push(`整改期限：${row.due_date}`)
+  if (row.priority) parts.push(`优先级：${row.priority}`)
+  if (row.category) parts.push(`类别：${row.category}`)
+  if (row.evidence_email) {
+    parts.push(``)
+    parts.push(`--- 证据邮件摘要 ---`)
+    parts.push(String(row.evidence_email))
+  }
+  parts.push(``)
+  parts.push(`来源文件：${originalFileName}`)
+  return parts.join('\n')
+}
+
 async function processErpImport(
   rows: any[],
   currentUserId: string,
-  fileName: string
-): Promise<Omit<UploadResult, 'fileName' | 'fileUrl' | 'importType'>> {
+  originalFileName: string,
+  uploadFileUrl: string
+): Promise<ProcessedResult> {
   const REQUIRED_FIELDS = ['title', 'department', 'description']
-  const errors: Array<{ row: number; field: string; message: string }> = []
-  const createdTicketIds: string[] = []
+  const errors: ProcessedResult['errors'] = []
+  const linkedTicketInfos: LinkedTicketInfo[] = []
 
   const users = await prisma.user.findMany()
   const userEmailMap = new Map(users.map((u) => [u.email, u.id]))
@@ -44,8 +79,8 @@ async function processErpImport(
     const importRecord = await tx.importRecord.create({
       data: {
         type: 'erp_export',
-        fileName,
-        fileUrl: '',
+        fileName: originalFileName,
+        fileUrl: uploadFileUrl,
         totalRows: rows.length,
         successRows: 0,
         errorRows: 0,
@@ -96,26 +131,30 @@ async function processErpImport(
           data: {
             ticketId: ticket.id,
             action: '从ERP导入创建',
-            description: `从文件 ${fileName} 导入创建`,
+            description: `从文件 ${originalFileName} 第${rowNum}行导入创建（来源：${uploadFileUrl}）`,
             operatorId: currentUserId,
           },
         })
 
-        if (row.evidence_email) {
-          await tx.emailMaterial.create({
-            data: {
-              ticketId: ticket.id,
-              subject: `ERP导出证据 - ${row.title}`,
-              sender: 'erp-system@company.com',
-              recipients: row.assignee_email || 'auditor@company.com',
-              sentAt: new Date(),
-              bodyPreview: String(row.evidence_email || ''),
-              attachmentUrls: row.attachments ? String(row.attachments) : undefined,
-            },
-          })
-        }
+        await tx.emailMaterial.create({
+          data: {
+            ticketId: ticket.id,
+            subject: `ERP导出记录 - ${row.title}`,
+            sender: 'erp-system@company.com',
+            recipients: row.assignee_email || 'auditor@company.com',
+            sentAt: new Date(),
+            bodyPreview: buildErpEmailBody(row, originalFileName),
+            attachmentUrls: uploadFileUrl,
+            storagePath: `/imports/erp/${importRecord.id}/row_${rowNum}_${ticket.id}.csv`,
+          },
+        })
 
-        createdTicketIds.push(ticket.id)
+        linkedTicketInfos.push({
+          ticketId: ticket.id,
+          ticketNo: ticket.ticketNo,
+          title: ticket.title,
+          row: rowNum,
+        })
       } catch (rowError) {
         errors.push({
           row: rowNum,
@@ -125,40 +164,41 @@ async function processErpImport(
       }
     }
 
-    const successRows = createdTicketIds.length
+    const successRows = linkedTicketInfos.length
     const errorRows = rows.length - successRows
 
     await tx.importRecord.update({
       where: { id: importRecord.id },
-      data: { successRows, errorRows, fileUrl: `/uploads/${fileName}` },
+      data: { successRows, errorRows },
     })
 
-    return { totalRows: rows.length, successRows, errorRows }
+    return { totalRows: rows.length, successRows, errorRows, linkedTickets: linkedTicketInfos.length }
   })
 
-  return { ...result, errors }
+  return { ...result, errors, linkedTicketInfos }
 }
 
 async function processPermissionLogImport(
   rows: any[],
   currentUserId: string,
-  fileName: string,
+  originalFileName: string,
+  uploadFileUrl: string,
   format: string
-): Promise<Omit<UploadResult, 'fileName' | 'fileUrl' | 'importType'>> {
+): Promise<ProcessedResult> {
   const tickets = await prisma.ticket.findMany({
-    select: { id: true, ticketNo: true },
+    select: { id: true, ticketNo: true, title: true },
   })
-  const ticketMap = new Map(tickets.map((t) => [t.ticketNo, t.id]))
+  const ticketMap = new Map(tickets.map((t) => [t.ticketNo, { id: t.id, title: t.title }]))
 
-  const errors: Array<{ row: number; ticket_no: string; reason: string }> = []
-  let linkedCount = 0
+  const errors: ProcessedResult['errors'] = []
+  const linkedTicketInfos: LinkedTicketInfo[] = []
 
   const result = await prisma.$transaction(async (tx) => {
     const importRecord = await tx.importRecord.create({
       data: {
         type: 'permission_log',
-        fileName,
-        fileUrl: '',
+        fileName: originalFileName,
+        fileUrl: uploadFileUrl,
         totalRows: rows.length,
         successRows: 0,
         errorRows: 0,
@@ -167,16 +207,17 @@ async function processPermissionLogImport(
 
     for (let i = 0; i < rows.length; i++) {
       const record = rows[i]
-      const ticketNo = record.ticket_no?.trim()
+      const rowNum = i + 1
+      const ticketNoRaw = record.ticket_no?.trim()
 
-      if (!ticketNo) {
-        errors.push({ row: i + 1, ticket_no: '', reason: '缺少 ticket_no 字段' })
+      if (!ticketNoRaw) {
+        errors.push({ row: rowNum, ticket_no: '', reason: '缺少 ticket_no 字段' })
         continue
       }
 
-      const ticketId = ticketMap.get(ticketNo)
-      if (!ticketId) {
-        errors.push({ row: i + 1, ticket_no: ticketNo, reason: `工单号 "${ticketNo}" 在系统中不存在` })
+      const matched = ticketMap.get(ticketNoRaw)
+      if (!matched) {
+        errors.push({ row: rowNum, ticket_no: ticketNoRaw, reason: `工单号 "${ticketNoRaw}" 在系统中不存在` })
         continue
       }
 
@@ -186,33 +227,45 @@ async function processPermissionLogImport(
           : '权限日志记录'
 
         const bodyPreview = [
+          `【权限日志原始记录】`,
+          ``,
           record.timestamp && `时间：${record.timestamp}`,
           record.user_email && `用户：${record.user_email}`,
           record.ip_address && `IP：${record.ip_address}`,
           record.status && `状态：${record.status}`,
+          record.action && `操作：${record.action}`,
+          record.resource && `资源：${record.resource}`,
           record.details && `详情：${record.details}`,
+          ``,
+          `来源文件：${originalFileName}`,
+          `所在行：第${rowNum}行`,
         ]
           .filter(Boolean)
           .join('\n')
 
         await tx.emailMaterial.create({
           data: {
-            ticketId,
+            ticketId: matched.id,
             subject,
             sender: 'permission-audit@company.com',
             recipients: record.user_email || 'compliance@company.com',
             sentAt: record.timestamp ? new Date(record.timestamp) : new Date(),
             bodyPreview,
-            attachmentUrls: `/uploads/${fileName}`,
-            storagePath: `/imports/permission/${importRecord.id}/${ticketNo}.${format}`,
+            attachmentUrls: uploadFileUrl,
+            storagePath: `/imports/permission/${importRecord.id}/${ticketNoRaw}_row_${rowNum}.${format}`,
           },
         })
 
-        linkedCount++
+        linkedTicketInfos.push({
+          ticketId: matched.id,
+          ticketNo: ticketNoRaw,
+          title: matched.title,
+          row: rowNum,
+        })
       } catch (recordError) {
         errors.push({
-          row: i + 1,
-          ticket_no: ticketNo,
+          row: rowNum,
+          ticket_no: ticketNoRaw,
           reason: recordError instanceof Error ? recordError.message : '写入失败',
         })
       }
@@ -222,19 +275,18 @@ async function processPermissionLogImport(
 
     await tx.importRecord.update({
       where: { id: importRecord.id },
-      data: { successRows: linkedCount, errorRows, fileUrl: `/uploads/${fileName}` },
+      data: { successRows: linkedTicketInfos.length, errorRows },
     })
 
-    return { totalRows: rows.length, linkedCount, errorRows }
+    return {
+      totalRows: rows.length,
+      successRows: linkedTicketInfos.length,
+      errorRows,
+      linkedTickets: linkedTicketInfos.length,
+    }
   })
 
-  return {
-    totalRows: result.totalRows,
-    successRows: result.linkedCount,
-    errorRows: result.errorRows,
-    linkedTickets: result.linkedCount,
-    errors,
-  }
+  return { ...result, errors, linkedTicketInfos }
 }
 
 export async function POST(request: NextRequest) {
@@ -260,7 +312,7 @@ export async function POST(request: NextRequest) {
     await mkdir(uploadDir, { recursive: true })
     await writeFile(join(uploadDir, safeName), buffer)
 
-    const fileUrl = `/uploads/${safeName}`
+    const uploadFileUrl = `/uploads/${safeName}`
     const content = buffer.toString('utf-8')
 
     let rows: any[]
@@ -277,18 +329,18 @@ export async function POST(request: NextRequest) {
     let result: UploadResult
 
     if (importType === 'erp_export') {
-      const processed = await processErpImport(rows, currentUserId, file.name)
+      const processed = await processErpImport(rows, currentUserId, file.name, uploadFileUrl)
       result = {
         fileName: file.name,
-        fileUrl,
+        fileUrl: uploadFileUrl,
         importType: 'erp_export',
         ...processed,
       }
     } else {
-      const processed = await processPermissionLogImport(rows, currentUserId, file.name, ext)
+      const processed = await processPermissionLogImport(rows, currentUserId, file.name, uploadFileUrl, ext)
       result = {
         fileName: file.name,
-        fileUrl,
+        fileUrl: uploadFileUrl,
         importType: 'permission_log',
         ...processed,
       }

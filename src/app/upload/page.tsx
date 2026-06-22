@@ -1,13 +1,20 @@
 'use client'
 
 import { useState, useCallback } from 'react'
-import { Upload, FileSpreadsheet, ShieldCheck, CheckCircle2, XCircle, AlertTriangle, Loader2, FileText } from 'lucide-react'
+import { Upload, FileSpreadsheet, ShieldCheck, CheckCircle2, XCircle, AlertTriangle, Loader2, FileText, ExternalLink, FolderUp } from 'lucide-react'
 import Sidebar from '@/components/layout/sidebar'
 import Header from '@/components/layout/header'
 import { cn } from '@/lib/utils'
 
 type ImportType = 'erp_export' | 'permission_log'
 type UploadStatus = 'idle' | 'uploading' | 'success' | 'error'
+
+interface LinkedTicketInfo {
+  ticketId: string
+  ticketNo: string
+  title: string
+  row?: number
+}
 
 interface UploadResult {
   fileName: string
@@ -16,8 +23,9 @@ interface UploadResult {
   totalRows: number
   successRows: number
   errorRows: number
+  linkedTickets: number
   errors?: Array<{ row: number; field?: string; ticket_no?: string; message?: string; reason?: string }>
-  linkedTickets?: number
+  linkedTicketInfos: LinkedTicketInfo[]
 }
 
 const importTypeConfig: Record<ImportType, { label: string; description: string; icon: typeof FileSpreadsheet; color: string; requiredColumns: string[] }> = {
@@ -274,7 +282,7 @@ export default function UploadPage() {
                     <p className="mt-1 text-xs text-emerald-700">
                       {result.importType === 'erp_export'
                         ? `成功创建 ${result.successRows} 条审计工单`
-                        : `成功关联 ${result.linkedTickets ?? result.successRows} 条权限日志到对应工单`}
+                        : `成功关联 ${result.linkedTickets} 条权限日志到对应工单`}
                       {result.errorRows > 0 && `，${result.errorRows} 条处理失败`}
                     </p>
                   </div>
@@ -299,12 +307,66 @@ export default function UploadPage() {
                     </div>
                   </div>
 
-                  <div className="mt-4 rounded-lg bg-slate-50 p-3">
+                  <div className="mt-4 space-y-2 rounded-lg bg-slate-50 p-3">
                     <p className="text-xs text-slate-600">
-                      <span className="font-medium">文件：</span>{result.fileName}
+                      <span className="font-medium">原始文件名：</span>{result.fileName}
+                    </p>
+                    <p className="text-xs text-slate-600">
+                      <span className="font-medium">实际存储地址：</span>
+                      <code className="mx-1 rounded bg-white px-1.5 py-0.5 text-emerald-700 shadow-sm">
+                        {result.fileUrl}
+                      </code>
+                      <span className="text-slate-400">（贯穿 ImportRecord 与邮件材料附件字段）</span>
                     </p>
                   </div>
                 </div>
+
+                {result.linkedTicketInfos && result.linkedTicketInfos.length > 0 && (
+                  <div className="rounded-xl border border-emerald-200 bg-emerald-50/50 p-5">
+                    <div className="mb-3 flex items-center gap-2">
+                      <FolderUp className="h-4 w-4 text-emerald-600" />
+                      <h3 className="text-sm font-bold text-emerald-900">
+                        {result.importType === 'erp_export' ? '新增工单列表' : '关联工单列表'}
+                      </h3>
+                      <span className="ml-auto inline-flex items-center rounded-full bg-emerald-100 px-2.5 py-0.5 text-xs font-medium text-emerald-700">
+                        共 {result.linkedTicketInfos.length} 条
+                      </span>
+                    </div>
+                    <div className="max-h-80 space-y-2 overflow-y-auto pr-1">
+                      {result.linkedTicketInfos.map((info) => (
+                        <a
+                          key={`${info.ticketId}-${info.row || 0}`}
+                          href={`/tickets/${info.ticketId}`}
+                          target="_blank"
+                          rel="noopener noreferrer"
+                          className="group flex items-center gap-3 rounded-lg border border-emerald-100 bg-white p-3 transition-all hover:border-emerald-300 hover:shadow-sm"
+                        >
+                          <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg bg-emerald-100 group-hover:bg-emerald-200 transition-colors">
+                            <FileText className="h-4 w-4 text-emerald-600" />
+                          </div>
+                          <div className="min-w-0 flex-1">
+                            <div className="flex items-center gap-2">
+                              <span className="text-xs font-bold text-navy-900">{info.ticketNo}</span>
+                              {info.row !== undefined && (
+                                <span className="inline-flex rounded bg-slate-100 px-1.5 py-0.5 text-[10px] text-slate-500">
+                                  CSV 第 {info.row} 行
+                                </span>
+                              )}
+                            </div>
+                            <p className="mt-0.5 truncate text-xs text-slate-600">{info.title}</p>
+                            <p className="mt-0.5 text-[11px] text-emerald-600 group-hover:underline">
+                              点击查看邮件材料追溯 →
+                            </p>
+                          </div>
+                          <ExternalLink className="h-3.5 w-3.5 shrink-0 text-slate-300 group-hover:text-emerald-500 transition-colors" />
+                        </a>
+                      ))}
+                    </div>
+                    <p className="mt-3 text-[11px] text-slate-400">
+                      进入任意工单详情页，在"邮件材料追溯"区块可看到导入时沉淀的原始记录，"附件地址"字段指向本 CSV 文件。
+                    </p>
+                  </div>
+                )}
 
                 {result.errors && result.errors.length > 0 && (
                   <div className="rounded-xl border border-amber-200 bg-amber-50 p-5">
