@@ -88,7 +88,6 @@ function SceneContent() {
             isSelected={selectedCase === c.id}
             isAssigned={!!assignments[c.id]}
             onClick={() => {
-              if (!isPlaying) return;
               if (assignments[c.id]) {
                 useGameStore.getState().unassignCase(c.id);
               } else {

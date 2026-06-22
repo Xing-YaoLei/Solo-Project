@@ -6,6 +6,8 @@ export default function LevelSelect() {
 
   if (currentScreen !== 'levelSelect') return null;
 
+  const safeLevelStars = levelStars || {};
+
   const renderStars = (count) => {
     const stars = [];
     for (let i = 0; i < 3; i++) {
@@ -29,7 +31,7 @@ export default function LevelSelect() {
       <div className="level-grid">
         {levels.map((level) => {
           const isUnlocked = unlockedLevels.includes(level.id);
-          const stars = levelStars[level.id] || 0;
+          const stars = safeLevelStars[level.id] || 0;
           
           return (
             <div

@@ -7,7 +7,13 @@ const getInitialState = () => {
     try {
       const parsed = JSON.parse(saved);
       return {
-        ...parsed,
+        unlockedLevels: parsed.unlockedLevels || [1],
+        levelStars: parsed.levelStars || {},
+        levelStats: parsed.levelStats || {},
+        totalGames: parsed.totalGames || 0,
+        bestSatisfaction: parsed.bestSatisfaction || 0,
+        bestTime: parsed.bestTime || Infinity,
+        playerName: parsed.playerName || '玩家',
         currentScreen: 'menu',
         isPlaying: false,
         isPaused: false,
@@ -19,6 +25,9 @@ const getInitialState = () => {
         showResult: false,
         resultData: null,
         leaderboardTab: 'satisfaction',
+        selectedCase: null,
+        conflictMessage: null,
+        successMessage: null,
       };
     } catch (e) {
       console.error('Failed to parse saved state', e);
@@ -51,6 +60,8 @@ export const useGameStore = create((set, get) => ({
   resultData: null,
   leaderboardTab: 'satisfaction',
   selectedCase: null,
+  conflictMessage: null,
+  successMessage: null,
 
   saveProgress: () => {
     const state = get();
@@ -77,7 +88,7 @@ export const useGameStore = create((set, get) => ({
     set({
       currentLevel: level,
       currentScreen: 'game',
-      isPlaying: false,
+      isPlaying: !needsTutorial,
       timeRemaining: level.targetTime,
       assignments: {},
       satisfaction: 0,
@@ -86,6 +97,8 @@ export const useGameStore = create((set, get) => ({
       showResult: false,
       resultData: null,
       selectedCase: null,
+      conflictMessage: null,
+      successMessage: null,
     });
   },
 
@@ -126,12 +139,24 @@ export const useGameStore = create((set, get) => ({
     const currentCount = Object.values(newAssignments).filter(s => s === slotId).length;
     
     if (currentCount >= slot.maxCapacity) {
+      set({
+        conflictMessage: `⚠️ ${slot.time} 时段容量已满！(${currentCount}/${slot.maxCapacity})`,
+      });
+      setTimeout(() => set({ conflictMessage: null }), 2000);
       return false;
     }
 
     newAssignments[caseId] = slotId;
     
     const satisfaction = calculateSatisfaction(level, newAssignments);
+    
+    const isPreferred = caseItem.preferredSlot === slotId;
+    if (isPreferred) {
+      set({
+        successMessage: `✅ ${caseItem.name} 安排到偏好时段！`,
+      });
+      setTimeout(() => set({ successMessage: null }), 2000);
+    }
     
     set({ assignments: newAssignments, satisfaction, selectedCase: null });
     return true;
@@ -254,7 +279,7 @@ export const useGameStore = create((set, get) => ({
     if (!level) return;
 
     set({
-      isPlaying: false,
+      isPlaying: true,
       timeRemaining: level.targetTime,
       assignments: {},
       satisfaction: 0,
@@ -262,6 +287,8 @@ export const useGameStore = create((set, get) => ({
       resultData: null,
       selectedCase: null,
       showTutorial: false,
+      conflictMessage: null,
+      successMessage: null,
     });
   },
 
@@ -275,6 +302,8 @@ export const useGameStore = create((set, get) => ({
       assignments: {},
       satisfaction: 0,
       selectedCase: null,
+      conflictMessage: null,
+      successMessage: null,
     });
   },
 

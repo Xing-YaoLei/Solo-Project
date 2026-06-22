@@ -6,20 +6,24 @@ import * as THREE from 'three';
 
 export default function TimeSlotCard({ slot, position, assignedCases, isSelected, onClick }) {
   const meshRef = useRef();
+  const borderRef = useRef();
   const [hovered, setHovered] = useState(false);
 
   const capacityRatio = assignedCases.length / slot.maxCapacity;
+  const isFull = capacityRatio >= 1;
+  const isWarning = capacityRatio >= 0.7 && !isFull;
   
   const cardColor = useMemo(() => {
-    if (capacityRatio >= 1) return '#ef4444';
-    if (capacityRatio >= 0.7) return '#f59e0b';
+    if (isFull) return '#ef4444';
+    if (isWarning) return '#f59e0b';
     return '#22c55e';
-  }, [capacityRatio]);
+  }, [isFull, isWarning]);
 
   const glowIntensity = useMemo(() => {
-    if (isSelected && capacityRatio < 1) return 1.5;
+    if (isSelected && !isFull) return 1.5;
+    if (isFull) return 2;
     return hovered ? 1.2 : 1;
-  }, [isSelected, hovered, capacityRatio]);
+  }, [isSelected, hovered, isFull]);
 
   useFrame((state) => {
     if (meshRef.current) {
@@ -27,10 +31,29 @@ export default function TimeSlotCard({ slot, position, assignedCases, isSelected
       const floatY = Math.sin(time * 1.5 + position[0]) * 0.05;
       meshRef.current.position.y = position[1] + floatY;
     }
+    if (borderRef.current && isFull) {
+      const time = state.clock.getElapsedTime();
+      const pulse = 0.8 + Math.sin(time * 6) * 0.4;
+      borderRef.current.material.emissiveIntensity = pulse;
+      borderRef.current.scale.setScalar(1 + Math.sin(time * 6) * 0.02);
+    }
   });
 
   return (
     <group position={position} onClick={onClick}>
+      {isFull && (
+        <mesh ref={borderRef} position={[0, 0, -0.05]}>
+          <boxGeometry args={[2.9, 1.9, 0.1]} />
+          <meshStandardMaterial
+            color="#ef4444"
+            emissive="#ef4444"
+            emissiveIntensity={1}
+            transparent
+            opacity={0.6}
+          />
+        </mesh>
+      )}
+      
       <mesh
         ref={meshRef}
         onPointerOver={() => setHovered(true)}
@@ -39,8 +62,8 @@ export default function TimeSlotCard({ slot, position, assignedCases, isSelected
       >
         <boxGeometry args={[2.8, 1.8, 0.3]} />
         <meshStandardMaterial
-          color={isSelected && capacityRatio < 1 ? '#3b82f6' : '#1e293b'}
-          emissive={isSelected && capacityRatio < 1 ? '#3b82f6' : cardColor}
+          color={isSelected && !isFull ? '#3b82f6' : isFull ? '#7f1d1d' : '#1e293b'}
+          emissive={isSelected && !isFull ? '#3b82f6' : cardColor}
           emissiveIntensity={glowIntensity * 0.2}
           metalness={0.3}
           roughness={0.5}
@@ -59,7 +82,7 @@ export default function TimeSlotCard({ slot, position, assignedCases, isSelected
       <Text
         position={[0, 0.5, 0.18]}
         fontSize={0.4}
-        color="#f1f5f9"
+        color={isFull ? '#fecaca' : '#f1f5f9'}
         anchorX="center"
         anchorY="middle"
         fontWeight="bold"
@@ -70,7 +93,7 @@ export default function TimeSlotCard({ slot, position, assignedCases, isSelected
       <Text
         position={[0, 0, 0.18]}
         fontSize={0.25}
-        color="#94a3b8"
+        color={isFull ? '#fca5a5' : '#94a3b8'}
         anchorX="center"
         anchorY="middle"
       >
@@ -84,19 +107,45 @@ export default function TimeSlotCard({ slot, position, assignedCases, isSelected
         </mesh>
         <mesh position={[-(2 - 2 * capacityRatio) / 2, 0, 0.03]}>
           <boxGeometry args={[2 * capacityRatio, 0.15, 0.06]} />
-          <meshStandardMaterial color={cardColor} emissive={cardColor} emissiveIntensity={0.5} />
+          <meshStandardMaterial color={cardColor} emissive={cardColor} emissiveIntensity={isFull ? 1 : 0.5} />
         </mesh>
       </group>
 
       <Text
         position={[0, -0.6, 0.22]}
         fontSize={0.2}
-        color="#f1f5f9"
+        color={isFull ? '#fecaca' : '#f1f5f9'}
         anchorX="center"
         anchorY="middle"
+        fontWeight={isFull ? 'bold' : 'normal'}
       >
         {assignedCases.length}/{slot.maxCapacity}
       </Text>
+
+      {isFull && (
+        <Text
+          position={[0, 1.1, 0.2]}
+          fontSize={0.25}
+          color="#ef4444"
+          anchorX="center"
+          anchorY="middle"
+          fontWeight="bold"
+        >
+          ⚠️ 已满
+        </Text>
+      )}
+
+      {isWarning && !isFull && (
+        <Text
+          position={[0, 1.1, 0.2]}
+          fontSize={0.22}
+          color="#f59e0b"
+          anchorX="center"
+          anchorY="middle"
+        >
+          接近满载
+        </Text>
+      )}
 
       {assignedCases.length > 0 && (
         <group position={[0, -1.2, 0]}>
