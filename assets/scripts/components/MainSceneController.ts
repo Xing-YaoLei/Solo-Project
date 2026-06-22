@@ -1,11 +1,17 @@
-import { _decorator, Component, Node, Label, Button, ScrollView, Prefab, instantiate, Sprite, Color, Vec3, tween, UITransform, SpriteFrame, Texture2D, ImageAsset, resources, JsonAsset } from 'cc';
+import { _decorator, Component, Node, Label, Button, Sprite, Color, Vec3, UITransform, resources, JsonAsset } from 'cc';
 import { GameManager } from '../core/GameManager';
 import { ConfigManager } from '../core/ConfigManager';
 import { SaveManager } from '../core/SaveManager';
 import { GameConstants } from '../core/GameConstants';
-import { ICase, IClue, ICaseAction } from '../core/GameInterfaces';
+import { ICase, IClue, ICaseAction, IErrorRecord, IMaterialMissRecord } from '../core/GameInterfaces';
 import { ResourceFactory, CocosResourceLoader, StorageFactory, CocosStorage } from '../core/PlatformAdapters';
+import { TrainingAnalysis } from '../core/TrainingAnalysis';
+import { ClientArchiveUI } from '../ui/ClientArchiveUI';
+import { TrainingRecordUI } from '../ui/TrainingRecordUI';
+import { LeaderboardUI } from '../ui/LeaderboardUI';
 const { ccclass, property } = _decorator;
+
+type UIState = 'loading' | 'hall' | 'playing' | 'result' | 'clientArchive' | 'training' | 'leaderboard';
 
 @ccclass('MainSceneController')
 export class MainSceneController extends Component {
@@ -43,14 +49,44 @@ export class MainSceneController extends Component {
     @property(Label)
     playerInfoLabel: Label | null = null;
 
-    private _currentState: 'loading' | 'hall' | 'playing' = 'loading';
+    @property(Node)
+    mapManagerNode: Node | null = null;
+
+    @property(Node)
+    clientArchivePanel: Node | null = null;
+
+    @property(Node)
+    trainingRecordPanel: Node | null = null;
+
+    @property(Node)
+    leaderboardPanel: Node | null = null;
+
+    @property(Label)
+    resultScoreLabel: Label | null = null;
+
+    @property(Label)
+    resultCaseInfoLabel: Label | null = null;
+
+    @property(Label)
+    resultResultLabel: Label | null = null;
+
+    @property(Node)
+    resultErrorsContainer: Node | null = null;
+
+    @property(Node)
+    resultMissContainer: Node | null = null;
+
+    private _currentState: UIState = 'loading';
     private _caseItems: Node[] = [];
     private _clueItems: Node[] = [];
     private _actionItems: Node[] = [];
+    private _errorItems: Node[] = [];
+    private _missItems: Node[] = [];
+    private _previousState: UIState = 'hall';
 
     async onLoad() {
         console.log('[MainSceneController] Loading game...');
-        this.showPanel('loading');
+        this._setState('loading');
 
         StorageFactory.setInstance(new CocosStorage());
         ResourceFactory.setInstance(new CocosResourceLoader(''));
@@ -60,33 +96,114 @@ export class MainSceneController extends Component {
             console.log('[MainSceneController] Game initialized');
         } catch (e) {
             console.error('[MainSceneController] Failed to init:', e);
-            this.fallbackLoad();
+            this._fallbackLoad();
         }
 
-        this.showMissionHall();
+        this._setupMenuButtons();
+        this._showMissionHall();
     }
 
-    private fallbackLoad(): void {
+    private _fallbackLoad(): void {
         console.warn('[MainSceneController] Using fallback data');
-        const save = SaveManager.instance.getSave();
-        this.showMissionHall();
+        SaveManager.instance.getSave();
     }
 
-    private showPanel(panelName: string): void {
-        if (this.missionHallPanel) this.missionHallPanel.active = panelName === 'hall';
-        if (this.casePlayPanel) this.casePlayPanel.active = panelName === 'playing';
-        if (this.loadingPanel) this.loadingPanel.active = panelName === 'loading';
+    private _setState(state: UIState): void {
+        this._currentState = state;
+
+        if (this.missionHallPanel) this.missionHallPanel.active = state === 'hall';
+        if (this.casePlayPanel) this.casePlayPanel.active = state === 'playing';
+        if (this.loadingPanel) this.loadingPanel.active = state === 'loading';
+        if (this.resultPanel) this.resultPanel.active = state === 'result';
         if (this.cluePanel) this.cluePanel.active = false;
-        if (this.resultPanel) this.resultPanel.active = false;
+        if (this.clientArchivePanel) this.clientArchivePanel.active = state === 'clientArchive';
+        if (this.trainingRecordPanel) this.trainingRecordPanel.active = state === 'training';
+        if (this.leaderboardPanel) this.leaderboardPanel.active = state === 'leaderboard';
     }
 
-    public showMissionHall(): void {
-        this._currentState = 'hall';
-        this.showPanel('hall');
-        this.refreshMissionHall();
+    private _setupMenuButtons(): void {
+        const bindBtn = (panelName: string, state: UIState) => {
+            const container = this.missionHallPanel?.getChildByName('MenuButtons');
+            if (!container) return;
+            const btnNode = container.getChildByName(`${panelName}Button`);
+            if (btnNode) {
+                const btn = btnNode.getComponent(Button);
+                if (btn) {
+                    btn.node.on(Button.EventType.CLICK, () => {
+                        this._openPanel(state);
+                    }, this);
+                }
+            }
+        };
+
+        bindBtn('ClientArchive', 'clientArchive');
+        bindBtn('Training', 'training');
+        bindBtn('Leaderboard', 'leaderboard');
+
+        const bindPanelClose = (panelNode: Node | null, backState: UIState) => {
+            if (!panelNode) return;
+            const btnNode = panelNode.getChildByName('CloseButton');
+            if (btnNode) {
+                const btn = btnNode.getComponent(Button);
+                if (btn) {
+                    btn.node.on(Button.EventType.CLICK, () => {
+                        this._setState(backState);
+                    }, this);
+                }
+            }
+        };
+
+        bindPanelClose(this.clientArchivePanel, 'hall');
+        bindPanelClose(this.trainingRecordPanel, 'hall');
+        bindPanelClose(this.leaderboardPanel, 'hall');
+
+        const bindResultBtn = (btnName: string, callback: () => void) => {
+            const container = this.resultPanel?.getChildByName('ResultButtons');
+            if (!container) return;
+            const btnNode = container.getChildByName(btnName);
+            if (btnNode) {
+                const btn = btnNode.getComponent(Button);
+                if (btn) {
+                    btn.node.on(Button.EventType.CLICK, callback, this);
+                }
+            }
+        };
+
+        bindResultBtn('BackButton', () => this._backToHall());
+        bindResultBtn('ReviewButton', () => this._openPanel('training'));
+        bindResultBtn('RetryButton', () => this._retryCurrentCase());
     }
 
-    private refreshMissionHall(): void {
+    private _openPanel(state: UIState): void {
+        this._previousState = this._currentState;
+        if (state === 'clientArchive') {
+            const ui = this.clientArchivePanel?.getComponent(ClientArchiveUI);
+            if (ui) {
+                ui.node.active = true;
+                ui.refreshUI();
+            }
+        } else if (state === 'training') {
+            const ui = this.trainingRecordPanel?.getComponent(TrainingRecordUI);
+            if (ui) {
+                ui.node.active = true;
+                ui.refreshUI();
+            }
+        } else if (state === 'leaderboard') {
+            const ui = this.leaderboardPanel?.getComponent(LeaderboardUI);
+            if (ui) {
+                ui.node.active = true;
+                ui.refreshUI();
+            }
+        }
+        this._setState(state);
+    }
+
+    private _showMissionHall(): void {
+        this._setState('hall');
+        this._refreshMissionHall();
+    }
+
+    private _refreshMissionHall(): void {
         const save = SaveManager.instance.getSave();
         const allCases = ConfigManager.instance.getAllCases();
         const container = this.caseListContainer || this.missionHallPanel?.getChildByName('CaseList');
@@ -106,14 +223,14 @@ export class MainSceneController extends Component {
                     caseData.requiredUnlockedCaseIds.every(id => save.completedCaseIds.includes(id));
                 const isCompleted = save.completedCaseIds.includes(caseData.id);
 
-                const itemNode = this.createCaseItem(caseData, isUnlocked, isCompleted, i);
+                const itemNode = this._createCaseItem(caseData, isUnlocked, isCompleted, i);
                 container.addChild(itemNode);
                 this._caseItems.push(itemNode);
             });
         }
     }
 
-    private createCaseItem(caseData: ICase, unlocked: boolean, completed: boolean, index: number): Node {
+    private _createCaseItem(caseData: ICase, unlocked: boolean, completed: boolean, index: number): Node {
         const node = new Node(`CaseItem_${caseData.id}`);
         node.addComponent(UITransform);
         const transform = node.getComponent(UITransform)!;
@@ -133,7 +250,7 @@ export class MainSceneController extends Component {
         titleTransform.setContentSize(600, 40);
         titleNode.setPosition(0, 40, 0);
         const titleLabel = titleNode.addComponent(Label);
-        titleLabel.string = `[${this.getDifficultyText(caseData.difficulty)}] ${caseData.title}`;
+        titleLabel.string = `[${this._getDifficultyText(caseData.difficulty)}] ${caseData.title}`;
         titleLabel.fontSize = 28;
         titleLabel.lineHeight = 32;
         titleLabel.color = unlocked ? new Color(255, 230, 150, 255) : new Color(150, 150, 150, 255);
@@ -184,42 +301,38 @@ export class MainSceneController extends Component {
             button.hoverColor = new Color(80, 130, 180, 255);
             button.disabledColor = new Color(120, 120, 120, 200);
 
-            const clickEventHandler = new Component.EventHandler();
-            clickEventHandler.target = this.node;
-            clickEventHandler.component = 'MainSceneController';
-            clickEventHandler.handler = 'onCaseItemClick';
-            clickEventHandler.customEventData = caseData.id;
-            button.clickEvents.push(clickEventHandler);
+            node.on(Node.EventType.TOUCH_END, () => {
+                this._onCaseItemClick(caseData.id);
+            }, this);
         }
 
         return node;
     }
 
-    private getDifficultyText(difficulty: string): string {
+    private _getDifficultyText(difficulty: string): string {
         const map: Record<string, string> = {
             easy: '简单', normal: '普通', hard: '困难', expert: '专家'
         };
         return map[difficulty] || difficulty;
     }
 
-    public onCaseItemClick(event: any, caseId: string): void {
+    private _onCaseItemClick(caseId: string): void {
         console.log(`[MainSceneController] Clicked case: ${caseId}`);
-        this.startCase(caseId);
+        this._startCase(caseId);
     }
 
-    public startCase(caseId: string): void {
+    private _startCase(caseId: string): void {
         const success = GameManager.instance.startCase(caseId);
         if (!success) {
             console.error(`[MainSceneController] Failed to start case: ${caseId}`);
             return;
         }
 
-        this._currentState = 'playing';
-        this.showPanel('playing');
-        this.refreshCasePlay();
+        this._setState('playing');
+        this._refreshCasePlay();
     }
 
-    private refreshCasePlay(): void {
+    private _refreshCasePlay(): void {
         const caseData = GameManager.instance.getCurrentCase();
         const stage = GameManager.instance.getCurrentStage();
         const score = GameManager.instance.getScore();
@@ -241,7 +354,7 @@ export class MainSceneController extends Component {
             this._clueItems.forEach(item => item.destroy());
             this._clueItems = [];
             clues.forEach((clue, i) => {
-                const item = this.createClueItem(clue, i);
+                const item = this._createClueItem(clue, i);
                 clueContainer.addChild(item);
                 this._clueItems.push(item);
             });
@@ -252,14 +365,14 @@ export class MainSceneController extends Component {
             this._actionItems.forEach(item => item.destroy());
             this._actionItems = [];
             actions.forEach((action, i) => {
-                const item = this.createActionItem(action, i);
+                const item = this._createActionItem(action, i);
                 actionContainer.addChild(item);
                 this._actionItems.push(item);
             });
         }
     }
 
-    private createClueItem(clue: IClue, index: number): Node {
+    private _createClueItem(clue: IClue, index: number): Node {
         const node = new Node(`Clue_${clue.id}`);
         node.addComponent(UITransform);
         const transform = node.getComponent(UITransform)!;
@@ -301,7 +414,7 @@ export class MainSceneController extends Component {
         return node;
     }
 
-    private createActionItem(action: ICaseAction, index: number): Node {
+    private _createActionItem(action: ICaseAction, index: number): Node {
         const node = new Node(`Action_${action.id}`);
         node.addComponent(UITransform);
         const transform = node.getComponent(UITransform)!;
@@ -345,22 +458,19 @@ export class MainSceneController extends Component {
         button.hoverColor = new Color(100, 150, 200, 255);
         button.disabledColor = new Color(100, 100, 100, 200);
 
-        const clickHandler = new Component.EventHandler();
-        clickHandler.target = this.node;
-        clickHandler.component = 'MainSceneController';
-        clickHandler.handler = 'onActionClick';
-        clickHandler.customEventData = action.id;
-        button.clickEvents.push(clickHandler);
+        node.on(Node.EventType.TOUCH_END, () => {
+            this._onActionClick(action.id);
+        }, this);
 
         return node;
     }
 
-    public onActionClick(event: any, actionId: string): void {
+    private _onActionClick(actionId: string): void {
         console.log(`[MainSceneController] Clicked action: ${actionId}`);
-        this.takeAction(actionId);
+        this._takeAction(actionId);
     }
 
-    public takeAction(actionId: string): void {
+    private _takeAction(actionId: string): void {
         const result = GameManager.instance.takeAction(actionId);
         console.log(`\n[执行动作] ${actionId}`);
         console.log(`  结果: ${result.isCorrect ? '✓正确' : '✗错误'} 得分变化: ${result.scoreChange}`);
@@ -371,65 +481,140 @@ export class MainSceneController extends Component {
         }
 
         if (GameManager.instance.isPlaying()) {
-            this.refreshCasePlay();
+            this._refreshCasePlay();
         } else {
-            this.showCaseResult();
+            this._showCaseResult();
         }
     }
 
-    public showClues(): void {
-        if (this.cluePanel) this.cluePanel.active = true;
-        const clues = GameManager.instance.getDiscoveredClues();
-        console.log(`\n[线索详情] 共${clues.length}条`);
-        clues.forEach((c, i) => {
-            const typeNames: Record<string, string> = {
-                testimony: '证人证言', physical: '物证', documentary: '书证',
-                digital: '电子数据', expert: '鉴定意见'
-            };
-            const keyMark = c.isKey ? ' ⭐关键' : '';
-            const missMark = c.missingPage ? ' ⚠️缺页' : '';
-            console.log(`  ${i + 1}. ${c.name}${keyMark}${missMark}`);
-            console.log(`     类型: ${typeNames[c.type] || c.type} 可信度: ${c.credibility}%`);
-            console.log(`     ${c.description}`);
-        });
+    private _showCaseResult(): void {
+        this._setState('result');
+        this._refreshResultPanel();
     }
 
-    public hideClues(): void {
-        if (this.cluePanel) this.cluePanel.active = false;
-    }
-
-    private showCaseResult(): void {
-        if (this.resultPanel) this.resultPanel.active = true;
+    private _refreshResultPanel(): void {
         const records = SaveManager.instance.getTrainingRecords();
-        const last = records[records.length - 1];
-        if (last) {
-            console.log(`\n[案件结案]`);
-            console.log(`  最终得分: ${last.score}/${last.maxScore}`);
-            console.log(`  ${last.passed ? '✓已通过' : '✗未通过'} ${last.perfect ? '⭐完美通关' : ''}`);
-            console.log(`  错误次数: ${last.errorRecords.length}, 材料缺页: ${last.materialMissRecords.length}`);
-            last.errorRecords.forEach((e, i) => {
-                const catName = GameConstants.ERROR_CATEGORY_NAMES[e.errorCategory] || e.errorCategory;
-                console.log(`    错误${i + 1}: [${catName}] ${e.errorReason}`);
+        const lastRecord = records[records.length - 1];
+        const caseData = lastRecord ? ConfigManager.instance.getCase(lastRecord.caseId) : null;
+
+        if (this.resultCaseInfoLabel && caseData) {
+            this.resultCaseInfoLabel.string = `案件：${caseData.title}`;
+        }
+
+        if (this.resultScoreLabel && lastRecord) {
+            this.resultScoreLabel.string = `得分: ${lastRecord.score}/${lastRecord.maxScore}`;
+        }
+
+        if (this.resultResultLabel && lastRecord) {
+            let text = '';
+            let color: Color;
+            if (lastRecord.perfect) {
+                text = '⭐ 完美通关！';
+                color = new Color(255, 200, 0, 255);
+            } else if (lastRecord.passed) {
+                text = '✅ 通过';
+                color = new Color(100, 255, 150, 255);
+            } else {
+                text = '❌ 未通过';
+                color = new Color(255, 100, 100, 255);
+            }
+            this.resultResultLabel.string = text;
+            this.resultResultLabel.color = color;
+        }
+
+        if (this.resultErrorsContainer) {
+            this._errorItems.forEach(item => item.destroy());
+            this._errorItems = [];
+
+            const errors = lastRecord?.errorRecords || [];
+            if (errors.length === 0) {
+                const node = this._createInfoItem('无错误决策，表现优秀！', new Color(100, 255, 150, 255), 0);
+                this.resultErrorsContainer.addChild(node);
+                this._errorItems.push(node);
+            } else {
+                errors.forEach((err, i) => {
+                    const catName = GameConstants.ERROR_CATEGORY_NAMES[err.errorCategory] || err.errorCategory;
+                    const text = `[${catName}] ${err.errorReason}${err.suggestion ? ` → ${err.suggestion}` : ''}`;
+                    const node = this._createInfoItem(text, new Color(255, 160, 160, 255), i);
+                    this.resultErrorsContainer.addChild(node);
+                    this._errorItems.push(node);
+                });
+            }
+        }
+
+        if (this.resultMissContainer) {
+            this._missItems.forEach(item => item.destroy());
+            this._missItems = [];
+
+            const misses = lastRecord?.materialMissRecords || [];
+            if (misses.length === 0) {
+                const node = this._createInfoItem('无材料缺页，资料完整！', new Color(100, 255, 150, 255), 0);
+                this.resultMissContainer.addChild(node);
+                this._missItems.push(node);
+            } else {
+                misses.forEach((miss, i) => {
+                    const text = `📄 ${miss.materialName} - ${miss.reason} (扣分: ${miss.penalty})`;
+                    const node = this._createInfoItem(text, new Color(255, 220, 140, 255), i);
+                    this.resultMissContainer.addChild(node);
+                    this._missItems.push(node);
+                });
+            }
+        }
+
+        if (lastRecord) {
+            console.log(`\n[案件结算界面]`);
+            console.log(`  案件: ${caseData?.title || lastRecord.caseId}`);
+            console.log(`  得分: ${lastRecord.score}/${lastRecord.maxScore}`);
+            console.log(`  ${lastRecord.perfect ? '⭐完美通关' : lastRecord.passed ? '✅通过' : '❌未通过'}`);
+            console.log(`  错误次数: ${lastRecord.errorRecords.length}, 材料缺页: ${lastRecord.materialMissRecords.length}`);
+            lastRecord.errorRecords.forEach(e => {
+                console.log(`    ❌ [${GameConstants.ERROR_CATEGORY_NAMES[e.errorCategory]}] ${e.errorReason}`);
+            });
+            lastRecord.materialMissRecords.forEach(m => {
+                console.log(`    ⚠️  ${m.materialName}: ${m.reason} (-${m.penalty}分)`);
             });
         }
     }
 
-    public backToHall(): void {
+    private _createInfoItem(text: string, color: Color, index: number): Node {
+        const node = new Node(`InfoItem_${index}`);
+        node.addComponent(UITransform);
+        node.getComponent(UITransform)!.setContentSize(680, 50);
+        node.setPosition(0, 100 - index * 55, 0);
+
+        const sprite = node.addComponent(Sprite);
+        sprite.type = Sprite.Type.SIMPLE;
+        sprite.sizeMode = Sprite.SizeMode.CUSTOM;
+        sprite.color = new Color(40, 55, 80, 200);
+
+        const labelNode = new Node('Label');
+        labelNode.addComponent(UITransform);
+        labelNode.getComponent(UITransform)!.setContentSize(660, 50);
+        labelNode.setPosition(0, 0, 0);
+        const label = labelNode.addComponent(Label);
+        label.string = text;
+        label.fontSize = 18;
+        label.lineHeight = 24;
+        label.color = color;
+        label.horizontalAlign = Label.HorizontalAlign.LEFT;
+        label.enableWrapText = true;
+        node.addChild(labelNode);
+
+        return node;
+    }
+
+    private _backToHall(): void {
         if (GameManager.instance.isPlaying()) {
             GameManager.instance.endCase();
         }
-        this.showMissionHall();
+        this._showMissionHall();
     }
 
-    public retryCase(): void {
-        const currentCase = GameManager.instance.getCurrentCase();
-        if (currentCase) {
-            this.startCase(currentCase.id);
+    private _retryCurrentCase(): void {
+        const records = SaveManager.instance.getTrainingRecords();
+        const last = records[records.length - 1];
+        if (last) {
+            this._startCase(last.caseId);
         }
-    }
-
-    public restartGame(): void {
-        SaveManager.instance.resetSave();
-        this.showMissionHall();
     }
 }

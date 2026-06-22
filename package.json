@@ -6,8 +6,10 @@
     "version": "3.8.0"
   },
   "type": "2d",
-  "dependencies": {},
   "scripts": {
     "start": "node server.js"
+  },
+  "devDependencies": {
+    "tsx": "^4.22.4"
   }
 }

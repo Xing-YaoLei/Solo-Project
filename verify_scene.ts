@@ -121,6 +121,15 @@ if (scriptComp) {
     checkProp('actionListContainer', 'cc.Node');
     checkProp('stageInfoLabel', 'cc.Label');
     checkProp('playerInfoLabel', 'cc.Label');
+    checkProp('mapManagerNode', 'cc.Node');
+    checkProp('clientArchivePanel', 'cc.Node');
+    checkProp('trainingRecordPanel', 'cc.Node');
+    checkProp('leaderboardPanel', 'cc.Node');
+    checkProp('resultScoreLabel', 'cc.Label');
+    checkProp('resultCaseInfoLabel', 'cc.Label');
+    checkProp('resultResultLabel', 'cc.Label');
+    checkProp('resultErrorsContainer', 'cc.Node');
+    checkProp('resultMissContainer', 'cc.Node');
 } else {
     errors.push('未找到 MainSceneController 脚本组件');
 }

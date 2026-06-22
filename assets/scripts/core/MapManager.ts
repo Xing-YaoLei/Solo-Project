@@ -1,18 +1,9 @@
-import { _decorator, Component, Node, TiledMap, TiledLayer, TiledObjectGroup, Vec3, UITransform } from 'cc';
+import { _decorator, Component, Node, TiledMap, TiledLayer, TiledObjectGroup, Vec3, UITransform, find } from 'cc';
 import { GameConstants } from './GameConstants';
 const { ccclass, property } = _decorator;
 
 @ccclass('MapManager')
 export class MapManager extends Component {
-
-    private static _instance: MapManager | null = null;
-
-    public static get instance(): MapManager {
-        if (!MapManager._instance) {
-            MapManager._instance = new MapManager();
-        }
-        return MapManager._instance;
-    }
 
     @property(TiledMap)
     tiledMap: TiledMap | null = null;
@@ -20,9 +11,20 @@ export class MapManager extends Component {
     private _mapObjects: Map<string, MapObjectData> = new Map();
     private _currentMapId: string = '';
     private _objectLayers: Map<string, TiledObjectGroup> = new Map();
+    private static _current: MapManager | null = null;
 
-    constructor() {
-        super();
+    public static get current(): MapManager | null {
+        return MapManager._current;
+    }
+
+    onLoad() {
+        MapManager._current = this;
+    }
+
+    onDestroy() {
+        if (MapManager._current === this) {
+            MapManager._current = null;
+        }
     }
 
     public init(tiledMap: TiledMap): void {
@@ -135,6 +137,10 @@ export class MapManager extends Component {
 
     public getCurrentMapId(): string {
         return this._currentMapId;
+    }
+
+    public setCurrentMapId(mapId: string): void {
+        this._currentMapId = mapId;
     }
 
     public clear(): void {
