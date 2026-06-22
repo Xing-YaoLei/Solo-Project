@@ -1,12 +1,9 @@
-import { _decorator, Component } from 'cc';
-import { ITrainingRecord, IErrorRecord, IMaterialMissRecord } from './GameInterfaces';
+import { ITrainingRecord } from './GameInterfaces';
 import { GameConstants } from './GameConstants';
 import { SaveManager } from './SaveManager';
 import { ConfigManager } from './ConfigManager';
-const { ccclass, property } = _decorator;
 
-@ccclass('TrainingAnalysis')
-export class TrainingAnalysis extends Component {
+export class TrainingAnalysis {
 
     private static _instance: TrainingAnalysis | null = null;
 
@@ -17,8 +14,11 @@ export class TrainingAnalysis extends Component {
         return TrainingAnalysis._instance;
     }
 
-    constructor() {
-        super();
+    public static reset(): void {
+        TrainingAnalysis._instance = null;
+    }
+
+    private constructor() {
     }
 
     public getCaseSummary(caseId: string): CaseAnalysisSummary {
@@ -182,7 +182,7 @@ export class TrainingAnalysis extends Component {
             };
         }
 
-        const errorsByStage: Record<string, IErrorRecord[]> = {};
+        const errorsByStage: Record<string, any[]> = {};
         record.errorRecords.forEach(error => {
             if (!errorsByStage[error.stage]) {
                 errorsByStage[error.stage] = [];
@@ -237,23 +237,16 @@ export class TrainingAnalysis extends Component {
 
         if (errorAnalysis.length > 0) {
             const topError = errorAnalysis[0];
-            const errorNames: Record<string, string> = {
-                [GameConstants.ErrorCategory.PROCEDURAL]: '程序类',
-                [GameConstants.ErrorCategory.EVIDENTIARY]: '证据类',
-                [GameConstants.ErrorCategory.LEGAL]: '法律适用类',
-                [GameConstants.ErrorCategory.STRATEGIC]: '策略类',
-                [GameConstants.ErrorCategory.ETHICAL]: '职业伦理类'
-            };
-            
             recommendations.push(
-                `建议重点加强${errorNames[topError.category] || topError.category}错误的学习，已累计出现${topError.count}次`
+                `建议重点加强${GameConstants.ERROR_CATEGORY_NAMES[topError.category] || topError.category}错误的学习，已累计出现${topError.count}次`
             );
         }
 
         const missAnalysis = SaveManager.instance.getMaterialMissAnalysis(caseId);
         if (missAnalysis.length > 0) {
+            const clueName = ConfigManager.instance.getClueById(caseId || '', missAnalysis[0].clueId)?.name || '相关证据';
             recommendations.push(
-                `注意材料缺页问题，建议在${ConfigManager.instance.getClueById(caseId || '', missAnalysis[0].clueId)?.name || '相关证据'}上加强审查`
+                `注意材料缺页问题，建议在「${clueName}」上加强审查`
             );
         }
 
@@ -302,7 +295,7 @@ export interface OverallStats {
 export interface ReviewData {
     record: ITrainingRecord;
     caseData: any;
-    errorsByStage: Record<string, IErrorRecord[]>;
+    errorsByStage: Record<string, any[]>;
     missedClues: any[];
     correctActions: string[];
     wrongActions: string[];

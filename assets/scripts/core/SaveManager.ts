@@ -1,10 +1,8 @@
-import { _decorator, Component, sys } from 'cc';
 import { IGameSave, ITrainingRecord, IErrorRecord, IMaterialMissRecord } from './GameInterfaces';
 import { GameConstants } from './GameConstants';
-const { ccclass, property } = _decorator;
+import { IStorageAdapter, StorageFactory } from './PlatformAdapters';
 
-@ccclass('SaveManager')
-export class SaveManager extends Component {
+export class SaveManager {
 
     private static _instance: SaveManager | null = null;
 
@@ -15,13 +13,20 @@ export class SaveManager extends Component {
         return SaveManager._instance;
     }
 
+    public static reset(): void {
+        SaveManager._instance = null;
+    }
+
     private static readonly SAVE_KEY = 'legal_game_save_v1';
     private static readonly SAVE_VERSION = '1.0.0';
 
     private _currentSave: IGameSave | null = null;
 
-    constructor() {
-        super();
+    private constructor() {
+    }
+
+    public setStorage(storage: IStorageAdapter): void {
+        StorageFactory.setInstance(storage);
     }
 
     public init(): void {
@@ -55,7 +60,8 @@ export class SaveManager extends Component {
 
     public loadSave(): IGameSave | null {
         try {
-            const saveStr = sys.localStorage.getItem(SaveManager.SAVE_KEY);
+            const storage = StorageFactory.getInstance();
+            const saveStr = storage.getItem(SaveManager.SAVE_KEY);
             if (saveStr) {
                 this._currentSave = JSON.parse(saveStr);
                 console.log('[SaveManager] Save loaded successfully');
@@ -71,8 +77,8 @@ export class SaveManager extends Component {
         if (!this._currentSave) return;
         try {
             this._currentSave.lastSaveTime = Date.now();
-            sys.localStorage.setItem(SaveManager.SAVE_KEY, JSON.stringify(this._currentSave));
-            console.log('[SaveManager] Game saved');
+            const storage = StorageFactory.getInstance();
+            storage.setItem(SaveManager.SAVE_KEY, JSON.stringify(this._currentSave));
         } catch (e) {
             console.error('[SaveManager] Failed to save game:', e);
         }
@@ -147,7 +153,7 @@ export class SaveManager extends Component {
     public getBestRecord(caseId: string): ITrainingRecord | null {
         const records = this.getTrainingRecords(caseId);
         if (records.length === 0) return null;
-        return records.reduce((best, current) => 
+        return records.reduce((best, current) =>
             current.score > best.score ? current : best
         );
     }
@@ -187,7 +193,8 @@ export class SaveManager extends Component {
 
     public resetSave(): void {
         this._currentSave = null;
-        sys.localStorage.removeItem(SaveManager.SAVE_KEY);
+        const storage = StorageFactory.getInstance();
+        storage.removeItem(SaveManager.SAVE_KEY);
         this.createNewSave();
         console.log('[SaveManager] Save reset');
     }
@@ -195,7 +202,7 @@ export class SaveManager extends Component {
     public getErrorAnalysis(caseId?: string): { category: GameConstants.ErrorCategory; count: number }[] {
         const records = this.getTrainingRecords(caseId);
         const errorCount: Record<string, number> = {};
-        
+
         records.forEach(record => {
             record.errorRecords.forEach(error => {
                 const key = error.errorCategory;
@@ -204,9 +211,9 @@ export class SaveManager extends Component {
         });
 
         return Object.entries(errorCount)
-            .map(([category, count]) => ({ 
-                category: category as GameConstants.ErrorCategory, 
-                count 
+            .map(([category, count]) => ({
+                category: category as GameConstants.ErrorCategory,
+                count
             }))
             .sort((a, b) => b.count - a.count);
     }
@@ -214,7 +221,7 @@ export class SaveManager extends Component {
     public getMaterialMissAnalysis(caseId?: string): { clueId: string; count: number }[] {
         const records = this.getTrainingRecords(caseId);
         const missCount: Record<string, number> = {};
-        
+
         records.forEach(record => {
             record.materialMissRecords.forEach(miss => {
                 missCount[miss.clueId] = (missCount[miss.clueId] || 0) + 1;

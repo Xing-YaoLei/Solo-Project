@@ -1,9 +1,8 @@
-import { _decorator, Component, JsonAsset, resources } from 'cc';
+import { GameConstants } from './GameConstants';
 import { ICase, ILevelConfig, ITutorial, IAssetConfig, IClientProfile, ITrialScheduleItem } from './GameInterfaces';
-const { ccclass, property } = _decorator;
+import { IResourceLoader, ResourceFactory } from './PlatformAdapters';
 
-@ccclass('ConfigManager')
-export class ConfigManager extends Component {
+export class ConfigManager {
 
     private static _instance: ConfigManager | null = null;
 
@@ -14,140 +13,98 @@ export class ConfigManager extends Component {
         return ConfigManager._instance;
     }
 
+    public static reset(): void {
+        ConfigManager._instance = null;
+    }
+
     private _cases: Map<string, ICase> = new Map();
     private _levels: Map<string, ILevelConfig> = new Map();
     private _tutorials: Map<string, ITutorial> = new Map();
     private _assets: Map<string, IAssetConfig> = new Map();
     private _clients: Map<string, IClientProfile> = new Map();
     private _trialSchedules: Map<string, ITrialScheduleItem[]> = new Map();
-
     private _configLoaded: boolean = false;
 
-    constructor() {
-        super();
-        if (ConfigManager._instance) {
-            console.warn('ConfigManager singleton already exists');
-        }
+    private constructor() {
     }
 
-    public async loadAllConfigs(): Promise<void> {
+    public setResourceLoader(loader: IResourceLoader): void {
+        ResourceFactory.setInstance(loader);
+    }
+
+    public async loadAllConfigs(basePath: string = 'assets/resources/configs'): Promise<void> {
         if (this._configLoaded) {
             return;
         }
 
+        const loader = ResourceFactory.getInstance();
+
         try {
-            await Promise.all([
-                this.loadCases(),
-                this.loadLevels(),
-                this.loadTutorials(),
-                this.loadAssets(),
-                this.loadClients(),
-                this.loadTrialSchedules()
+            const [casesData, levelsData, tutorialsData, assetsData, clientsData, trialSchedulesData] = await Promise.all([
+                this.safeLoadJson(loader, `${basePath}/cases.json`, []),
+                this.safeLoadJson(loader, `${basePath}/levels.json`, []),
+                this.safeLoadJson(loader, `${basePath}/tutorials.json`, []),
+                this.safeLoadJson(loader, `${basePath}/assets.json`, []),
+                this.safeLoadJson(loader, `${basePath}/clients.json`, []),
+                this.safeLoadJson(loader, `${basePath}/trial_schedules.json`, {})
             ]);
+
+            const casesArray: ICase[] = casesData;
+            casesArray.forEach(c => this._cases.set(c.id, c));
+
+            const levelsArray: ILevelConfig[] = levelsData;
+            levelsArray.forEach(l => this._levels.set(l.id, l));
+
+            const tutorialsArray: ITutorial[] = tutorialsData;
+            tutorialsArray.forEach(t => this._tutorials.set(t.id, t));
+
+            const assetsArray: IAssetConfig[] = assetsData;
+            assetsArray.forEach(a => this._assets.set(a.id, a));
+
+            const clientsArray: IClientProfile[] = clientsData;
+            clientsArray.forEach(c => this._clients.set(c.id, c));
+
+            const schedulesData = trialSchedulesData;
+            for (const caseId in schedulesData) {
+                this._trialSchedules.set(caseId, schedulesData[caseId]);
+            }
+
             this._configLoaded = true;
-            console.log('[ConfigManager] All configs loaded successfully');
+            console.log(`[ConfigManager] Loaded: ${casesArray.length} cases, ${levelsArray.length} levels, ${tutorialsArray.length} tutorials, ${assetsArray.length} assets, ${clientsArray.length} clients, ${Object.keys(schedulesData).length} schedules`);
         } catch (error) {
             console.error('[ConfigManager] Failed to load configs:', error);
             throw error;
         }
     }
 
-    private loadCases(): Promise<void> {
-        return new Promise((resolve, reject) => {
-            resources.load('configs/cases', JsonAsset, (err, jsonAsset) => {
-                if (err) {
-                    console.warn('[ConfigManager] cases config not found, using empty');
-                    resolve();
-                    return;
-                }
-                const casesArray: ICase[] = jsonAsset.json;
-                casesArray.forEach(c => this._cases.set(c.id, c));
-                console.log(`[ConfigManager] Loaded ${casesArray.length} cases`);
-                resolve();
-            });
-        });
+    private async safeLoadJson(loader: IResourceLoader, path: string, defaultValue: any): Promise<any> {
+        try {
+            return await loader.loadJson(path);
+        } catch (e) {
+            console.warn(`[ConfigManager] ${path} not found, using default`);
+            return defaultValue;
+        }
     }
 
-    private loadLevels(): Promise<void> {
-        return new Promise((resolve, reject) => {
-            resources.load('configs/levels', JsonAsset, (err, jsonAsset) => {
-                if (err) {
-                    console.warn('[ConfigManager] levels config not found, using empty');
-                    resolve();
-                    return;
-                }
-                const levelsArray: ILevelConfig[] = jsonAsset.json;
-                levelsArray.forEach(l => this._levels.set(l.id, l));
-                console.log(`[ConfigManager] Loaded ${levelsArray.length} levels`);
-                resolve();
-            });
-        });
-    }
-
-    private loadTutorials(): Promise<void> {
-        return new Promise((resolve, reject) => {
-            resources.load('configs/tutorials', JsonAsset, (err, jsonAsset) => {
-                if (err) {
-                    console.warn('[ConfigManager] tutorials config not found, using empty');
-                    resolve();
-                    return;
-                }
-                const tutorialsArray: ITutorial[] = jsonAsset.json;
-                tutorialsArray.forEach(t => this._tutorials.set(t.id, t));
-                console.log(`[ConfigManager] Loaded ${tutorialsArray.length} tutorials`);
-                resolve();
-            });
-        });
-    }
-
-    private loadAssets(): Promise<void> {
-        return new Promise((resolve, reject) => {
-            resources.load('configs/assets', JsonAsset, (err, jsonAsset) => {
-                if (err) {
-                    console.warn('[ConfigManager] assets config not found, using empty');
-                    resolve();
-                    return;
-                }
-                const assetsArray: IAssetConfig[] = jsonAsset.json;
-                assetsArray.forEach(a => this._assets.set(a.id, a));
-                console.log(`[ConfigManager] Loaded ${assetsArray.length} assets`);
-                resolve();
-            });
-        });
-    }
-
-    private loadClients(): Promise<void> {
-        return new Promise((resolve, reject) => {
-            resources.load('configs/clients', JsonAsset, (err, jsonAsset) => {
-                if (err) {
-                    console.warn('[ConfigManager] clients config not found, using empty');
-                    resolve();
-                    return;
-                }
-                const clientsArray: IClientProfile[] = jsonAsset.json;
-                clientsArray.forEach(c => this._clients.set(c.id, c));
-                console.log(`[ConfigManager] Loaded ${clientsArray.length} clients`);
-                resolve();
-            });
-        });
-    }
-
-    private loadTrialSchedules(): Promise<void> {
-        return new Promise((resolve, reject) => {
-            resources.load('configs/trial_schedules', JsonAsset, (err, jsonAsset) => {
-                if (err) {
-                    console.warn('[ConfigManager] trial_schedules config not found, using empty');
-                    resolve();
-                    return;
-                }
-                const schedulesData = jsonAsset.json;
-                for (const caseId in schedulesData) {
-                    this._trialSchedules.set(caseId, schedulesData[caseId]);
-                }
-                console.log(`[ConfigManager] Loaded ${Object.keys(schedulesData).length} trial schedules`);
-                resolve();
-            });
-        });
+    public loadFromData(data: {
+        cases?: ICase[];
+        levels?: ILevelConfig[];
+        tutorials?: ITutorial[];
+        assets?: IAssetConfig[];
+        clients?: IClientProfile[];
+        trialSchedules?: Record<string, ITrialScheduleItem[]>;
+    }): void {
+        if (data.cases) data.cases.forEach(c => this._cases.set(c.id, c));
+        if (data.levels) data.levels.forEach(l => this._levels.set(l.id, l));
+        if (data.tutorials) data.tutorials.forEach(t => this._tutorials.set(t.id, t));
+        if (data.assets) data.assets.forEach(a => this._assets.set(a.id, a));
+        if (data.clients) data.clients.forEach(c => this._clients.set(c.id, c));
+        if (data.trialSchedules) {
+            for (const k in data.trialSchedules) {
+                this._trialSchedules.set(k, data.trialSchedules[k]);
+            }
+        }
+        this._configLoaded = true;
     }
 
     public getCase(id: string): ICase | undefined {
@@ -170,6 +127,10 @@ export class ConfigManager extends Component {
         return this._tutorials.get(id);
     }
 
+    public getAllTutorials(): ITutorial[] {
+        return Array.from(this._tutorials.values());
+    }
+
     public getAsset(id: string): IAssetConfig | undefined {
         return this._assets.get(id);
     }
@@ -182,8 +143,8 @@ export class ConfigManager extends Component {
         return Array.from(this._clients.values());
     }
 
-    public getTrialSchedule(caseId: string): ITrialScheduleItem[] | undefined {
-        return this._trialSchedules.get(caseId);
+    public getTrialSchedule(caseId: string): ITrialScheduleItem[] {
+        return this._trialSchedules.get(caseId) || [];
     }
 
     public isConfigLoaded(): boolean {

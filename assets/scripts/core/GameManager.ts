@@ -1,12 +1,9 @@
-import { _decorator, Component, Node } from 'cc';
 import { GameConstants } from './GameConstants';
 import { ICase, IClue, ICaseAction, ICaseStageConfig, ITrainingRecord, IErrorRecord, IMaterialMissRecord } from './GameInterfaces';
 import { ConfigManager } from './ConfigManager';
 import { SaveManager } from './SaveManager';
-const { ccclass, property } = _decorator;
 
-@ccclass('GameManager')
-export class GameManager extends Component {
+export class GameManager {
 
     private static _instance: GameManager | null = null;
 
@@ -15,6 +12,10 @@ export class GameManager extends Component {
             GameManager._instance = new GameManager();
         }
         return GameManager._instance;
+    }
+
+    public static reset(): void {
+        GameManager._instance = null;
     }
 
     private _currentCase: ICase | null = null;
@@ -28,13 +29,33 @@ export class GameManager extends Component {
     private _clientTrustLevel: number = 50;
     private _isPlaying: boolean = false;
     private _dayCount: number = 1;
+    private _onEvent: ((event: string, data?: any) => void) | null = null;
 
-    constructor() {
-        super();
+    private constructor() {
     }
 
-    public async init(): Promise<void> {
-        await ConfigManager.instance.loadAllConfigs();
+    public setEventHandler(handler: (event: string, data?: any) => void): void {
+        this._onEvent = handler;
+    }
+
+    private emit(event: string, data?: any): void {
+        if (this._onEvent) {
+            try {
+                this._onEvent(event, data);
+            } catch (e) {
+                console.error('[GameManager] Event handler error:', e);
+            }
+        }
+    }
+
+    public async init(configBasePath?: string): Promise<void> {
+        if (!ConfigManager.instance.isConfigLoaded()) {
+            if (configBasePath) {
+                await ConfigManager.instance.loadAllConfigs(configBasePath);
+            } else {
+                await ConfigManager.instance.loadAllConfigs();
+            }
+        }
         SaveManager.instance.init();
         console.log('[GameManager] Initialized');
     }
@@ -74,6 +95,7 @@ export class GameManager extends Component {
         }
 
         SaveManager.instance.setCurrentCase(caseId);
+        this.emit('caseStarted', caseId);
 
         console.log(`[GameManager] Started case: ${caseData.title}`);
         return true;
@@ -116,7 +138,7 @@ export class GameManager extends Component {
         return this._currentCase.actions.filter(action => {
             if (this._takenActionIds.has(action.id)) return false;
             if (action.requiredStage !== currentStage.stage) return false;
-            
+
             const hasRequiredClues = action.requiredClueIds.every(
                 clueId => this._discoveredClueIds.has(clueId)
             );
@@ -124,8 +146,8 @@ export class GameManager extends Component {
         });
     }
 
-    public takeAction(actionId: string): { 
-        success: boolean; 
+    public takeAction(actionId: string): {
+        success: boolean;
         message: string;
         isCorrect: boolean;
         scoreChange: number;
@@ -180,6 +202,7 @@ export class GameManager extends Component {
 
         this._currentScore = Math.max(0, Math.min(this.getMaxScore(), this._currentScore + scoreChange));
 
+        const newlyDiscovered: string[] = [];
         if (action.unlockClueIds) {
             action.unlockClueIds.forEach(clueId => {
                 const clue = this._currentCase!.clues.find(c => c.id === clueId);
@@ -195,21 +218,33 @@ export class GameManager extends Component {
                     this._materialMissRecords.push(missRecord);
                     this._currentScore -= GameConstants.CLUE_MISS_PENALTY;
                 }
-                this._discoveredClueIds.add(clueId);
+                if (!this._discoveredClueIds.has(clueId)) {
+                    this._discoveredClueIds.add(clueId);
+                    newlyDiscovered.push(clueId);
+                }
             });
+        }
+
+        if (newlyDiscovered.length > 0) {
+            this.emit('cluesDiscovered', newlyDiscovered);
         }
 
         if (action.nextStage) {
             nextStage = this.advanceToStage(action.nextStage);
         }
 
-        if (this._clientTrustLevel !== undefined) {
-            if (action.isCorrect) {
-                this._clientTrustLevel = Math.min(100, this._clientTrustLevel + 5);
-            } else {
-                this._clientTrustLevel = Math.max(0, this._clientTrustLevel - 10);
-            }
+        if (action.isCorrect) {
+            this._clientTrustLevel = Math.min(100, this._clientTrustLevel + 5);
+        } else {
+            this._clientTrustLevel = Math.max(0, this._clientTrustLevel - 10);
         }
+
+        this.emit('actionTaken', {
+            actionId,
+            isCorrect: action.isCorrect,
+            scoreChange,
+            message
+        });
 
         return {
             success: true,
@@ -231,7 +266,8 @@ export class GameManager extends Component {
 
         this._currentStageIndex = targetIndex;
         const stageConfig = this._currentCase.stages[targetIndex];
-        
+
+        const newlyDiscovered: string[] = [];
         stageConfig.clueIds.forEach(clueId => {
             if (!this._discoveredClueIds.has(clueId)) {
                 const clue = this._currentCase!.clues.find(c => c.id === clueId);
@@ -247,8 +283,15 @@ export class GameManager extends Component {
                     this._materialMissRecords.push(missRecord);
                 }
                 this._discoveredClueIds.add(clueId);
+                newlyDiscovered.push(clueId);
             }
         });
+
+        if (newlyDiscovered.length > 0) {
+            this.emit('cluesDiscovered', newlyDiscovered);
+        }
+
+        this.emit('stageChanged', targetStage);
 
         if (targetStage === GameConstants.CaseStage.CLOSED) {
             this.endCase();
@@ -293,8 +336,9 @@ export class GameManager extends Component {
 
         this._isPlaying = false;
         SaveManager.instance.setCurrentCase(null);
+        this.emit('caseEnded', record);
 
-        console.log(`[GameManager] Case ended. Score: ${finalScore}, Passed: ${passed}, Perfect: ${perfect}`);
+        console.log(`[GameManager] Case ended. Score: ${finalScore}/${this.getMaxScore()}, Passed: ${passed}, Perfect: ${perfect}`);
         return record;
     }
 
@@ -307,12 +351,12 @@ export class GameManager extends Component {
         allLevels.forEach(level => {
             if (!SaveManager.instance.isLevelUnlocked(level.id) && totalScore >= level.requiredScore) {
                 SaveManager.instance.unlockLevel(level.id);
+                this.emit('levelUnlocked', level.id);
                 console.log(`[GameManager] Unlocked level: ${level.name}`);
             }
         });
 
         const allClients = ConfigManager.instance.getAllClients();
-        const completedCases = SaveManager.instance.getSave().completedCaseIds.length;
 
         allClients.forEach(client => {
             if (!SaveManager.instance.isClientUnlocked(client.id)) {
@@ -322,6 +366,7 @@ export class GameManager extends Component {
                 );
                 if (completedClientCases.length > 0 && completedClientCases.length >= Math.ceil(clientCases.length * 0.3)) {
                     SaveManager.instance.unlockClient(client.id);
+                    this.emit('clientUnlocked', client.id);
                     console.log(`[GameManager] Unlocked client: ${client.name}`);
                 }
             }

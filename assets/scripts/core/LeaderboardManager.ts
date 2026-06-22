@@ -1,9 +1,7 @@
-import { _decorator, Component, sys } from 'cc';
-import { ILeaderboardEntry, ITrainingRecord } from './GameInterfaces';
-const { ccclass, property } = _decorator;
+import { ILeaderboardEntry } from './GameInterfaces';
+import { IStorageAdapter, StorageFactory } from './PlatformAdapters';
 
-@ccclass('LeaderboardManager')
-export class LeaderboardManager extends Component {
+export class LeaderboardManager {
 
     private static _instance: LeaderboardManager | null = null;
 
@@ -14,19 +12,28 @@ export class LeaderboardManager extends Component {
         return LeaderboardManager._instance;
     }
 
+    public static reset(): void {
+        LeaderboardManager._instance = null;
+    }
+
     private static readonly LEADERBOARD_KEY = 'legal_game_leaderboard_v1';
     private static readonly MAX_ENTRIES = 100;
 
     private _entries: ILeaderboardEntry[] = [];
 
-    constructor() {
-        super();
+    private constructor() {
+        this.loadLeaderboard();
+    }
+
+    public setStorage(storage: IStorageAdapter): void {
+        StorageFactory.setInstance(storage);
         this.loadLeaderboard();
     }
 
     private loadLeaderboard(): void {
         try {
-            const data = sys.localStorage.getItem(LeaderboardManager.LEADERBOARD_KEY);
+            const storage = StorageFactory.getInstance();
+            const data = storage.getItem(LeaderboardManager.LEADERBOARD_KEY);
             if (data) {
                 this._entries = JSON.parse(data);
                 this.sortEntries();
@@ -39,7 +46,8 @@ export class LeaderboardManager extends Component {
 
     private saveLeaderboard(): void {
         try {
-            sys.localStorage.setItem(
+            const storage = StorageFactory.getInstance();
+            storage.setItem(
                 LeaderboardManager.LEADERBOARD_KEY,
                 JSON.stringify(this._entries)
             );
@@ -68,11 +76,11 @@ export class LeaderboardManager extends Component {
         }
     }
 
-    public submitScore(playerId: string, playerName: string, 
-                       totalScore: number, casesCompleted: number, 
+    public submitScore(playerId: string, playerName: string,
+                       totalScore: number, casesCompleted: number,
                        perfectCases: number): number {
         let entry = this._entries.find(e => e.playerId === playerId);
-        
+
         if (entry) {
             entry.playerName = playerName;
             entry.totalScore = Math.max(entry.totalScore, totalScore);

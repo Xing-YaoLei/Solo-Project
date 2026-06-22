@@ -59,6 +59,14 @@ export namespace GameConstants {
         CaseStage.CLOSED
     ];
 
+    export const ERROR_CATEGORY_NAMES: Record<ErrorCategory, string> = {
+        [ErrorCategory.PROCEDURAL]: '程序类',
+        [ErrorCategory.EVIDENTIARY]: '证据类',
+        [ErrorCategory.LEGAL]: '法律适用类',
+        [ErrorCategory.STRATEGIC]: '策略类',
+        [ErrorCategory.ETHICAL]: '职业伦理类'
+    };
+
     export const MAX_SCORE = 100;
     export const BASE_PASS_SCORE = 60;
     export const CLUE_MISS_PENALTY = 5;

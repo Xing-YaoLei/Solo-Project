@@ -1,0 +1,12 @@
+{
+  "gameList": [
+    {
+      "id": "legal-game",
+      "name": "legal-simulation-game",
+      "url": "db://assets/scenes/MainScene.scene",
+      "orientation": "portrait"
+    }
+  ],
+  "launchScene": "db://assets/scenes/MainScene.scene",
+  "exactScenes": true
+}

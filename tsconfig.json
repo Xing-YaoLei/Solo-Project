@@ -1,0 +1,31 @@
+{
+  "extends": "./temp/tsconfig.cocos.json",
+  "compilerOptions": {
+    "target": "es2017",
+    "module": "es2015",
+    "strict": true,
+    "jsx": "preserve",
+    "importHelpers": true,
+    "moduleResolution": "node",
+    "experimentalDecorators": true,
+    "esModuleInterop": true,
+    "allowSyntheticDefaultImports": true,
+    "sourceMap": true,
+    "baseUrl": ".",
+    "paths": {
+      "cc": ["./temp/declarations/cc.d.ts"]
+    },
+    "skipLibCheck": true,
+    "forceConsistentCasingInFileNames": true
+  },
+  "include": [
+    "assets/**/*.ts",
+    "temp/declarations/**/*.d.ts"
+  ],
+  "exclude": [
+    "node_modules",
+    "library",
+    "local",
+    "temp"
+  ]
+}

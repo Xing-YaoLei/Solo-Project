@@ -1,0 +1,13 @@
+{
+  "name": "legal-simulation-game",
+  "version": "1.0.0",
+  "description": "法律服务案件委托经营模拟游戏",
+  "creator": {
+    "version": "3.8.0"
+  },
+  "type": "2d",
+  "dependencies": {},
+  "scripts": {
+    "start": "node server.js"
+  }
+}

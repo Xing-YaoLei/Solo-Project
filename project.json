@@ -1,0 +1,7 @@
+{
+    "engine": "cocos-creator-js",
+    "packages": "packages",
+    "name": "legal-simulation-game",
+    "id": "legal-simulation-game",
+    "version": "3.8.0"
+}
