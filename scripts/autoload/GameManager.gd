@@ -72,6 +72,8 @@ func record_answer(question_id: String, correct: bool, score: int, max_score: in
 	emit_signal("question_answered", correct, question_id)
 
 func record_permission_violation(reason: String) -> void:
+	if not training_record.has("permission_violations"):
+		training_record["permission_violations"] = []
 	training_record["permission_violations"].append({
 		"reason": reason,
 		"timestamp": Time.get_unix_time_from_system()

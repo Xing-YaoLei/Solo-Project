@@ -397,7 +397,640 @@ func _build_editable_question_card(q_type_key: String, q_index: int) -> PanelCon
 	hint_input.text_changed.connect(func(txt): DataManager.questions[q_type_key][q_index]["hint"] = txt)
 	row3.add_child(hint_input)
 
+	var content_sep = HSeparator.new()
+	content_sep.modulate = Color(0.35, 0.4, 0.48, 1)
+	qvbox.add_child(content_sep)
+
+	if q_type_key == "evidence_identification":
+		_build_evidence_identification_content(qvbox, q_type_key, q_index)
+	elif q_type_key == "template_selection":
+		_build_template_selection_content(qvbox, q_type_key, q_index)
+	elif q_type_key == "checklist_sorting":
+		_build_checklist_sorting_content(qvbox, q_type_key, q_index)
+	elif q_type_key == "sampling_processing":
+		_build_sampling_processing_content(qvbox, q_type_key, q_index)
+
 	return card
+
+func _build_evidence_identification_content(parent: VBoxContainer, q_type_key: String, q_index: int) -> void:
+	var title = create_label("🔘 选项列表 - 勾选「是证据」表示正确答案", Vector2.ZERO, 14, STYLE_ACCENT)
+	parent.add_child(title)
+	var q_ref = DataManager.questions[q_type_key][q_index]
+	if not q_ref.has("options"):
+		q_ref["options"] = []
+	var options_ref = q_ref["options"]
+	for oi in range(options_ref.size()):
+		var opt_panel = PanelContainer.new()
+		var os = StyleBoxFlat.new()
+		os.bg_color = Color(0.14, 0.18, 0.24, 1)
+		os.corner_radius_top_left = 5
+		os.corner_radius_top_right = 5
+		os.corner_radius_bottom_left = 5
+		os.corner_radius_bottom_right = 5
+		os.content_margin_left = 10
+		os.content_margin_right = 10
+		os.content_margin_top = 8
+		os.content_margin_bottom = 8
+		opt_panel.add_theme_stylebox_override("panel", os)
+		opt_panel.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+		parent.add_child(opt_panel)
+
+		var opt_vbox = VBoxContainer.new()
+		opt_vbox.add_theme_constant_override("separation", 6)
+		opt_vbox.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+		opt_panel.add_child(opt_vbox)
+
+		var row1 = HBoxContainer.new()
+		row1.add_theme_constant_override("separation", 8)
+		opt_vbox.add_child(row1)
+		var id_lbl = create_label("选项" + str(oi + 1) + "（ID:" + options_ref[oi].get("id", "") + "）", Vector2.ZERO, 12, Color(0.5, 0.55, 0.65, 1))
+		row1.add_child(id_lbl)
+		var spacer = Control.new()
+		spacer.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+		row1.add_child(spacer)
+		var correct_chk = CheckBox.new()
+		correct_chk.text = "✓ 是证据（正确答案）"
+		correct_chk.button_pressed = options_ref[oi].get("is_evidence", false)
+		correct_chk.add_theme_font_size_override("font_size", 13)
+		correct_chk.pressed.connect(func(pressed):
+			DataManager.questions[q_type_key][q_index]["options"][oi]["is_evidence"] = pressed
+		)
+		row1.add_child(correct_chk)
+		var del_opt = create_button("删除选项", Vector2.ZERO, Vector2(88, 26), STYLE_DANGER)
+		del_opt.add_theme_font_size_override("font_size", 11)
+		del_opt.pressed.connect(func():
+			DataManager.questions[q_type_key][q_index]["options"].remove_at(oi)
+			show_notification("已删除选项，刷新页面生效", "warning", 1.5)
+			get_tree().reload_current_scene()
+		)
+		row1.add_child(del_opt)
+
+		var row2 = HBoxContainer.new()
+		row2.add_theme_constant_override("separation", 8)
+		opt_vbox.add_child(row2)
+		var name_lbl = create_label("名称:", Vector2.ZERO, 13, STYLE_TEXT_SECONDARY)
+		name_lbl.custom_minimum_size = Vector2(46, 0)
+		row2.add_child(name_lbl)
+		var name_in = LineEdit.new()
+		name_in.text = options_ref[oi].get("name", "")
+		name_in.placeholder_text = "选项名称，如：合同扫描件.pdf"
+		name_in.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+		name_in.add_theme_font_size_override("font_size", 13)
+		name_in.text_changed.connect(func(txt): DataManager.questions[q_type_key][q_index]["options"][oi]["name"] = txt)
+		row2.add_child(name_in)
+		var cat_lbl = create_label("分类:", Vector2.ZERO, 13, STYLE_TEXT_SECONDARY)
+		cat_lbl.custom_minimum_size = Vector2(40, 0)
+		row2.add_child(cat_lbl)
+		var cat_in = LineEdit.new()
+		cat_in.text = options_ref[oi].get("category", "")
+		cat_in.placeholder_text = "分类"
+		cat_in.custom_minimum_size = Vector2(140, 0)
+		cat_in.add_theme_font_size_override("font_size", 13)
+		cat_in.text_changed.connect(func(txt): DataManager.questions[q_type_key][q_index]["options"][oi]["category"] = txt)
+		row2.add_child(cat_in)
+
+		var row3 = HBoxContainer.new()
+		row3.add_theme_constant_override("separation", 8)
+		opt_vbox.add_child(row3)
+		var desc_lbl = create_label("描述:", Vector2.ZERO, 13, STYLE_TEXT_SECONDARY)
+		desc_lbl.custom_minimum_size = Vector2(46, 0)
+		row3.add_child(desc_lbl)
+		var desc_in = LineEdit.new()
+		desc_in.text = options_ref[oi].get("description", "")
+		desc_in.placeholder_text = "选项描述"
+		desc_in.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+		desc_in.add_theme_font_size_override("font_size", 13)
+		desc_in.text_changed.connect(func(txt): DataManager.questions[q_type_key][q_index]["options"][oi]["description"] = txt)
+		row3.add_child(desc_in)
+
+	var add_opt_btn = create_button("+ 新增选项", Vector2.ZERO, Vector2(140, 32), Color(0.25, 0.45, 0.3, 1))
+	add_opt_btn.add_theme_font_size_override("font_size", 12)
+	add_opt_btn.pressed.connect(func():
+		var new_id = "opt_" + str(randi())
+		DataManager.questions[q_type_key][q_index]["options"].append({
+			"id": new_id, "name": "新选项", "is_evidence": false,
+			"category": "未分类", "description": "请填写选项说明"
+		})
+		show_notification("已新增选项，请填写后刷新", "info", 1.5)
+		get_tree().reload_current_scene()
+	)
+	parent.add_child(add_opt_btn)
+
+func _build_template_selection_content(parent: VBoxContainer, q_type_key: String, q_index: int) -> void:
+	var title = create_label("📋 模板选项 - 勾选「适用」表示正确答案", Vector2.ZERO, 14, STYLE_ACCENT)
+	parent.add_child(title)
+	var q_ref = DataManager.questions[q_type_key][q_index]
+	if not q_ref.has("options"):
+		q_ref["options"] = []
+	var options_ref = q_ref["options"]
+	for oi in range(options_ref.size()):
+		var opt_panel = PanelContainer.new()
+		var os = StyleBoxFlat.new()
+		os.bg_color = Color(0.14, 0.18, 0.24, 1)
+		os.corner_radius_top_left = 5
+		os.corner_radius_top_right = 5
+		os.corner_radius_bottom_left = 5
+		os.corner_radius_bottom_right = 5
+		os.content_margin_left = 10
+		os.content_margin_right = 10
+		os.content_margin_top = 8
+		os.content_margin_bottom = 8
+		opt_panel.add_theme_stylebox_override("panel", os)
+		opt_panel.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+		parent.add_child(opt_panel)
+
+		var opt_vbox = VBoxContainer.new()
+		opt_vbox.add_theme_constant_override("separation", 6)
+		opt_vbox.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+		opt_panel.add_child(opt_vbox)
+
+		var row1 = HBoxContainer.new()
+		row1.add_theme_constant_override("separation", 8)
+		opt_vbox.add_child(row1)
+		var id_lbl = create_label("选项" + str(oi + 1) + "（ID:" + options_ref[oi].get("id", "") + "）", Vector2.ZERO, 12, Color(0.5, 0.55, 0.65, 1))
+		row1.add_child(id_lbl)
+		var spacer = Control.new()
+		spacer.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+		row1.add_child(spacer)
+		var correct_chk = CheckBox.new()
+		correct_chk.text = "✓ 适用（正确答案）"
+		correct_chk.button_pressed = options_ref[oi].get("appropriate", false)
+		correct_chk.add_theme_font_size_override("font_size", 13)
+		correct_chk.pressed.connect(func(pressed):
+			DataManager.questions[q_type_key][q_index]["options"][oi]["appropriate"] = pressed
+		)
+		row1.add_child(correct_chk)
+		var del_opt = create_button("删除选项", Vector2.ZERO, Vector2(88, 26), STYLE_DANGER)
+		del_opt.add_theme_font_size_override("font_size", 11)
+		del_opt.pressed.connect(func():
+			DataManager.questions[q_type_key][q_index]["options"].remove_at(oi)
+			show_notification("已删除选项，刷新页面生效", "warning", 1.5)
+			get_tree().reload_current_scene()
+		)
+		row1.add_child(del_opt)
+
+		var row2 = HBoxContainer.new()
+		row2.add_theme_constant_override("separation", 8)
+		opt_vbox.add_child(row2)
+		var name_lbl = create_label("名称:", Vector2.ZERO, 13, STYLE_TEXT_SECONDARY)
+		name_lbl.custom_minimum_size = Vector2(46, 0)
+		row2.add_child(name_lbl)
+		var name_in = LineEdit.new()
+		name_in.text = options_ref[oi].get("name", "")
+		name_in.placeholder_text = "模板名称"
+		name_in.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+		name_in.add_theme_font_size_override("font_size", 13)
+		name_in.text_changed.connect(func(txt): DataManager.questions[q_type_key][q_index]["options"][oi]["name"] = txt)
+		row2.add_child(name_in)
+
+		var row3 = HBoxContainer.new()
+		row3.add_theme_constant_override("separation", 8)
+		opt_vbox.add_child(row3)
+		var desc_lbl = create_label("描述:", Vector2.ZERO, 13, STYLE_TEXT_SECONDARY)
+		desc_lbl.custom_minimum_size = Vector2(46, 0)
+		row3.add_child(desc_lbl)
+		var desc_in = LineEdit.new()
+		desc_in.text = options_ref[oi].get("description", "")
+		desc_in.placeholder_text = "模板适用场景描述"
+		desc_in.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+		desc_in.add_theme_font_size_override("font_size", 13)
+		desc_in.text_changed.connect(func(txt): DataManager.questions[q_type_key][q_index]["options"][oi]["description"] = txt)
+		row3.add_child(desc_in)
+
+		var row4 = HBoxContainer.new()
+		row4.add_theme_constant_override("separation", 8)
+		opt_vbox.add_child(row4)
+		var reason_lbl = create_label("原因:", Vector2.ZERO, 13, STYLE_TEXT_SECONDARY)
+		reason_lbl.custom_minimum_size = Vector2(46, 0)
+		row4.add_child(reason_lbl)
+		var reason_in = LineEdit.new()
+		reason_in.text = options_ref[oi].get("reason", "")
+		reason_in.placeholder_text = "选择/不选择该模板的原因"
+		reason_in.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+		reason_in.add_theme_font_size_override("font_size", 13)
+		reason_in.text_changed.connect(func(txt): DataManager.questions[q_type_key][q_index]["options"][oi]["reason"] = txt)
+		row4.add_child(reason_in)
+
+	var add_opt_btn = create_button("+ 新增模板选项", Vector2.ZERO, Vector2(160, 32), Color(0.25, 0.45, 0.3, 1))
+	add_opt_btn.add_theme_font_size_override("font_size", 12)
+	add_opt_btn.pressed.connect(func():
+		var new_id = "tpl_" + str(randi())
+		DataManager.questions[q_type_key][q_index]["options"].append({
+			"id": new_id, "name": "新模板", "appropriate": false,
+			"description": "请输入适用场景", "reason": "请输入选择原因"
+		})
+		show_notification("已新增模板选项，请填写后刷新", "info", 1.5)
+		get_tree().reload_current_scene()
+	)
+	parent.add_child(add_opt_btn)
+
+func _build_checklist_sorting_content(parent: VBoxContainer, q_type_key: String, q_index: int) -> void:
+	var title = create_label("📝 检查清单步骤 - 「顺序」数字决定正确答案", Vector2.ZERO, 14, STYLE_ACCENT)
+	parent.add_child(title)
+	var q_ref = DataManager.questions[q_type_key][q_index]
+	if not q_ref.has("items"):
+		q_ref["items"] = []
+	var items_ref = q_ref["items"]
+	for ii in range(items_ref.size()):
+		var item_panel = PanelContainer.new()
+		var is_box = StyleBoxFlat.new()
+		is_box.bg_color = Color(0.14, 0.18, 0.24, 1)
+		is_box.corner_radius_top_left = 5
+		is_box.corner_radius_top_right = 5
+		is_box.corner_radius_bottom_left = 5
+		is_box.corner_radius_bottom_right = 5
+		is_box.content_margin_left = 10
+		is_box.content_margin_right = 10
+		is_box.content_margin_top = 8
+		is_box.content_margin_bottom = 8
+		item_panel.add_theme_stylebox_override("panel", is_box)
+		item_panel.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+		parent.add_child(item_panel)
+
+		var item_vbox = VBoxContainer.new()
+		item_vbox.add_theme_constant_override("separation", 6)
+		item_vbox.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+		item_panel.add_child(item_vbox)
+
+		var row1 = HBoxContainer.new()
+		row1.add_theme_constant_override("separation", 8)
+		item_vbox.add_child(row1)
+		var id_lbl = create_label("步骤" + str(ii + 1) + "（ID:" + items_ref[ii].get("id", "") + "）", Vector2.ZERO, 12, Color(0.5, 0.55, 0.65, 1))
+		row1.add_child(id_lbl)
+		var spacer = Control.new()
+		spacer.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+		row1.add_child(spacer)
+		var order_lbl = create_label("正确顺序:", Vector2.ZERO, 13, STYLE_TEXT_SECONDARY)
+		row1.add_child(order_lbl)
+		var order_spin = SpinBox.new()
+		order_spin.min_value = 1
+		order_spin.max_value = 50
+		order_spin.value = items_ref[ii].get("order", ii + 1)
+		order_spin.step = 1
+		order_spin.custom_minimum_size = Vector2(80, 26)
+		order_spin.value_changed.connect(func(v):
+			DataManager.questions[q_type_key][q_index]["items"][ii]["order"] = int(v)
+		)
+		row1.add_child(order_spin)
+		var del_item = create_button("删除步骤", Vector2.ZERO, Vector2(88, 26), STYLE_DANGER)
+		del_item.add_theme_font_size_override("font_size", 11)
+		del_item.pressed.connect(func():
+			DataManager.questions[q_type_key][q_index]["items"].remove_at(ii)
+			show_notification("已删除步骤，刷新页面生效", "warning", 1.5)
+			get_tree().reload_current_scene()
+		)
+		row1.add_child(del_item)
+
+		var row2 = HBoxContainer.new()
+		row2.add_theme_constant_override("separation", 8)
+		item_vbox.add_child(row2)
+		var text_lbl = create_label("步骤名:", Vector2.ZERO, 13, STYLE_TEXT_SECONDARY)
+		text_lbl.custom_minimum_size = Vector2(60, 0)
+		row2.add_child(text_lbl)
+		var text_in = LineEdit.new()
+		text_in.text = items_ref[ii].get("text", "")
+		text_in.placeholder_text = "步骤名称"
+		text_in.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+		text_in.add_theme_font_size_override("font_size", 13)
+		text_in.text_changed.connect(func(txt): DataManager.questions[q_type_key][q_index]["items"][ii]["text"] = txt)
+		row2.add_child(text_in)
+
+		var row3 = HBoxContainer.new()
+		row3.add_theme_constant_override("separation", 8)
+		item_vbox.add_child(row3)
+		var desc_lbl = create_label("描述:", Vector2.ZERO, 13, STYLE_TEXT_SECONDARY)
+		desc_lbl.custom_minimum_size = Vector2(60, 0)
+		row3.add_child(desc_lbl)
+		var desc_in = LineEdit.new()
+		desc_in.text = items_ref[ii].get("description", "")
+		desc_in.placeholder_text = "步骤详细描述"
+		desc_in.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+		desc_in.add_theme_font_size_override("font_size", 13)
+		desc_in.text_changed.connect(func(txt): DataManager.questions[q_type_key][q_index]["items"][ii]["description"] = txt)
+		row3.add_child(desc_in)
+
+	var add_item_btn = create_button("+ 新增步骤", Vector2.ZERO, Vector2(140, 32), Color(0.25, 0.45, 0.3, 1))
+	add_item_btn.add_theme_font_size_override("font_size", 12)
+	add_item_btn.pressed.connect(func():
+		var items = DataManager.questions[q_type_key][q_index]["items"]
+		var new_id = "step_" + str(randi())
+		items.append({
+			"id": new_id, "text": "新步骤",
+			"order": items.size() + 1, "description": "请填写步骤描述"
+		})
+		show_notification("已新增步骤，请填写后刷新", "info", 1.5)
+		get_tree().reload_current_scene()
+	)
+	parent.add_child(add_item_btn)
+
+func _build_sampling_processing_content(parent: VBoxContainer, q_type_key: String, q_index: int) -> void:
+	var q_ref = DataManager.questions[q_type_key][q_index]
+	if q_ref.has("records"):
+		var title = create_label("📂 异常抽样记录 - 「处理方式」即正确答案", Vector2.ZERO, 14, STYLE_ACCENT)
+		parent.add_child(title)
+		var records_ref = q_ref["records"]
+		for ri in range(records_ref.size()):
+			var rec_panel = PanelContainer.new()
+			var rs = StyleBoxFlat.new()
+			rs.bg_color = Color(0.14, 0.18, 0.24, 1)
+			rs.corner_radius_top_left = 5
+			rs.corner_radius_top_right = 5
+			rs.corner_radius_bottom_left = 5
+			rs.corner_radius_bottom_right = 5
+			rs.content_margin_left = 10
+			rs.content_margin_right = 10
+			rs.content_margin_top = 8
+			rs.content_margin_bottom = 8
+			rec_panel.add_theme_stylebox_override("panel", rs)
+			rec_panel.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+			parent.add_child(rec_panel)
+
+			var rec_vbox = VBoxContainer.new()
+			rec_vbox.add_theme_constant_override("separation", 6)
+			rec_vbox.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+			rec_panel.add_child(rec_vbox)
+
+			var row1 = HBoxContainer.new()
+			row1.add_theme_constant_override("separation", 8)
+			rec_vbox.add_child(row1)
+			var id_lbl = create_label("记录" + str(ri + 1) + "（ID:" + records_ref[ri].get("id", "") + "）", Vector2.ZERO, 12, Color(0.5, 0.55, 0.65, 1))
+			row1.add_child(id_lbl)
+			var spacer = Control.new()
+			spacer.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+			row1.add_child(spacer)
+			var sev_lbl = create_label("严重度:", Vector2.ZERO, 13, STYLE_TEXT_SECONDARY)
+			row1.add_child(sev_lbl)
+			var sev_menu = OptionButton.new()
+			var sev_options = ["none", "low", "medium", "high"]
+			var sev_labels = ["无", "低", "中", "高"]
+			for sl in sev_labels:
+				sev_menu.add_item(sl)
+			var cur_sev = records_ref[ri].get("severity", "low")
+			sev_menu.select(max(0, sev_options.find(cur_sev)))
+			sev_menu.add_theme_font_size_override("font_size", 12)
+			sev_menu.custom_minimum_size = Vector2(80, 26)
+			sev_menu.item_selected.connect(func(si):
+				DataManager.questions[q_type_key][q_index]["records"][ri]["severity"] = sev_options[si]
+			)
+			row1.add_child(sev_menu)
+			var count_lbl = create_label("数量:", Vector2.ZERO, 13, STYLE_TEXT_SECONDARY)
+			row1.add_child(count_lbl)
+			var count_spin = SpinBox.new()
+			count_spin.min_value = 0
+			count_spin.max_value = 9999
+			count_spin.value = records_ref[ri].get("count", 0)
+			count_spin.custom_minimum_size = Vector2(70, 26)
+			count_spin.value_changed.connect(func(v):
+				DataManager.questions[q_type_key][q_index]["records"][ri]["count"] = int(v)
+			)
+			row1.add_child(count_spin)
+			var del_rec = create_button("删除", Vector2.ZERO, Vector2(64, 26), STYLE_DANGER)
+			del_rec.add_theme_font_size_override("font_size", 11)
+			del_rec.pressed.connect(func():
+				DataManager.questions[q_type_key][q_index]["records"].remove_at(ri)
+				show_notification("已删除记录，刷新生效", "warning", 1.5)
+				get_tree().reload_current_scene()
+			)
+			row1.add_child(del_rec)
+
+			var row2 = HBoxContainer.new()
+			row2.add_theme_constant_override("separation", 8)
+			rec_vbox.add_child(row2)
+			var type_lbl = create_label("类型:", Vector2.ZERO, 13, STYLE_TEXT_SECONDARY)
+			type_lbl.custom_minimum_size = Vector2(46, 0)
+			row2.add_child(type_lbl)
+			var type_in = LineEdit.new()
+			type_in.text = records_ref[ri].get("type", "")
+			type_in.placeholder_text = "异常类型，如：missing_signature"
+			type_in.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+			type_in.add_theme_font_size_override("font_size", 13)
+			type_in.text_changed.connect(func(txt): DataManager.questions[q_type_key][q_index]["records"][ri]["type"] = txt)
+			row2.add_child(type_in)
+
+			var row3 = HBoxContainer.new()
+			row3.add_theme_constant_override("separation", 8)
+			rec_vbox.add_child(row3)
+			var desc_lbl = create_label("描述:", Vector2.ZERO, 13, STYLE_TEXT_SECONDARY)
+			desc_lbl.custom_minimum_size = Vector2(46, 0)
+			row3.add_child(desc_lbl)
+			var desc_in = LineEdit.new()
+			desc_in.text = records_ref[ri].get("description", "")
+			desc_in.placeholder_text = "异常描述"
+			desc_in.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+			desc_in.add_theme_font_size_override("font_size", 13)
+			desc_in.text_changed.connect(func(txt): DataManager.questions[q_type_key][q_index]["records"][ri]["description"] = txt)
+			row3.add_child(desc_in)
+
+			var row4 = HBoxContainer.new()
+			row4.add_theme_constant_override("separation", 8)
+			rec_vbox.add_child(row4)
+			var act_lbl = create_label("处理方式:", Vector2.ZERO, 13, STYLE_TEXT_SECONDARY)
+			act_lbl.custom_minimum_size = Vector2(70, 0)
+			row4.add_child(act_lbl)
+			var act_in = LineEdit.new()
+			act_in.text = records_ref[ri].get("action_required", "")
+			act_in.placeholder_text = "正确答案处理方式 key"
+			act_in.custom_minimum_size = Vector2(180, 0)
+			act_in.add_theme_font_size_override("font_size", 13)
+			act_in.text_changed.connect(func(txt): DataManager.questions[q_type_key][q_index]["records"][ri]["action_required"] = txt)
+			row4.add_child(act_in)
+			var actd_lbl = create_label("说明:", Vector2.ZERO, 13, STYLE_TEXT_SECONDARY)
+			row4.add_child(actd_lbl)
+			var actd_in = LineEdit.new()
+			actd_in.text = records_ref[ri].get("action_description", "")
+			actd_in.placeholder_text = "处理方式说明文字"
+			actd_in.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+			actd_in.add_theme_font_size_override("font_size", 13)
+			actd_in.text_changed.connect(func(txt): DataManager.questions[q_type_key][q_index]["records"][ri]["action_description"] = txt)
+			row4.add_child(actd_in)
+
+		var add_rec_btn = create_button("+ 新增抽样记录", Vector2.ZERO, Vector2(160, 32), Color(0.25, 0.45, 0.3, 1))
+		add_rec_btn.add_theme_font_size_override("font_size", 12)
+		add_rec_btn.pressed.connect(func():
+			var recs = DataManager.questions[q_type_key][q_index]["records"]
+			recs.append({
+				"id": "rec_" + str(randi()), "type": "new_issue",
+				"description": "请输入异常描述", "severity": "low",
+				"count": 1, "action_required": "no_action",
+				"action_description": "请输入处理方式说明"
+			})
+			show_notification("已新增记录，请填写后刷新", "info", 1.5)
+			get_tree().reload_current_scene()
+		)
+		parent.add_child(add_rec_btn)
+
+	elif q_ref.has("scenarios"):
+		var title = create_label("📊 抽样方法场景 - 每个场景选择「正确抽样方法」", Vector2.ZERO, 14, STYLE_ACCENT)
+		parent.add_child(title)
+		var scenarios_ref = q_ref["scenarios"]
+		for si in range(scenarios_ref.size()):
+			var sc_panel = PanelContainer.new()
+			var ss = StyleBoxFlat.new()
+			ss.bg_color = Color(0.14, 0.20, 0.22, 1)
+			ss.corner_radius_top_left = 5
+			ss.corner_radius_top_right = 5
+			ss.corner_radius_bottom_left = 5
+			ss.corner_radius_bottom_right = 5
+			ss.content_margin_left = 10
+			ss.content_margin_right = 10
+			ss.content_margin_top = 8
+			ss.content_margin_bottom = 8
+			sc_panel.add_theme_stylebox_override("panel", ss)
+			sc_panel.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+			parent.add_child(sc_panel)
+
+			var sc_vbox = VBoxContainer.new()
+			sc_vbox.add_theme_constant_override("separation", 6)
+			sc_vbox.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+			sc_panel.add_child(sc_vbox)
+
+			var row1 = HBoxContainer.new()
+			row1.add_theme_constant_override("separation", 8)
+			sc_vbox.add_child(row1)
+			var id_lbl = create_label("场景" + str(si + 1) + "（ID:" + scenarios_ref[si].get("id", "") + "）", Vector2.ZERO, 12, Color(0.5, 0.55, 0.65, 1))
+			row1.add_child(id_lbl)
+			var spacer = Control.new()
+			spacer.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+			row1.add_child(spacer)
+			var del_sc = create_button("删除场景", Vector2.ZERO, Vector2(88, 26), STYLE_DANGER)
+			del_sc.add_theme_font_size_override("font_size", 11)
+			del_sc.pressed.connect(func():
+				DataManager.questions[q_type_key][q_index]["scenarios"].remove_at(si)
+				show_notification("已删除场景，刷新生效", "warning", 1.5)
+				get_tree().reload_current_scene()
+			)
+			row1.add_child(del_sc)
+
+			var row2 = HBoxContainer.new()
+			row2.add_theme_constant_override("separation", 8)
+			sc_vbox.add_child(row2)
+			var name_lbl = create_label("场景名:", Vector2.ZERO, 13, STYLE_TEXT_SECONDARY)
+			name_lbl.custom_minimum_size = Vector2(60, 0)
+			row2.add_child(name_lbl)
+			var name_in = LineEdit.new()
+			name_in.text = scenarios_ref[si].get("name", "")
+			name_in.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+			name_in.add_theme_font_size_override("font_size", 13)
+			name_in.text_changed.connect(func(txt): DataManager.questions[q_type_key][q_index]["scenarios"][si]["name"] = txt)
+			row2.add_child(name_in)
+			var method_lbl = create_label("正确方法:", Vector2.ZERO, 13, STYLE_TEXT_SECONDARY)
+			row2.add_child(method_lbl)
+			var method_in = LineEdit.new()
+			method_in.text = scenarios_ref[si].get("sampling_method", "")
+			method_in.placeholder_text = "如：random/judgmental"
+			method_in.custom_minimum_size = Vector2(140, 0)
+			method_in.add_theme_font_size_override("font_size", 13)
+			method_in.text_changed.connect(func(txt): DataManager.questions[q_type_key][q_index]["scenarios"][si]["sampling_method"] = txt)
+			row2.add_child(method_in)
+			var mname_lbl = create_label("方法名:", Vector2.ZERO, 13, STYLE_TEXT_SECONDARY)
+			row2.add_child(mname_lbl)
+			var mname_in = LineEdit.new()
+			mname_in.text = scenarios_ref[si].get("method_name", "")
+			mname_in.placeholder_text = "方法显示名称"
+			mname_in.custom_minimum_size = Vector2(120, 0)
+			mname_in.add_theme_font_size_override("font_size", 13)
+			mname_in.text_changed.connect(func(txt): DataManager.questions[q_type_key][q_index]["scenarios"][si]["method_name"] = txt)
+			row2.add_child(mname_in)
+
+			var row3 = HBoxContainer.new()
+			row3.add_theme_constant_override("separation", 8)
+			sc_vbox.add_child(row3)
+			var desc_lbl = create_label("描述:", Vector2.ZERO, 13, STYLE_TEXT_SECONDARY)
+			desc_lbl.custom_minimum_size = Vector2(60, 0)
+			row3.add_child(desc_lbl)
+			var desc_in = LineEdit.new()
+			desc_in.text = scenarios_ref[si].get("description", "")
+			desc_in.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+			desc_in.add_theme_font_size_override("font_size", 13)
+			desc_in.text_changed.connect(func(txt): DataManager.questions[q_type_key][q_index]["scenarios"][si]["description"] = txt)
+			row3.add_child(desc_in)
+
+			var row4 = HBoxContainer.new()
+			row4.add_theme_constant_override("separation", 8)
+			sc_vbox.add_child(row4)
+			var reason_lbl = create_label("原因:", Vector2.ZERO, 13, STYLE_TEXT_SECONDARY)
+			reason_lbl.custom_minimum_size = Vector2(60, 0)
+			row4.add_child(reason_lbl)
+			var reason_in = LineEdit.new()
+			reason_in.text = scenarios_ref[si].get("reason", "")
+			reason_in.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+			reason_in.add_theme_font_size_override("font_size", 13)
+			reason_in.text_changed.connect(func(txt): DataManager.questions[q_type_key][q_index]["scenarios"][si]["reason"] = txt)
+			row4.add_child(reason_in)
+
+			var opts_lbl = create_label("抽样方法候选选项：", Vector2.ZERO, 13, STYLE_ACCENT)
+			sc_vbox.add_child(opts_lbl)
+			var sc_options = scenarios_ref[si].get("options", [])
+			for oi in range(sc_options.size()):
+				var o_row = HBoxContainer.new()
+				o_row.add_theme_constant_override("separation", 8)
+				sc_vbox.add_child(o_row)
+				var corr_chk = CheckBox.new()
+				corr_chk.text = "✓正确"
+				corr_chk.button_pressed = sc_options[oi].get("correct", false)
+				corr_chk.add_theme_font_size_override("font_size", 12)
+				corr_chk.pressed.connect(func(pressed):
+					DataManager.questions[q_type_key][q_index]["scenarios"][si]["options"][oi]["correct"] = pressed
+				)
+				o_row.add_child(corr_chk)
+				var m_in = LineEdit.new()
+				m_in.text = sc_options[oi].get("method", "")
+				m_in.placeholder_text = "method key"
+				m_in.custom_minimum_size = Vector2(110, 24)
+				m_in.add_theme_font_size_override("font_size", 12)
+				m_in.text_changed.connect(func(txt): DataManager.questions[q_type_key][q_index]["scenarios"][si]["options"][oi]["method"] = txt)
+				o_row.add_child(m_in)
+				var n_in = LineEdit.new()
+				n_in.text = sc_options[oi].get("name", "")
+				n_in.placeholder_text = "显示名"
+				n_in.custom_minimum_size = Vector2(110, 24)
+				n_in.add_theme_font_size_override("font_size", 12)
+				n_in.text_changed.connect(func(txt): DataManager.questions[q_type_key][q_index]["scenarios"][si]["options"][oi]["name"] = txt)
+				o_row.add_child(n_in)
+				var f_in = LineEdit.new()
+				f_in.text = sc_options[oi].get("feedback", "")
+				f_in.placeholder_text = "选择反馈"
+				f_in.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+				f_in.add_theme_font_size_override("font_size", 12)
+				f_in.text_changed.connect(func(txt): DataManager.questions[q_type_key][q_index]["scenarios"][si]["options"][oi]["feedback"] = txt)
+				o_row.add_child(f_in)
+				var del_opt2 = create_button("删", Vector2.ZERO, Vector2(40, 24), STYLE_DANGER)
+				del_opt2.add_theme_font_size_override("font_size", 11)
+				del_opt2.pressed.connect(func():
+					DataManager.questions[q_type_key][q_index]["scenarios"][si]["options"].remove_at(oi)
+					show_notification("已删除方法选项，刷新生效", "warning", 1.5)
+					get_tree().reload_current_scene()
+				)
+				o_row.add_child(del_opt2)
+
+			var add_sc_opt_btn = create_button("+ 新增候选抽样方法", Vector2.ZERO, Vector2(180, 28), Color(0.25, 0.45, 0.3, 1))
+			add_sc_opt_btn.add_theme_font_size_override("font_size", 11)
+			add_sc_opt_btn.pressed.connect(func():
+				if not DataManager.questions[q_type_key][q_index]["scenarios"][si].has("options"):
+					DataManager.questions[q_type_key][q_index]["scenarios"][si]["options"] = []
+				DataManager.questions[q_type_key][q_index]["scenarios"][si]["options"].append({
+					"id": "m_" + str(randi()), "method": "new_method",
+					"name": "新方法", "correct": false, "feedback": "请输入反馈"
+				})
+				show_notification("已新增候选方法，刷新生效", "info", 1.5)
+				get_tree().reload_current_scene()
+			)
+			sc_vbox.add_child(add_sc_opt_btn)
+
+		var add_sc_btn = create_button("+ 新增抽样场景", Vector2.ZERO, Vector2(160, 32), Color(0.25, 0.45, 0.3, 1))
+		add_sc_btn.add_theme_font_size_override("font_size", 12)
+		add_sc_btn.pressed.connect(func():
+			var scs = DataManager.questions[q_type_key][q_index]["scenarios"]
+			scs.append({
+				"id": "sc_" + str(randi()), "name": "新场景",
+				"description": "请输入场景描述", "sampling_method": "random",
+				"method_name": "随机抽样", "reason": "请输入正确原因",
+				"options": []
+			})
+			show_notification("已新增场景，请填写后刷新", "info", 1.5)
+			get_tree().reload_current_scene()
+		)
+		parent.add_child(add_sc_btn)
 
 func _build_editable_evidence_category_card(cat_index: int) -> PanelContainer:
 	var cat = DataManager.materials["evidence_categories"][cat_index]
